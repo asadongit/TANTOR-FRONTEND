@@ -88,7 +88,7 @@ function FeatureDependency({
    * Calculate max droppable features (leave at least 1)
    */
   const vifMaxDroppable = Math.max(vifReport.length - 1, 0);
-  const correlationMaxDroppable = Math.max(correlationReport.length - 1, 0);
+  const correlationMaxDroppable =correlationReport.length > 0? correlationReport.length: 0;
   const featureTargetMaxDroppable = Math.max(featureTargetReport.length - 1, 0);
 
   /**
@@ -168,12 +168,26 @@ function FeatureDependency({
         correlation: config.correlation_active || false,
         featureTarget: config.feature_target_active || false
       });
+      const vifColumns =
+        config.drop_columns_from_vif || [];
+
+      const correlationColumns =
+        config.drop_columns_from_correlation || [];
+
+      const featureTargetColumns =
+        config.drop_columns_from_feature_target || [];
 
       setSelectedFeatures({
-        vif: config.drop_columns_from_vif || [],
-        correlation: config.drop_columns_from_correlation || [],
-        featureTarget: config.drop_columns_from_feature_target || []
-      });
+      vif: vifColumns,
+      correlation: correlationColumns,
+      featureTarget: featureTargetColumns
+    });
+
+    setDropperToggles({
+      vif: vifColumns.length > 0,
+      correlation: correlationColumns.length > 0,
+      featureTarget: featureTargetColumns.length > 0
+    });
     }
   }, [mode, workflowState]);
 
@@ -190,46 +204,56 @@ function FeatureDependency({
     }));
   };
 
-  /**
-   * =======================================================
-   * Toggle Feature Switches
-   * =======================================================
-   */
 
-  const toggleSwitch = (key) => {
-    if (isReadonly || isLoading) return;
+const toggleSwitch = (key) => {
+  if (isReadonly || isLoading) return;
 
-    const newState = !toggles[key];
-    setToggles(prev => ({ ...prev, [key]: newState }));
+  const newState = !toggles[key];
 
-    /**
-     * Close section if disabled
-     */
-    if (!newState) {
-      setExpandedSections((prev) => ({
-        ...prev,
-        [key]: false
-      }));
-    }
+  if (newState) {
+  // Only one report can be active at a time
+  setToggles({
+    vif: key === 'vif',
+    correlation: key === 'correlation',
+    featureTarget: key === 'featureTarget'
+  });
 
-    /**
-     * Open section if enabled
-     */
-    if (newState) {
-      setExpandedSections({
-        vif: key === 'vif',
-        correlation: key === 'correlation',
-        featureTarget: key === 'featureTarget'
-      });
-    }
+  setExpandedSections({
+    vif: key === 'vif',
+    correlation: key === 'correlation',
+    featureTarget: key === 'featureTarget'
+  });
 
-    /**
-     * Call parent callback to track changes
-     */
-    if (onValidationChange) {
-      onValidationChange();
-    }
-  };
+  // Clear ALL previously selected features
+  setSelectedFeatures({
+    vif: [],
+    correlation: [],
+    featureTarget: []
+  });
+
+  // Close all droppers
+  setDropperToggles({
+    vif: false,
+    correlation: false,
+    featureTarget: false
+  });
+} else {
+    setToggles(prev => ({
+      ...prev,
+      [key]: false
+    }));
+
+    setExpandedSections(prev => ({
+      ...prev,
+      [key]: false
+    }));
+  }
+
+  if (onValidationChange) {
+    onValidationChange();
+  }
+};
+    
 
   /**
    * =======================================================
@@ -237,10 +261,20 @@ function FeatureDependency({
    * =======================================================
    */
 
-  const toggleDropper = (key) => {
-    if (isReadonly || isLoading) return;
-    setDropperToggles(prev => ({ ...prev, [key]: !prev[key] }));
-  };
+ const toggleDropper = (key) => {
+  if (isReadonly || isLoading) return;
+
+  setDropperToggles(prev => {
+    const isCurrentlyOpen = prev[key];
+
+    return {
+      vif: false,
+      correlation: false,
+      featureTarget: false,
+      [key]: !isCurrentlyOpen
+    };
+  });
+};
 
   /**
    * =======================================================
@@ -289,10 +323,7 @@ function FeatureDependency({
       return { type: 'vif', message: 'You must leave at least one feature undropped' };
     }
 
-    // Check Correlation
-    if (dropperToggles.correlation && correlationReport.length > 0 && selectedFeatures.correlation.length === correlationReport.length) {
-      return { type: 'correlation', message: 'You must leave at least one feature undropped' };
-    }
+    // No validation required for Correlation
 
     // Check Feature-Target
     if (dropperToggles.featureTarget && featureTargetReport.length > 0 && selectedFeatures.featureTarget.length === featureTargetReport.length) {
@@ -472,9 +503,7 @@ function FeatureDependency({
         </div>
       )}
 
-      {/* ===================================================
-          What's Included Section
-      =================================================== */}
+   
 
       <div className="bg-gray-50 p-4 rounded-lg">
         <h5 className="text-sm font-medium text-[#8e78b7] mb-3">What's Included?</h5>
@@ -548,7 +577,7 @@ function FeatureDependency({
         selectedFeatures={selectedFeatures.correlation}
         onFeatureSelect={(feature) => toggleFeatureSelection('correlation', feature)}
         sectionDescriptions={sectionDescriptions}
-        showError={showFieldErrors && dropperToggles.correlation && correlationReport.length > 0 && selectedFeatures.correlation.length === correlationReport.length}
+        showError={false}
         maxDroppableFeatures={correlationMaxDroppable}
         isDropperEnabled={dropperToggles.correlation}
         onDropperToggle={() => toggleDropper('correlation')}

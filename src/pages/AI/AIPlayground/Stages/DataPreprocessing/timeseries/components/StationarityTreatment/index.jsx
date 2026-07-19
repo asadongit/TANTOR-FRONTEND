@@ -115,14 +115,15 @@ const VariantDataTable = ({ variantKey, displayData }) => {
 
 
 
-function StationarityTreatmentComponent({readonly,onValidationChange,onApiCall, showPreview})
+function StationarityTreatmentComponent({readonly,onValidationChange,onApiCall, showPreview, isDataPreprocessingAuto})
 {  
   //Context Data
   const {
     datasetState,
     workflowsState,
     activeWorkflowId,
-    updatePreprocessingStep
+    updatePreprocessingStep,
+    mode
   } = useAIPlayground();
    //Get current workflow state
   const workflowState = activeWorkflowId
@@ -134,7 +135,7 @@ function StationarityTreatmentComponent({readonly,onValidationChange,onApiCall, 
   const rawStationarityReport =
     workflowState?.dataPreprocessing?.step5?.apiResponse
       ?.stationarity_analysis_report || [];
-
+    const step6Config = workflowState?.dataPreprocessing?.step6?.config;
    //Filter report to only include required keys
   const requiredKeys = [
     'column',
@@ -155,8 +156,9 @@ function StationarityTreatmentComponent({readonly,onValidationChange,onApiCall, 
   });
   const step5Config =
   workflowState?.dataPreprocessing?.step5?.config;
-  const wasStationarityAnalysisEnabledInStep5 =
-  step5Config?.stationarity_analysis_active ?? false;
+  const wasStationarityAnalysisEnabledInStep5 =step5Config?.stationarity_analysis_active ?? false;
+  const noStationarityReport = !rawStationarityReport ||rawStationarityReport.length === 0;
+  const disableStationarityTreatment =!wasStationarityAnalysisEnabledInStep5 ||noStationarityReport;
    //Section Descriptions
   const sectionDescriptions =dataPreprocessingDescriptions;
 
@@ -184,12 +186,12 @@ function StationarityTreatmentComponent({readonly,onValidationChange,onApiCall, 
   {/*Toggle Feature Switches*/}
   const toggleSwitch = (key) =>
      {if (readonly || isLoading) return;
-      if (
-  key === 'stationarityTreatment' &&
-  !wasStationarityAnalysisEnabledInStep5
-) {
-  return;
-}
+     if (
+        key === 'stationarityTreatment' &&
+        disableStationarityTreatment
+      ) {
+        return;
+      }
     {/*Stationarity Treatment Toggle*/}
     if (key === 'stationarityTreatment') {
       const newState = !stationarityTreatmentActive;
@@ -213,9 +215,25 @@ function StationarityTreatmentComponent({readonly,onValidationChange,onApiCall, 
       }
     }
   };
+  useEffect(() => {
+  if (
+    (mode === 'view' || mode === 'edit') &&
+    step6Config
+  ) {
+    setStationarityTreatmentActive(
+      step6Config.stationarity_treatment_active || false
+    );
 
+    setExpandedSections({
+      stationarityTreatment:
+        step6Config.stationarity_treatment_active || false
+    });
+  }
+}, [mode, step6Config]);
+   
   {/*Handle API Call (Called on Next Click) */}
   const handleApiCall = async () => {
+    if (readonly) return true;
     setError(null);
     setIsLoading(true);
     try {
@@ -285,7 +303,13 @@ function StationarityTreatmentComponent({readonly,onValidationChange,onApiCall, 
   {/*Preview-Only Render Mode*/}
   if (showPreview) {
     // Determine data source and structure
-    let cleanedDfData = workflowState.dataPreprocessing?.step6?.apiResponse?.cleaned_df;
+    let cleanedDfData = workflowState?.dataPreprocessing?.step6?.apiResponse?.cleaned_df;
+
+    // Fallback to genesis response in auto-preprocessing mode
+    if (!cleanedDfData && isDataPreprocessingAuto && workflowState?.modelGenesis?.apiResponse) {
+      const genesisResponse = workflowState.modelGenesis.apiResponse;
+      cleanedDfData = genesisResponse?.cleaned_df_preview || genesisResponse?.cleaned_df;
+    }
 
     // If no data available, show message
     if (!cleanedDfData) {
@@ -302,7 +326,7 @@ function StationarityTreatmentComponent({readonly,onValidationChange,onApiCall, 
       return (
         <div className="space-y-4 -mx-6">
           <CleanDataTable
-            title="Scaled & Encoded Data Preview"
+            title="Cleaned Data Preview"
             data={cleanedDfData}
           />
         </div>
@@ -358,10 +382,12 @@ function StationarityTreatmentComponent({readonly,onValidationChange,onApiCall, 
         isExpanded={expandedSections.stationarityTreatment}
         onToggle={() => toggleSwitch('stationarityTreatment')}
         onExpand={() => toggleSection('stationarityTreatment')}
-        readonly={readonly || !wasStationarityAnalysisEnabledInStep5}
+        readonly={readonly || disableStationarityTreatment}
+        noStationarityReport={noStationarityReport}
         isLoading={isLoading}
         stationarityReport={stationarityAnalysisReport}
         sectionDescriptions={sectionDescriptions}
+        stationarityAnalysisEnabled={wasStationarityAnalysisEnabledInStep5}
       />
     </div>
   );

@@ -36,24 +36,24 @@ export const handleMissingValues = async (params) => {
     const response = await axios.post(
       `${hostnameAI}/data/preprocess_timeseries/handle_missing_values`,
       {
-        ensemble_id: params.ensembleId,
-        workflow_id: params.workflowId,
-        high_missing_value_active: params.highMissingValueActive !== undefined ? params.highMissingValueActive : false,
-        high_missing_value_threshold: params.highMissingValueThreshold !== undefined ? params.highMissingValueThreshold : 70,
-        generated_missing_value_active: params.generatedMissingValueActive !== undefined ? params.generatedMissingValueActive : true,
-        generated_missing_value_numeric_method: params.generatedMissingValueNumericMethod || 'ffill',
-        generated_missing_value_categorical_method: params.generatedMissingValueCategoricalMethod || 'ffill',
-        generated_missing_value_datetime_method: params.generatedMissingValueDatetimeMethod || 'ffill',
-        generated_missing_value_rolling_window: params.generatedMissingValueRollingWindow !== undefined ? params.generatedMissingValueRollingWindow : 3,
-        generated_missing_value_categorical_seasonal_period:params.generatedMissingValueCategoricalSeasonalPeriod !== undefined ? params.generatedMissingValueCategoricalSeasonalPeriod : 7,
-        generated_missing_value_numerical_seasonal_period:params.generatedMissingValueNumericSeasonalPeriod !== undefined ? params.generatedMissingValueNumericSeasonalPeriod : 7,
-        original_missing_value_active: params.originalMissingValueActive !== undefined ? params.originalMissingValueActive : true,
-        original_missing_value_numeric_method: params.originalMissingValueNumericMethod || 'linear',
-        original_missing_value_categorical_method: params.originalMissingValueCategoricalMethod || 'ffill',
-        original_missing_value_datetime_method: params.originalMissingValueDatetimeMethod || 'ffill',
-        original_missing_value_polynomial_order: params.originalMissingValuePolynomialOrder !== undefined ? params.originalMissingValuePolynomialOrder : 2,
-        original_missing_value_spline_order: params.originalMissingValueSplineOrder !== undefined ? params.originalMissingValueSplineOrder : 3,
-        original_missing_value_seasonal_period: params.originalMissingValueSeasonalPeriod !== undefined ? params.originalMissingValueSeasonalPeriod : 7
+        ensemble_id: params.ensemble_id,
+        workflow_id: params.workflow_id,
+        high_missing_value_active: params.high_missing_value_active !== undefined ? params.high_missing_value_active : false,
+        high_missing_value_threshold: params.high_missing_value_threshold !== undefined ? params.high_missing_value_threshold : 70,
+        generated_missing_value_active: params.generated_missing_value_active !== undefined ? params.generated_missing_value_active : true,
+        generated_missing_value_numeric_method: params.generated_missing_value_numeric_method || '',
+        generated_missing_value_categorical_method: params.generated_missing_value_categorical_method || '',
+        generated_missing_value_datetime_method: params.generated_missing_value_datetime_method || '',
+        generated_missing_value_rolling_window: params.generated_missing_value_rolling_window !== undefined ? params.generated_missing_value_rolling_window : 3,
+        generated_missing_value_categorical_seasonal_period:params.generated_missing_value_categorical_seasonal_period !== undefined ? params.generated_missing_value_categorical_seasonal_period : 7,
+        generated_missing_value_numerical_seasonal_period:params.generated_missing_value_numerical_seasonal_period !== undefined ? params.generated_missing_value_numerical_seasonal_period : 7,
+        original_missing_value_active: params.original_missing_value_active !== undefined ? params.original_missing_value_active : true,
+        original_missing_value_numeric_method: params.original_missing_value_numeric_method || '',
+        original_missing_value_categorical_method: params.original_missing_value_categorical_method || '',
+        original_missing_value_datetime_method: params.original_missing_value_datetime_method || '',
+        original_missing_value_polynomial_order: params.original_missing_value_polynomial_order !== undefined ? params.original_missing_value_polynomial_order : 2,
+        original_missing_value_spline_order: params.original_missing_value_spline_order !== undefined ? params.original_missing_value_spline_order : 3,
+        original_missing_value_seasonal_period: params.original_missing_value_seasonal_period !== undefined ? params.original_missing_value_seasonal_period : 7,
       },
       {
         headers: {
@@ -82,6 +82,11 @@ export const featureIntegrity = async (params) => {
         outlier_detection_active: params.outlierDetectionActive !== undefined ? params.outlierDetectionActive : true,
         outlier_detection_method: params.outlierDetectionMethod || 'iqr',
         outlier_thershold: params.outlierThreshold !== undefined ? params.outlierThreshold : 3,
+        outlier_seasonal_period: params.outlierSeasonPeriod !== undefined ? params.outlierSeasonPeriod : 7,
+        outlier_rolling_window: params.outlierRollingWindow !== undefined ? params.outlierRollingWindow : 7,
+        outlier_loess_frac: params.outlierLoessFrac !== undefined ? params.outlierLoessFrac : 0.3,
+        outlier_pelt_penalty: params.outlierPeltPenalty !== undefined ? params.outlierPeltPenalty : 10,
+        outlier_contamination: params.outlierContamination !== undefined ? params.outlierContamination : 0.05,
       },
       {
         headers: {
@@ -107,7 +112,11 @@ export const stabilizeData = async (params) => {
         workflow_id: params.workflowId,
         outlier_treatment_active: params.outlierTreatmentActive !== undefined ? params.outlierTreatmentActive : true,
         outlier_treatment_strategy: params.outlierTreatmentStrategy,
-        outlier_thershold: params.outlierThreshold !== undefined ? params.outlierThreshold : 3,
+        outlier_threshold: params.outlierThreshold !== undefined ? params.outlierThreshold : 3,
+        outlier_season_period: params.outlierSeasonPeriod !== undefined ? params.outlierSeasonPeriod : 8,
+        outlier_rolling_window: params.outlierRollingWindow !== undefined ? params.outlierRollingWindow : 7,
+        outlier_clip_bounds: params.outlierClipBounds !== undefined ? params.outlierClipBounds : [0],
+        outlier_contamination: params.outlierContamination !== undefined ? params.outlierContamination : 0.05,
         seasonality_analysis: params.seasonalityAnalysis !== undefined ? params.seasonalityAnalysis : false,
         seasonality_min_period: params.seasonalityMinPeriod !== undefined ? params.seasonalityMinPeriod : 2,
         seasonality_max_period: params.seasonalityMaxPeriod !== undefined ? params.seasonalityMaxPeriod : 365,
@@ -118,11 +127,12 @@ export const stabilizeData = async (params) => {
           'Content-Type': 'application/json'}
       }
     );
+
     return response.data;
   } catch (error) {
-    console.error('Error stabilizing data:', error);
+    console.error('Data stabilization API error:', error);
     throw error;
-  } 
+  }
 };
 
 

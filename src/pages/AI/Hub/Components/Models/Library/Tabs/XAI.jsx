@@ -14,6 +14,8 @@ const XAI = ({ modelData }) => {
     const [xaiResponse, setXaiResponse] = useState(null);
     const hostnameAI = window._env_?.VITE_AI_API;
     const { token } = useAuth();
+    const modelingType = modelData?.modeling_type ?? modelData?.type ?? '';
+    const isTimeseries = ['univariate_timeseries', 'multivariate_timeseries'].includes(modelingType);
 
     // For zoom modal
     const [zoomImg, setZoomImg] = useState(null);
@@ -273,9 +275,20 @@ const XAI = ({ modelData }) => {
                                 <thead>
                                     <tr className="bg-gray-50">
                                         <th className="px-2 py-1 text-left">Feature</th>
-                                        <th className="px-2 py-1 text-left">% of Users Affected</th>
-                                        <th className="px-2 py-1 text-left">Avg Change</th>
-                                        <th className="px-2 py-1 text-left">Common Direction</th>
+                                        {isTimeseries ? (
+                                            <>
+                                                <th className="px-2 py-1 text-left">Avg % Forecast Change (↑)</th>
+                                                <th className="px-2 py-1 text-left">Avg % Forecast Change (↓)</th>
+                                                <th className="px-2 py-1 text-left">Dominant Direction</th>
+                                                <th className="px-2 py-1 text-left">Delta Applied</th>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <th className="px-2 py-1 text-left">% of Users Affected</th>
+                                                <th className="px-2 py-1 text-left">Avg Change</th>
+                                                <th className="px-2 py-1 text-left">Common Direction</th>
+                                            </>
+                                        )}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -284,9 +297,20 @@ const XAI = ({ modelData }) => {
                                         .map((row, idx) => (
                                             <tr key={idx} className="border-t">
                                                 <td className="px-2 py-1">{row["Feature"]}</td>
-                                                <td className="px-2 py-1">{row["% of Users Affected"]}</td>
-                                                <td className="px-2 py-1">{row["Avg Change"]}</td>
-                                                <td className="px-2 py-1">{row["Common Direction"]}</td>
+                                                {isTimeseries ? (
+                                                    <>
+                                                        <td className="px-2 py-1">{row["Avg % Forecast Change (↑)"]}</td>
+                                                        <td className="px-2 py-1">{row["Avg % Forecast Change (↓)"]}</td>
+                                                        <td className="px-2 py-1">{row["Dominant Direction"]}</td>
+                                                        <td className="px-2 py-1">{row["Delta Applied"]}</td>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <td className="px-2 py-1">{row["% of Users Affected"]}</td>
+                                                        <td className="px-2 py-1">{row["Avg Change"]}</td>
+                                                        <td className="px-2 py-1">{row["Common Direction"]}</td>
+                                                    </>
+                                                )}
                                             </tr>
                                         ))}
                                 </tbody>
@@ -339,14 +363,25 @@ const XAI = ({ modelData }) => {
                 ))}
 
                 {/* LIME Report Table */}
-                {safeRender("LIME Report", () => (
-                    xaiReport.lime_report && (
+                {safeRender("LIME Report", () => {
+                    const limeReport = xaiReport.lime_report;
+                    const explanation =
+                        limeReport?.explanation_for_class ||
+                        limeReport?.explanation_for_prediction ||
+                        limeReport?.explanation ||
+                        [];
+
+                    return limeReport && (
                         <div className="bg-white rounded-lg shadow p-4 overflow-x-auto">
                             <div className="flex justify-between items-start mb-4">
                                 <div>
-                                    <div className="font-semibold">LIME Explanation (Instance {xaiReport.lime_report.instance_index})</div>
+                                    <div className="font-semibold">LIME Explanation (Instance {limeReport.instance_index})</div>
                                     <div className="text-xs text-gray-500">
-                                        Predicted Class: <span className="font-semibold">{xaiReport.lime_report.predicted_class_name}</span>
+                                        {limeReport.predicted_value != null ? (
+                                            <>Predicted Value: <span className="font-semibold">{limeReport.predicted_value}</span></>
+                                        ) : (
+                                            <>Predicted Class: <span className="font-semibold">{limeReport.predicted_class_name}</span></>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="relative max-w-sm">
@@ -368,7 +403,7 @@ const XAI = ({ modelData }) => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {xaiReport.lime_report.explanation_for_class
+                                    {explanation
                                         .filter(([feature, weight]) => feature?.toLowerCase?.().includes(searchTermLime.toLowerCase()))
                                         .map(([feature, weight], idx) => (
                                             <tr key={idx} className="border-t">
@@ -379,11 +414,11 @@ const XAI = ({ modelData }) => {
                                 </tbody>
                             </table>
                             <div className="mt-2 text-xs text-gray-500">
-                                Intercept: <span className="font-mono">{xaiReport.lime_report.intercept}</span>
+                                Intercept: <span className="font-mono">{limeReport.intercept}</span>
                             </div>
                         </div>
-                    )
-                ))}
+                    );
+                })}
             </div>
         </div>
     );

@@ -96,7 +96,7 @@ const VariantDataTable = ({ variantKey, displayData }) => {
   );
 };
 
-function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview }) {
+function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview, isDataPreprocessingAuto, predictionType }) {
   /**
    * =======================================================
    * Context Data
@@ -112,6 +112,10 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview }) 
 
   // Override readonly based on mode
   const isReadonly = readonlyProp || mode === 'view';
+
+  const isMultiTimeSeries =
+    predictionType === 'multivariate_timeseries' ||
+    predictionType === 'multivariate_multiseries';
 
   /**
    * Get current workflow state
@@ -134,6 +138,20 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview }) 
   const step6Response = workflowState?.dataPreprocessing?.step7?.apiResponse || {};
   const categoricalColumns = step6Response?.categorical_columns || [];
   const hasCategoricalColumns = Array.isArray(categoricalColumns) && categoricalColumns.length > 0;
+
+  useEffect(() => {
+  if (hasCategoricalColumns && !isMultiTimeSeries) {
+    setToggles(prev => ({
+      ...prev,
+      encoding: true
+    }));
+
+    setExpandedSections(prev => ({
+      ...prev,
+      encoding: true
+    }));
+  }
+}, [hasCategoricalColumns, isMultiTimeSeries]);
 
   /**
    * Get numerical columns from step 7 (Feature Dependency)
@@ -202,7 +220,7 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview }) 
       const config = workflowState.dataPreprocessing.step8.config;
 
       setToggles({
-        encoding: config.encoding_active || false,
+        encoding: config.encoder_active || false,
         scaling: config.scaling_active || false
       });
 
@@ -216,10 +234,11 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview }) 
     }
   }, [mode, workflowState]);
   const toggleSection = (section) => {
-    setExpandedSections((prev) => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
+    setExpandedSections((prev) => {
+      const isOpen = prev[section];
+      const allClosed = Object.keys(prev).reduce((acc, key) => ({ ...acc, [key]: false }), {});
+      return isOpen ? allClosed : { ...allClosed, [section]: true };
+    });
   };
 
   /**
@@ -233,7 +252,13 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview }) 
     /**
      * Prevent toggling encoding if no categorical columns
      */
-    if (key === 'encoding' && !hasCategoricalColumns) return;
+    if (
+  key === 'encoding' &&
+  hasCategoricalColumns &&
+  toggles.encoding
+) {
+  return;
+}
 
     /**
      * Prevent toggling scaling if no numerical columns
@@ -322,10 +347,12 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview }) 
        * Create Config Object
        * ---------------------------------------------------
        */
+      const encodingActive = isMultiTimeSeries ? false : toggles.encoding;
+
       const config = {
         scaling_active: toggles.scaling,
-        encoding_active: toggles.encoding,
-        encoding_type: toggles.encoding ? selectedMethods.encodingMethod : null,
+        encoding_active: encodingActive,
+        encoding_type: encodingActive ? selectedMethods.encodingMethod : null,
         scaling_method: toggles.scaling ? selectedMethods.scalingMethod : null,
         handle_unknown: 'ignore'
       };
@@ -339,8 +366,8 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview }) 
         ensembleId: datasetState.ensembleId,
         workflowId: activeWorkflowId,
         scalingActive: toggles.scaling,
-        encodingActive: toggles.encoding,
-        encodingType: toggles.encoding ? selectedMethods.encodingMethod : null,
+        encodingActive: encodingActive,
+        encodingType: encodingActive ? selectedMethods.encodingMethod : null,
         scalingMethod: toggles.scaling ? selectedMethods.scalingMethod : null,
         handleUnknown: 'ignore'
       });
@@ -414,7 +441,13 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview }) 
    */
   if (showPreview) {
     // Determine data source and structure
-    let cleanedDfData = previewData?.cleaned_df;
+    let cleanedDfData = previewData?.cleaned_df_preview || previewData?.cleaned_df;
+
+    // Fallback to genesis response in auto-preprocessing mode
+    if (!cleanedDfData && isDataPreprocessingAuto && workflowState?.modelGenesis?.apiResponse) {
+      const genesisResponse = workflowState.modelGenesis.apiResponse;
+      cleanedDfData = genesisResponse?.cleaned_df_preview || genesisResponse?.cleaned_df;
+    }
 
     // If no data available, show message
     if (!cleanedDfData) {
@@ -431,7 +464,7 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview }) 
       return (
         <div className="space-y-4 -mx-6">
           <CleanDataTable
-            title="Scaled & Encoded Data Preview"
+            title="Cleaned Data Preview"
             data={cleanedDfData}
           />
         </div>
@@ -486,18 +519,21 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview }) 
       )}
 
 
-      {/* Categorical Encoding Section */}
-      <CategoricalEncoding
-        isToggled={toggles.encoding}
-        isExpanded={expandedSections.encoding}
-        onToggle={() => toggleSwitch('encoding')}
-        onExpand={() => toggleSection('encoding')}
-        selectedEncoding={selectedMethods.encodingMethod}
-        onEncodingChange={handleEncodingChange}
-        readonly={isReadonly || !hasCategoricalColumns}
-        hasError={encodingError}
-        sectionDescriptions={dataPreprocessingDescriptions}
-      />
+      {/* Categorical Encoding Section — hidden for multivariate/multiseries */}
+      {!isMultiTimeSeries && (
+        <CategoricalEncoding
+          isToggled={toggles.encoding}
+          isExpanded={expandedSections.encoding}
+          onToggle={() => toggleSwitch('encoding')}
+          onExpand={() => toggleSection('encoding')}
+          selectedEncoding={selectedMethods.encodingMethod}
+          onEncodingChange={handleEncodingChange}
+          readonly={isReadonly || !hasCategoricalColumns}
+          hasError={encodingError}
+          sectionDescriptions={dataPreprocessingDescriptions}
+          hasCategoricalColumns={hasCategoricalColumns}
+        />
+      )}
 
       {/* Feature Scaling Section */}
       <FeatureScaling

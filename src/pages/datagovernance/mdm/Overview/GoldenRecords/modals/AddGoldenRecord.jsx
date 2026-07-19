@@ -7,7 +7,7 @@ const inputClass =
     'w-full border border-[#CCCCCC] rounded-lg px-3.5 py-2.5 text-sm font-normal text-[#282F49] outline-none bg-white font-[Satoshi,sans-serif] leading-none box-border focus:border-[#8e78b7]';
 const labelClass =
     'text-sm font-medium text-[#332849] font-[Satoshi,sans-serif] leading-none mb-1.5 block';
-const STATUS_OPTIONS = ['Active', 'Inactive', 'Merged', 'Expired'];
+const STATUS_OPTIONS = ['Active', 'Inactive'];
 const CreateGoldenRecordModal = ({ isOpen, onClose, onSuccess, domainId }) => {
     const { decodedToken } = useAuth();
     const [formData, setFormData] = useState({});

@@ -8,6 +8,7 @@ import mssql from "../../../../assets/connector/mssql-connector.png";
 import db2 from "../../../../assets/connector/db2-connector.png";
 import kafka from "../../../../assets/connector/kafka-connector.png";
 import iris from "../../../../assets/connector/iris-connector.png";
+import elasticsearch from "../../../../assets/connector/elasticsearch-connector.svg";
 
 export const connectorConfig = {
     oracle: {
@@ -118,19 +119,76 @@ export const connectorConfig = {
       ],
       icon: mssql
     },
-    hive: {
+    clouderahive: {
       fields: [
+        {
+          name: "extra_info.security_mode",
+          label: "Security Mode",
+          type: "select",
+          options: ["Kerberos (Secured)", "Standard"],
+          required: true,
+        },
         { name: "host_address", label: "Host", required: true },
         { name: "port_number", label: "Port", type: "number", required: true },
-        { name: "client_principal", label: "Client", required: true },
+        {
+          name: "client_principal",
+          label: "Client Principal",
+          required: true,
+          conditionalOn: {
+            field: "extra_info.security_mode",
+            value: "Kerberos (Secured)",
+          },
+        },
         {
           name: "service_principal",
           label: "Service Principal",
           required: true,
+          conditionalOn: {
+            field: "extra_info.security_mode",
+            value: "Kerberos (Secured)",
+          },
         },
-        { name: "username", label: "Username" },
-        { name: "password", label: "Password", type: "password" },
-        { name: "source_schema", label: "Schema", required: false },
+        {
+          name: "database_name",
+          label: "Database Name",
+          required: true
+        },
+        {
+          name: "extra_info.keytab_location",
+          label: "Keytab File",
+          type: "file",
+          fileType: "keytab",
+          accept: ".keytab",
+          required: true,
+          conditionalOn: {
+            field: "extra_info.security_mode",
+            value: "Kerberos (Secured)",
+          },
+        },
+        {
+          name: "extra_info.core_site_location",
+          label: "core-site.xml",
+          type: "file",
+          fileType: "xml",
+          accept: ".xml",
+          required: false,
+          requiredOn: {
+            field: "extra_info.security_mode",
+            value: "Kerberos (Secured)",
+          },
+        },
+        {
+          name: "extra_info.hdfs_site_location",
+          label: "hdfs-site.xml",
+          type: "file",
+          fileType: "xml",
+          accept: ".xml",
+          required: false,
+          requiredOn: {
+            field: "extra_info.security_mode",
+            value: "Kerberos (Secured)",
+          },
+        },
       ],
       icon: hive
     },
@@ -191,7 +249,7 @@ export const connectorConfig = {
       name: "extra_info.sasl_mechanism",
       label: "SASL Mechanism",
       type: "select",
-      options: ["PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512"],
+      options: ["PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512", "KERBEROS"],
       required: true,
       conditionalOn: {
         field: "extra_info.security_protocol",
@@ -203,8 +261,8 @@ export const connectorConfig = {
       label: "SASL Username",
       required: true,
       conditionalOn: {
-        field: "extra_info.security_protocol",
-        values: ["SASL_PLAINTEXT", "SASL_SSL"],
+        field: "extra_info.sasl_mechanism",
+        values: ["PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512"],
       },
     },
     {
@@ -213,8 +271,29 @@ export const connectorConfig = {
       type: "password",
       required: true,
       conditionalOn: {
-        field: "extra_info.security_protocol",
-        values: ["SASL_PLAINTEXT", "SASL_SSL"],
+        field: "extra_info.sasl_mechanism",
+        values: ["PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512"],
+      },
+    },
+    {
+      name: "extra_info.keytab_location",
+      label: "Keytab File",
+      type: "file",
+      fileType: "keytab",
+      accept: ".keytab",
+      required: true,
+      conditionalOn: {
+        field: "extra_info.sasl_mechanism",
+        value: "KERBEROS",
+      },
+    },
+    {
+      name: "extra_info.principal",
+      label: "Principal",
+      required: true,
+      conditionalOn: {
+        field: "extra_info.sasl_mechanism",
+        value: "KERBEROS",
       },
     },
      {
@@ -235,10 +314,12 @@ export const connectorConfig = {
 },
     mongodb: {
       fields: [
-        { name: "url", label: "Connection String", required: true },
+        { name: "host_address", label: "Host", required: true },
         { name: "database_name", label: "Database", required: true },
-        { name: "username", label: "Username" },
-        { name: "password", label: "Password", type: "password" },
+        { name: "port_number", label: "Port", type: "number", required: true },
+        { name: "username", label: "Username", required: true },
+        { name: "password", label: "Password", type: "password", required: true },
+        { name: "auth_source", label: "Auth Source", required: false, placeholder: "Enter auth source (e.g. admin)" },
       ],
       icon: mongodb
     },
@@ -263,5 +344,62 @@ export const connectorConfig = {
         { name: "source_schema", label: "Schema", required: false },
       ],
       icon: iris
+    },
+    elasticsearch: {
+      fields: [
+        {
+          name: "extra_info.security",
+          label: "Security",
+          type: "select",
+          options: [
+            { value: "Unsecured", label: "HTTP" },
+            { value: "Secured", label: "HTTPS+Auth" },
+          ],
+          required: true,
+        },
+        { name: "host_address", label: "Host", required: true },
+        { name: "port_number", label: "Port", type: "number", required: true },
+        {
+          name: "extra_info.truststore_location",
+          label: "Truststore File",
+          type: "file",
+          accept: ".p12",
+          required: true,
+          conditionalOn: {
+            field: "extra_info.security",
+            value: "Secured",
+          },
+        },
+        {
+          name: "extra_info.truststore_password",
+          label: "Truststore Password",
+          type: "password",
+          required: true,
+          conditionalOn: {
+            field: "extra_info.security",
+            value: "Secured",
+          },
+        },
+        {
+          name: "username",
+          label: "Username",
+          required: true,
+          conditionalOn: {
+            field: "extra_info.security",
+            value: "Secured",
+          },
+        },
+        {
+          name: "password",
+          label: "Password",
+          type: "password",
+          required: true,
+          conditionalOn: {
+            field: "extra_info.security",
+            value: "Secured",
+          },
+        },
+      ],
+      icon: elasticsearch
     },
   };

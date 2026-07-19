@@ -19,8 +19,8 @@ function SeasonalityAnalysis({
 			<div className="p-4 flex items-center justify-between">
 				<div className="flex-1 flex items-center gap-2">
 					<div className="flex-1">
-						<div className="flex flex-row items-center">
-							<h4 className="text-sm font-medium mr-2 text-gray-700">
+						<div className="flex flex-row items-center gap-2">
+							<h4 className="text-sm font-medium text-gray-900">
 								{title}
 							</h4>
 							<InfoButton sectionDescriptions={dataStabilizationDescriptions} section={sectionKey} />

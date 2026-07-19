@@ -1,6 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import { ChevronDown, ChevronUp, Info, X, Plus } from 'lucide-react';
-import { validateHyperparameterValue } from './validationUtils';
+import {
+    isNestedParameter,
+    isRangeParameter,
+    validateHyperparameterValue,
+    validateMinPeriodsAgainstWindow,
+    validateDModelAgainstHeads
+} from './validationUtils';
 import { tw } from '../../../../../components/themeContext';
 
 // Single-select dropdown for Hyper Parameter mode (mirrors GridSearchDropdown style)
@@ -227,7 +233,33 @@ function GridSearchDropdown({ algo, paramName, options, readonly, disabled, onUp
 function AlgorithmCard({ algo, readonly, disabled, onToggle, onExpand, onUpdate, showValidation, onResetValidation, cardRef }) {
     const handleConfigModeChange = (mode) => {
         if (readonly || disabled) return;
-        onUpdate(algo.id, { configMode: mode, errors: {}, hyperparameterValues: {}, gridSearchValues: {}, gridSearchErrors: {} });
+
+        const gridSearchValues = {};
+        const gridSearchErrors = {};
+
+        if (mode === 'Grid Search') {
+            Object.entries(algo.hyperparameters || {}).forEach(([paramName, paramValue]) => {
+                if (isNestedParameter(paramValue)) {
+                    gridSearchValues[paramName] = {};
+                    gridSearchErrors[paramName] = {};
+                    Object.keys(paramValue).forEach(subParam => {
+                        gridSearchValues[paramName][subParam] = [''];
+                        gridSearchErrors[paramName][subParam] = [null];
+                    });
+                } else {
+                    gridSearchValues[paramName] = [''];
+                    gridSearchErrors[paramName] = [null];
+                }
+            });
+        }
+
+        onUpdate(algo.id, {
+            configMode: mode,
+            errors: {},
+            hyperparameterValues: {},
+            gridSearchValues,
+            gridSearchErrors
+        });
         if (onResetValidation) onResetValidation();
     };
 
@@ -245,18 +277,78 @@ function AlgorithmCard({ algo, readonly, disabled, onToggle, onExpand, onUpdate,
     };
 
     const handleHyperparameterBlur = (paramName, paramValue, currentValue) => {
+        const newErrors = { ...algo.errors };
+
         if (currentValue && currentValue.trim() !== '') {
             const validationResult = validateHyperparameterValue(paramName, paramValue, currentValue);
-
             if (validationResult !== true) {
-                onUpdate(algo.id, {
-                    errors: {
-                        ...algo.errors,
-                        [paramName]: validationResult
-                    }
-                });
+                newErrors[paramName] = validationResult;
             }
         }
+
+        if (paramName === 'min_periods' || paramName === 'window') {
+            const crossResult = validateMinPeriodsAgainstWindow(algo.hyperparameters, {
+                ...algo.hyperparameterValues,
+                [paramName]: currentValue
+            });
+
+            if (crossResult !== true) {
+                newErrors.min_periods = crossResult;
+            } else if (!newErrors.min_periods || newErrors.min_periods === algo.hyperparameters?.min_periods?.warning) {
+                delete newErrors.min_periods;
+            }
+        }
+
+        if (paramName === 'd_model' || paramName === 'nhead' || paramName === 'n_heads') {
+            const headsResult = validateDModelAgainstHeads(algo.hyperparameters, {
+                ...algo.hyperparameterValues,
+                [paramName]: currentValue
+            });
+
+            if (headsResult !== true) {
+                newErrors.d_model = headsResult;
+            } else if (!newErrors.d_model || newErrors.d_model === algo.hyperparameters?.d_model?.warning) {
+                delete newErrors.d_model;
+            }
+        }
+
+        onUpdate(algo.id, { errors: newErrors });
+    };
+
+    const handleNestedHyperparameterChange = (paramName, subParam, newValue) => {
+        const nestedErrors = { ...(algo.errors?.[paramName] || {}) };
+        delete nestedErrors[subParam];
+
+        onUpdate(algo.id, {
+            hyperparameterValues: {
+                ...algo.hyperparameterValues,
+                [paramName]: {
+                    ...(algo.hyperparameterValues?.[paramName] || {}),
+                    [subParam]: newValue
+                }
+            },
+            errors: {
+                ...algo.errors,
+                [paramName]: nestedErrors
+            }
+        });
+    };
+
+    const handleNestedHyperparameterBlur = (paramName, subParam, subConfig, value) => {
+        if (!value || value.trim() === '') return;
+
+        const validationResult = validateHyperparameterValue(subParam, subConfig, value);
+        if (validationResult === true) return;
+
+        onUpdate(algo.id, {
+            errors: {
+                ...algo.errors,
+                [paramName]: {
+                    ...(algo.errors?.[paramName] || {}),
+                    [subParam]: validationResult
+                }
+            }
+        });
     };
 
     const addGridSearchValue = (paramName) => {
@@ -330,21 +422,128 @@ function AlgorithmCard({ algo, readonly, disabled, onToggle, onExpand, onUpdate,
         });
     };
 
+    const addNestedGridSearchValue = (paramName, subParam, subConfig) => {
+        const nestedValues = algo.gridSearchValues?.[paramName] || {};
+        const nestedErrors = algo.gridSearchErrors?.[paramName] || {};
+        const values = nestedValues[subParam] || [''];
+        const errors = values.map(value => {
+            if (!value || value.trim() === '') return null;
+            const result = validateHyperparameterValue(subParam, subConfig, value);
+            return result === true ? null : result;
+        });
+
+        if (errors.some(Boolean)) {
+            onUpdate(algo.id, {
+                gridSearchErrors: {
+                    ...algo.gridSearchErrors,
+                    [paramName]: { ...nestedErrors, [subParam]: errors }
+                }
+            });
+            return;
+        }
+
+        onUpdate(algo.id, {
+            gridSearchValues: {
+                ...algo.gridSearchValues,
+                [paramName]: {
+                    ...nestedValues,
+                    [subParam]: [...values, '']
+                }
+            },
+            gridSearchErrors: {
+                ...algo.gridSearchErrors,
+                [paramName]: {
+                    ...nestedErrors,
+                    [subParam]: [...errors, null]
+                }
+            }
+        });
+    };
+
+    const updateNestedGridSearchValue = (paramName, subParam, index, newValue) => {
+        const nestedValues = algo.gridSearchValues?.[paramName] || {};
+        const values = [...(nestedValues[subParam] || [''])];
+        values[index] = newValue;
+
+        const nestedErrors = algo.gridSearchErrors?.[paramName] || {};
+        const errors = [...(nestedErrors[subParam] || [null])];
+        errors[index] = null;
+
+        onUpdate(algo.id, {
+            gridSearchValues: {
+                ...algo.gridSearchValues,
+                [paramName]: { ...nestedValues, [subParam]: values }
+            },
+            gridSearchErrors: {
+                ...algo.gridSearchErrors,
+                [paramName]: { ...nestedErrors, [subParam]: errors }
+            }
+        });
+    };
+
+    const validateNestedGridSearchValue = (paramName, subParam, subConfig, index, value) => {
+        if (!value || value.trim() === '') return;
+
+        const validationResult = validateHyperparameterValue(subParam, subConfig, value);
+        if (validationResult === true) return;
+
+        const nestedErrors = algo.gridSearchErrors?.[paramName] || {};
+        const errors = [...(nestedErrors[subParam] || [])];
+        errors[index] = validationResult;
+
+        onUpdate(algo.id, {
+            gridSearchErrors: {
+                ...algo.gridSearchErrors,
+                [paramName]: { ...nestedErrors, [subParam]: errors }
+            }
+        });
+    };
+
+    const removeNestedGridSearchValue = (paramName, subParam, index) => {
+        const nestedValues = algo.gridSearchValues?.[paramName] || {};
+        const values = [...(nestedValues[subParam] || [''])];
+        values.splice(index, 1);
+        if (values.length === 0) values.push('');
+
+        const nestedErrors = algo.gridSearchErrors?.[paramName] || {};
+        const errors = [...(nestedErrors[subParam] || [null])];
+        errors.splice(index, 1);
+        if (errors.length === 0) errors.push(null);
+
+        onUpdate(algo.id, {
+            gridSearchValues: {
+                ...algo.gridSearchValues,
+                [paramName]: { ...nestedValues, [subParam]: values }
+            },
+            gridSearchErrors: {
+                ...algo.gridSearchErrors,
+                [paramName]: { ...nestedErrors, [subParam]: errors }
+            }
+        });
+    };
+
     // Check if a field is empty and validation has been triggered
     const isFieldEmpty = (paramName, paramValue) => {
         if (!showValidation || !algo.enabled) return false;
         if (algo.configMode === 'Hyper Parameter') {
             if (typeof paramValue === 'string') {
                 return !algo.hyperparameterValues[paramName] || algo.hyperparameterValues[paramName] === '';
-            } else if (typeof paramValue === 'object' && paramValue.low && paramValue.high) {
+            } else if (isRangeParameter(paramValue)) {
                 return !algo.hyperparameterValues[paramName] || algo.hyperparameterValues[paramName].trim() === '';
+            } else if (isNestedParameter(paramValue)) {
+                const nestedValues = algo.hyperparameterValues?.[paramName] || {};
+                return Object.keys(paramValue).some(
+                    subParam => !nestedValues[subParam] || nestedValues[subParam].trim() === ''
+                );
             }
         }
         if (algo.configMode === 'Grid Search') {
-            if (typeof paramValue === 'string') {
-                const vals = algo.gridSearchValues[paramName] || [];
-                return vals.filter(v => v && v.trim() !== '').length === 0;
-            } else if (typeof paramValue === 'object' && paramValue.low && paramValue.high) {
+            if (isNestedParameter(paramValue)) {
+                const nestedValues = algo.gridSearchValues?.[paramName] || {};
+                return Object.keys(paramValue).some(subParam =>
+                    (nestedValues[subParam] || []).filter(v => v && v.trim() !== '').length === 0
+                );
+            } else {
                 const vals = algo.gridSearchValues[paramName] || [];
                 return vals.filter(v => v && v.trim() !== '').length === 0;
             }
@@ -357,9 +556,11 @@ function AlgorithmCard({ algo, readonly, disabled, onToggle, onExpand, onUpdate,
         const isEmpty = isFieldEmpty(paramName, paramValue);
         const showError = hasError || isEmpty;
 
-        if (typeof paramValue === 'string') {
-            const options = paramValue.split(',').map(opt => opt.trim());
-            return (
+        if (typeof paramValue === 'string' || Array.isArray(paramValue)) {
+            const options = Array.isArray(paramValue)
+            ? paramValue.map(String)
+            : paramValue.split(',').map(opt => opt.trim());
+                return (
                 <div key={paramName}>
                     <label className={`block ${tw.sectionHeading} mb-2 capitalize`}>
                         {paramName.replace(/_/g, ' ')}
@@ -379,18 +580,96 @@ function AlgorithmCard({ algo, readonly, disabled, onToggle, onExpand, onUpdate,
                     {hasError && <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">{hasError}</p>}
                 </div>
             );
-        } else if (typeof paramValue === 'object' && paramValue.low && paramValue.high) {
+        } else if (isNestedParameter(paramValue)) {
+            const nestedValues = algo.hyperparameterValues?.[paramName] || {};
+            const nestedErrors = algo.errors?.[paramName] || {};
+
+            return (
+                <div key={paramName} className="col-span-2">
+                    <label className={`block ${tw.sectionHeading} mb-3 capitalize`}>
+                        {paramName.replace(/_/g, ' ')}
+                    </label>
+
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                        {Object.entries(paramValue).map(([subParam, subConfig]) => {
+                            const value = nestedValues[subParam] || '';
+                            const error = nestedErrors[subParam];
+                            const isSubParamEmpty = showValidation && algo.enabled && value.trim() === '';
+                            const showSubParamError = error || isSubParamEmpty;
+
+                            return (
+                                <div key={subParam}>
+                                    <label className="block text-xs text-gray-600 mb-1 capitalize">
+                                        {subParam.replace(/_/g, ' ')}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={value}
+                                        disabled={readonly || disabled}
+                                        onChange={(e) =>
+                                            handleNestedHyperparameterChange(paramName, subParam, e.target.value)
+                                        }
+                                        onBlur={(e) =>
+                                            handleNestedHyperparameterBlur(
+                                                paramName,
+                                                subParam,
+                                                subConfig,
+                                                e.target.value
+                                            )
+                                        }
+                                        placeholder={`${subConfig.low} - ${subConfig.high}`}
+                                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-0 focus:border-[#8e78b7] ${
+                                            showSubParamError
+                                                ? 'border-[#EF4D5F] bg-[#FFF7F8] placeholder-[#EF4D5F]'
+                                                : 'border-gray-300'
+                                        }`}
+                                    />
+                                    {isSubParamEmpty && !error && (
+                                        <p className="text-xs text-[#EF4D5F] mt-1">Please enter a value</p>
+                                    )}
+                                    {error ? (
+                                        <p className="text-xs text-[#EF4D5F] mt-1">{error}</p>
+                                    ) : !isSubParamEmpty && (
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Range: {subConfig.low} to {subConfig.high}
+                                        </p>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        } else if (isRangeParameter(paramValue)) {
             const specialText = paramValue.special
                 ? Array.isArray(paramValue.special)
                     ? paramValue.special.join(', ')
                     : paramValue.special
-                : '';
+                : '';     
 
             return (
                 <div key={paramName}>
-                    <label className={`block ${tw.sectionHeading} mb-2 capitalize`}>
-                        {paramName.replace(/_/g, ' ')}
-                    </label>
+                    <div className="flex items-center gap-1 mb-2">
+                        <label className={`${tw.sectionHeading} capitalize`}>
+                            {paramName.replace(/_/g, ' ')}
+                        </label>
+
+                        {paramValue?.warning && (
+                            <div className="relative group">
+                                <Info className="w-3.5 h-3.5 text-gray-400 cursor-help" />
+
+                                <div className="
+                                    absolute left-5 top-0
+                                    hidden group-hover:block
+                                    w-64 p-2
+                                    bg-gray-900 text-white text-xs
+                                    rounded shadow-lg z-50
+                                ">
+                                    {paramValue.warning}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                     <input
                         type="text"
                         disabled={readonly || disabled}
@@ -417,26 +696,29 @@ function AlgorithmCard({ algo, readonly, disabled, onToggle, onExpand, onUpdate,
                 </div>
             );
         }
+
         return null;
     };
 
-    const renderGridSearchField = (paramName, paramValue) => {
-        const values = algo.gridSearchValues[paramName] || [''];
-        const errors = algo.gridSearchErrors[paramName] || [null];
-        const isEmpty = isFieldEmpty(paramName, paramValue);
+            const renderGridSearchField = (paramName, paramValue) => {
+                const values = algo.gridSearchValues[paramName] || [''];
+                const errors = algo.gridSearchErrors[paramName] || [null];
+                const isEmpty = isFieldEmpty(paramName, paramValue);
 
-        if (typeof paramValue === 'string') {
-            const options = paramValue.split(',').map(opt => opt.trim());
-            const selectedValues = (algo.gridSearchValues[paramName] || []).filter(v => v && v.trim() !== '');
+                if (typeof paramValue === 'string' || Array.isArray(paramValue)) {
+                    const options = Array.isArray(paramValue)
+                    ? paramValue.map(String)
+                    : paramValue.split(',').map(opt => opt.trim());
+                    const selectedValues = (algo.gridSearchValues[paramName] || []).filter(v => v && v.trim() !== '');
 
-            return (
-                <div key={paramName}>
-                    <div className="flex items-center justify-between mb-2">
-                        <label className={`block ${tw.sectionHeading} capitalize`}>
-                            {paramName.replace(/_/g, ' ')}
-                        </label>
-                        <span className="text-xs text-gray-400">{selectedValues.length}/{options.length}</span>
-                    </div>
+                    return (
+                        <div key={paramName}>
+                            <div className="flex items-center justify-between mb-2">
+                                <label className={`block ${tw.sectionHeading} capitalize`}>
+                                    {paramName.replace(/_/g, ' ')}
+                                </label>
+                                <span className="text-xs text-gray-400">{selectedValues.length}/{options.length}</span>
+                            </div>
 
                     <GridSearchDropdown
                         algo={algo}
@@ -454,7 +736,128 @@ function AlgorithmCard({ algo, readonly, disabled, onToggle, onExpand, onUpdate,
                     )}
                 </div>
             );
-        } else if (typeof paramValue === 'object' && paramValue.low && paramValue.high) {
+
+        } 
+        if (isNestedParameter(paramValue)) {
+            const nestedValues = algo.gridSearchValues?.[paramName] || {};
+            const nestedErrors = algo.gridSearchErrors?.[paramName] || {};
+
+            return (
+                <div key={paramName} className="col-span-2">
+                    <label className={`block ${tw.sectionHeading} mb-3 capitalize`}>
+                        {paramName.replace(/_/g, ' ')}
+                    </label>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {Object.entries(paramValue).map(([subParam, subConfig]) => {
+                            const subValues = nestedValues[subParam] || [''];
+                            const subErrors = nestedErrors[subParam] || [null];
+                            const hasFilledValue = subValues.some(value => value && value.trim() !== '');
+                            const isSubParamEmpty = showValidation && algo.enabled && !hasFilledValue;
+                            const allPreviousFieldsFilled = subValues.every(
+                                value => value && value.trim() !== ''
+                            );
+                            const hasAnyErrors = subErrors.some(Boolean);
+
+                            return (
+                                <div key={subParam} className="rounded-lg border border-gray-200 p-3">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label className="text-sm font-medium text-gray-700 capitalize">
+                                            {subParam.replace(/_/g, ' ')}
+                                        </label>
+                                        <span className="text-xs text-gray-500">
+                                            {subConfig.low} to {subConfig.high}
+                                        </span>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        {subValues.map((value, index) => (
+                                            <div key={index} className="space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={value}
+                                                        disabled={readonly || disabled}
+                                                        onChange={(e) =>
+                                                            updateNestedGridSearchValue(
+                                                                paramName,
+                                                                subParam,
+                                                                index,
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        onBlur={(e) =>
+                                                            validateNestedGridSearchValue(
+                                                                paramName,
+                                                                subParam,
+                                                                subConfig,
+                                                                index,
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        placeholder={`${subConfig.low} - ${subConfig.high}`}
+                                                        className={`flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-0 focus:border-[#8e78b7] text-sm ${
+                                                            subErrors[index] || (isSubParamEmpty && index === 0)
+                                                                ? 'border-[#EF4D5F] bg-[#FFF7F8] placeholder-[#EF4D5F]'
+                                                                : 'border-gray-300 bg-white'
+                                                        }`}
+                                                    />
+                                                    {subValues.length > 1 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                removeNestedGridSearchValue(
+                                                                    paramName,
+                                                                    subParam,
+                                                                    index
+                                                                )
+                                                            }
+                                                            disabled={readonly || disabled}
+                                                            className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                                                        >
+                                                            <X className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                {subErrors[index] && (
+                                                    <p className="text-xs text-[#EF4D5F]">
+                                                        {subErrors[index]}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {isSubParamEmpty && (
+                                        <p className="text-xs text-[#EF4D5F] mt-1">
+                                            Please enter at least one value
+                                        </p>
+                                    )}
+
+                                    {!(readonly || disabled) && (
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                addNestedGridSearchValue(paramName, subParam, subConfig)
+                                            }
+                                            disabled={!allPreviousFieldsFilled || hasAnyErrors}
+                                            className={`mt-3 w-full px-3 py-2 border-2 border-dashed rounded-lg text-sm flex items-center justify-center gap-2 font-medium transition-colors ${
+                                                !allPreviousFieldsFilled || hasAnyErrors
+                                                    ? 'border-gray-200 text-gray-400 cursor-not-allowed'
+                                                    : 'border-gray-300 text-gray-600 hover:border-[#8e78b7] hover:text-[#8e78b7] hover:bg-gray-100'
+                                            }`}
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                            Add Value
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        } else if (isRangeParameter(paramValue)) {
             const specialText = paramValue.special
                 ? Array.isArray(paramValue.special)
                     ? paramValue.special.join(', ')
@@ -466,9 +869,27 @@ function AlgorithmCard({ algo, readonly, disabled, onToggle, onExpand, onUpdate,
 
             return (
                 <div key={paramName}>
-                    <label className={`block ${tw.sectionHeading} mb-2 capitalize`}>
-                        {paramName.replace(/_/g, ' ')}
-                    </label>
+                    <div className="flex items-center gap-1 mb-2">
+                        <label className={`${tw.sectionHeading} capitalize`}>
+                            {paramName.replace(/_/g, ' ')}
+                        </label>
+
+                        {paramValue?.warning && (
+                            <div className="relative group">
+                                <Info className="w-3.5 h-3.5 text-gray-400 cursor-help" />
+
+                                <div className="
+                                    absolute left-5 top-0
+                                    hidden group-hover:block
+                                    w-64 p-2
+                                    bg-gray-900 text-white text-xs
+                                    rounded shadow-lg z-50
+                                ">
+                                    {paramValue.warning}
+                                </div>
+                            </div>
+                        )}
+                    </div>
 
                     <div className="space-y-2 p-0.5">
                         {values.map((value, index) => (
@@ -534,39 +955,6 @@ function AlgorithmCard({ algo, readonly, disabled, onToggle, onExpand, onUpdate,
     };
 
     // Determine if this card has any validation errors (for tab dot indicator only — no red card styling)
-    const hasValidationErrors = showValidation && algo.enabled && (() => {
-        if (algo.configMode === 'Base') return false;
-        if (algo.configMode === 'Hyper Parameter') {
-            if (algo.errors && Object.values(algo.errors).some(e => e)) return true;
-            if (algo.hyperparameters) {
-                return Object.entries(algo.hyperparameters).some(([paramName, paramValue]) => {
-                    if (typeof paramValue === 'string') {
-                        return !algo.hyperparameterValues[paramName] || algo.hyperparameterValues[paramName] === '';
-                    } else if (typeof paramValue === 'object' && paramValue.low && paramValue.high) {
-                        return !algo.hyperparameterValues[paramName] || algo.hyperparameterValues[paramName].trim() === '';
-                    }
-                    return false;
-                });
-            }
-        }
-        if (algo.configMode === 'Grid Search') {
-            if (algo.gridSearchErrors && Object.values(algo.gridSearchErrors).some(errs => errs && errs.some(e => e))) return true;
-            if (algo.hyperparameters) {
-                return Object.entries(algo.hyperparameters).some(([paramName, paramValue]) => {
-                    if (typeof paramValue === 'string') {
-                        const vals = algo.gridSearchValues[paramName] || [];
-                        return vals.filter(v => v && v.trim() !== '').length === 0;
-                    } else if (typeof paramValue === 'object' && paramValue.low && paramValue.high) {
-                        const vals = algo.gridSearchValues[paramName] || [];
-                        return vals.filter(v => v && v.trim() !== '').length === 0;
-                    }
-                    return false;
-                });
-            }
-        }
-        return false;
-    })();
-
     return (
         <div ref={cardRef} className="bg-[#FAFAFA] rounded">
             <div

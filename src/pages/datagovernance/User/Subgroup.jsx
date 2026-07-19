@@ -221,7 +221,8 @@ function Subgroup() {
                       subgroup.attributes?.Description?.[0] ||
                       "No description available",
           status: subgroup.attributes?.Status?.[0] === "Enabled" ? "Enabled" : "Disabled",
-          createdDate: formattedDate,
+          createdDate: formattedDate || "-",
+          createdBy: subgroup.attributes?.created_by?.[0] || "-",
         };
       });
 
@@ -640,6 +641,7 @@ function Subgroup() {
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>Parent Group</th>
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>Description</th>
                       <th className="text-center" style={{ padding: '16px 19.75px' }}>Status</th>
+                      <th className="text-left" style={{ padding: '16px 19.75px' }}>Created By</th>
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>Created Date</th>
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>Action</th>
                     </tr>
@@ -686,6 +688,9 @@ function Subgroup() {
                                 <span className="inline-block px-6 py-2 rounded-md text-sm font-medium" style={{ background: '#f3f4f6', color: '#6b7280', minWidth: '88px', textAlign: 'center' }}>Disabled</span>
                               )}
                             </div>
+                          </td>
+                          <td style={{ padding: '16px 19.75px' }} className="text-gray-600">
+                            {subgroup.createdBy}
                           </td>
                           <td style={{ padding: '16px 19.75px' }} className="text-gray-600">{subgroup.createdDate}</td>
                           <td style={{ padding: '16px 19.75px' }}>

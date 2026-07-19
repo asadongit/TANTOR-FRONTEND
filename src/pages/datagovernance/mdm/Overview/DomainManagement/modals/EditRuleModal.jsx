@@ -6,7 +6,8 @@ import {
     useEditRule,
     useValidationTypes,
     useAttributesByDomain,
-    useDQDimensions
+    useDQDimensions,
+    useExpressionExample   
 } from '../../../../../../hooks/mdm/domainManagement';
 import SearchableDropdown from '../../../components/SearchableDropdown';
 
@@ -93,7 +94,7 @@ export const EditRuleModal = ({ isOpen, onClose, domainId, ruleData, onComplete 
     const { validationTypes }   = useValidationTypes(isOpen);
     const { attributes }        = useAttributesByDomain(domainId, isOpen);
     const { isSubmitting, editRule } = useEditRule();
-
+    const { example: expressionExample } = useExpressionExample(form.rule_type);
     useEffect(() => {
         if (!ruleData || attributes.length === 0) return;
         setForm({
@@ -223,8 +224,13 @@ export const EditRuleModal = ({ isOpen, onClose, domainId, ruleData, onComplete 
                     {/* Expression */}
                     <div className="flex flex-col gap-1.5">
                         <label className={`${labelClass} mb-0`}>Expression</label>
-                        <input type="text" placeholder="Enter Expression" value={form.expression} onChange={(e) => handleChange('expression', e.target.value)} className={inputClass} />
-                    </div>
+                        <input
+                            type="text"
+                            placeholder={expressionExample ? `e.g. ${expressionExample}` : 'Enter Expression'}
+                            value={form.expression}
+                            onChange={(e) => handleChange('expression', e.target.value)}
+                            className={inputClass}
+                        />                    </div>
 
                     {/* Rule Weight */}
                     <div className="flex flex-col gap-1.5">

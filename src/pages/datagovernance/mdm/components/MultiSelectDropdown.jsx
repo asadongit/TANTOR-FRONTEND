@@ -62,8 +62,8 @@ const MultiSelectDropdown = ({ selectedIds = [], onToggle, onSelectAll, options 
             >
                 <span>
                     {selectedIds.length === 0
-                        ? 'Select rules'
-                        : `${selectedIds.length} rule(s) selected`}
+                        ? 'Select'
+                        : `${selectedIds.length} selected`}
                 </span>
                 <ChevronDown size={14} color="#818181" className="flex-shrink-0 ml-1" />
             </button>

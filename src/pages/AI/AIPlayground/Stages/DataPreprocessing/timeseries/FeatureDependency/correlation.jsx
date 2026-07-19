@@ -85,7 +85,7 @@ function CorrelationAnalysis({
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Feature 2</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Correlation</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Risk Level</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">{isDropperEnabled ? 'Drop Feature 1?' : 'Enable Dropper'}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">{isDropperEnabled ? 'Drop Feature 2?' : 'Enable Dropper'}</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
@@ -118,7 +118,7 @@ function CorrelationAnalysis({
                               type="checkbox"
                               checked={selectedFeatures.includes(row.col_a)}
                               onChange={() => onFeatureSelect(row.col_a)}
-                              disabled={readonly || isLoading || (!selectedFeatures.includes(row.col_a) && selectedFeatures.length >= maxDroppableFeatures)}
+                              disabled={readonly || isLoading }
                               style={{ accentColor: showError ? '#EF4D5F' : '#8E77BB' }}
                               className={`w-4 h-4 rounded border transition-colors ${
                                 showError

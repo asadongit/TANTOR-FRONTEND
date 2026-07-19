@@ -17,11 +17,9 @@ const HIDDEN_COLUMNS = [
 ];
 
 const STATUS_OPTIONS = [
-    { value: '', label: 'All Statuses' },
+    { value: '', label: 'All Status' },
     { value: 'active', label: 'Active' },
     { value: 'inactive', label: 'Inactive' },
-    { value: 'merged', label: 'Merged' },
-    { value: 'expired', label: 'Expired' },
 ];
 
 const formatColumnLabel = (key) =>
@@ -72,8 +70,6 @@ const StatusBadge = ({ value }) => {
     const styleMap = {
         active: 'text-[#069B68] bg-[#2AC79240]',
         inactive: 'text-[#EF4D5F] bg-[#F276A74D]',
-        merged: 'text-[#E08E40] bg-[#FFF1CF]',
-        expired: 'text-[#818181] bg-[#D9D9D980]',
     };
     const cls = styleMap[v] || 'text-[#818181] bg-[#D9D9D980]';
     return (

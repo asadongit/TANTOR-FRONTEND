@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Cable,
   X,
@@ -9,33 +9,51 @@ import {
   SquareKanban,
   Database,
   FileCode,
+  RefreshCw
 } from "lucide-react";
 import { useStateContext } from "../context/contextViewProvider";
 import { defaultSetting } from "../BaseView/ColumnSettings";
 import { useAuth } from "../../../../context/AuthContext";
+import { useFederationBaseViewsV2, useFederationViewColumns, useFederationConnectionsBaseNodes, useFederationSchemas, useFederationTables, useFederationColumns, useFederationPolicyIds } from "../../../../hooks/platform/federation";
 import { secureQuery } from '../../../datagovernance/DataCatalogue/Components/function.js';
 import { useToast } from "../context/ToastContext";
 
-const SearchableSelect = ({ options, value, onChange, placeholder, disabled = false, isLoading = false }) => {
-  const [isOpen, setIsOpen] = useState(false);
+const SearchableSelect = ({ id, openDropdownId, setOpenDropdownId, options, value, onChange, placeholder, disabled = false, isLoading = false }) => {
+  const isOpen = openDropdownId === id;
   const [searchTerm, setSearchTerm] = useState("");
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpenDropdownId(null);
+        setSearchTerm("");
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
 
   const filteredOptions = options
     .map((option) => typeof option === "object" ? option.connection_name : option)
     .filter((option) => option.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const handleSelectClick = () => {
-    if (!disabled && !isLoading) setIsOpen(!isOpen);
+    if (!disabled && !isLoading) {
+      setOpenDropdownId((prev) => (prev === id ? null : id));
+      if (openDropdownId !== id) setSearchTerm("");
+    }
   };
 
   const handleOptionClick = (option) => {
     onChange({ target: { value: option } });
-    setIsOpen(false);
+    setOpenDropdownId(null);
     setSearchTerm("");
   };
 
   return (
-    <div className="relative w-full">
+    <div ref={containerRef} className="relative w-full">
       <div
         className={`w-full px-3 py-2 border-2 rounded-lg text-gray-500 hover:bg-gray-50 cursor-pointer flex justify-between items-center ${disabled || isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
         onClick={handleSelectClick}
@@ -50,7 +68,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled = fa
       </div>
 
       {isOpen && !isLoading && !disabled && (
-        <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
+        <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg">
           <div className="p-2 border-b">
             <div className="relative">
               <Search className="absolute left-2 top-2.5 w-4 h-4 text-gray-400" />
@@ -84,70 +102,63 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled = fa
 export function BaseNode({ id, data }) {
   const { showToast } = useToast();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [openDropdownId, setOpenDropdownId] = useState(null);
   const [isAllSelected, setIsAllSelected] = useState(false);
   const [apiViews, setApiViews] = useState([]);
-  const [selectedView, setSelectedView] = useState("");
+  const [selectedView, setSelectedView] = useState(data?.selectedView || "");
   const [apiColumns, setApiColumns] = useState([]);
-  const [isLoadingViews, setIsLoadingViews] = useState(false);
-  const [isLoadingColumns, setIsLoadingColumns] = useState(false);
 
   // ── Column search state ───────────────────────────────────────────────────
   const [columnSearchTerm, setColumnSearchTerm] = useState("");
 
   const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
-  const { settingsList, setSettingsList, userSelections, setUserSelections, userCheckedColumns, setUserCheckedColumns } = useStateContext();
+  const { setNodes, settingsList, setSettingsList, userSelections, setUserSelections, userCheckedColumns, setUserCheckedColumns } = useStateContext();
+
+  const paramsStr = new URLSearchParams({
+    view_type: "Base",
+    project: (project === "default" || project === "none") ? "default" : project,
+    created_by: decodedToken?.preferred_username,
+  }).toString();
+
+  const { isFetching: isFetchingPolicies, refetch: refetchPolicyIds } = useFederationPolicyIds();
+  const { data: apiViewsRaw, isFetching: isLoadingViews, refetch: refetchViews } = useFederationBaseViewsV2(paramsStr);
+  const { data: apiColumnsRaw, isFetching: isLoadingColumns, refetch: refetchColumns } = useFederationViewColumns(selectedView);
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const handleRefresh = async (e) => {
+    e.stopPropagation();
+    setIsRefreshing(true);
+    try {
+      await refetchPolicyIds();
+      const promises = [refetchViews()];
+      if (selectedView) promises.push(refetchColumns());
+      await Promise.all(promises);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (apiViewsRaw?.result) {
+      setApiViews(apiViewsRaw.result.map(v => v.view_name).sort((a, b) => a.localeCompare(b)));
+    }
+  }, [apiViewsRaw]);
+
+  useEffect(() => {
+    if (data?._isRestoring) {
+      if (data?.userCheckedColumns) setUserCheckedColumns(data.userCheckedColumns);
+      if (data?.settingsList) setSettingsList(data.settingsList);
+    }
+  }, [data]);
+
+  useEffect(() => {
+    if (apiColumnsRaw) {
+      setApiColumns(apiColumnsRaw);
+    }
+  }, [apiColumnsRaw]);
 
   const getFilterModalColumns = () =>
     apiColumns.length > 0 ? apiColumns.map((column) => ({ name: column.column_name, type: column.data_type })) : [];
-
-  useEffect(() => {
-    (async () => {
-      setIsLoadingViews(true);
-      try {
-        const params = new URLSearchParams({
-          view_type: "Base",
-          project: (project === "default" || project === "none") ? "default" : project,
-          created_by: decodedToken?.preferred_username,
-        });
-
-        const response = await fetch(`${hostnameV2}/get-all-views_v2?${params}`, {
-          method: "GET",
-          headers: { "Content-Type": "application/json", authorization: `Bearer ${token}` },
-        });
-
-        const data = await response.json();
-        if (response.ok) setApiViews(data.result.sort((a, b) => a.localeCompare(b)));
-        else showToast('Error fetching views', 'error');
-      } catch (error) {
-        console.error("Fetch error", error);
-        showToast('Error fetching views', 'error');
-      } finally {
-        setIsLoadingViews(false);
-      }
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (selectedView) {
-      (async () => {
-        setIsLoadingColumns(true);
-        try {
-          const response = await fetch(`${hostnameV1}/fetch_view_columns`, {
-            headers: { "Content-Type": "application/json", authorization: `Bearer ${token}` },
-            body: JSON.stringify({ view_names: [selectedView] }),
-            method: "POST",
-          });
-          let data = await response.json();
-          if (response.status == 200) setApiColumns(data.result[selectedView]);
-          else showToast('Error occurred while trying to fetch columns', 'error');
-        } catch (error) {
-          showToast('Error occurred while trying to fetch columns', 'error');
-        } finally {
-          setIsLoadingColumns(false);
-        }
-      })();
-    }
-  }, [selectedView]);
 
   const handleChangeView = (event) => {
     const selectedViewName = event.target.value.toLowerCase();
@@ -157,8 +168,13 @@ export function BaseNode({ id, data }) {
     setIsAllSelected(false);
     setColumnSearchTerm(""); // reset column search on view change
     setUserSelections((prev) => {
-      const updatedSelections = new Map();
+      const updatedSelections = new Map(prev);
       updatedSelections.set("viewName", selectedViewName);
+      const apiPayload = updatedSelections.get("apiPayload");
+      if (apiPayload && apiPayload.filter_data) {
+        delete apiPayload.filter_data;
+        updatedSelections.set("apiPayload", apiPayload);
+      }
       return updatedSelections;
     });
     setSettingsList([]);
@@ -174,11 +190,11 @@ export function BaseNode({ id, data }) {
 
     setSettingsList((prev) => {
       const updatedSettingsList = prev.map((item) => {
-        if (item.name === columnName) return { ...item, output: isColumnChecked ? "No" : "Yes" };
+        if (item.name === columnName) return { ...item, originalOutput: isColumnChecked ? "No" : "Yes" };
         return item;
       });
       if (!isColumnChecked && !prev.some((item) => item.name === columnName)) {
-        updatedSettingsList.push({ ...defaultSetting, name: columnName, type: dataType });
+        updatedSettingsList.push({ ...defaultSetting, id: Date.now().toString(36) + Math.random().toString(36).substr(2), name: columnName, type: dataType, originalOutput: "Yes" });
       }
       return updatedSettingsList;
     });
@@ -208,20 +224,20 @@ export function BaseNode({ id, data }) {
     if (isAllSelected) {
       const targetNames = targetColumns.map((c) => c.column_name);
       setUserCheckedColumns((prev) => prev.filter((c) => !targetNames.includes(c)));
-      setSettingsList((prev) => prev.map((item) => ({ ...item, output: "No" })));
+      setSettingsList((prev) => prev.map((item) => ({ ...item, originalOutput: "No" })));
     } else {
       const updatedCheckedColumns = [];
       const newSettingList = [];
 
       targetColumns.forEach((item) => {
         updatedCheckedColumns.push(item.column_name);
-        newSettingList.push({ ...defaultSetting, name: item.column_name, type: item.data_type });
+        newSettingList.push({ ...defaultSetting, id: Date.now().toString(36) + Math.random().toString(36).substr(2), name: item.column_name, type: item.data_type, originalOutput: "Yes" });
       });
 
       const updatedSettingsList = [...settingsList];
       newSettingList.forEach((newSetting) => {
         const existingIndex = updatedSettingsList.findIndex((s) => s.name === newSetting.name);
-        if (existingIndex !== -1) updatedSettingsList[existingIndex] = { ...updatedSettingsList[existingIndex], output: "Yes" };
+        if (existingIndex !== -1) updatedSettingsList[existingIndex] = { ...updatedSettingsList[existingIndex], originalOutput: "Yes" };
         else updatedSettingsList.push(newSetting);
       });
       setUserCheckedColumns((prev) => [...new Set([...prev, ...updatedCheckedColumns])]);
@@ -256,8 +272,13 @@ export function BaseNode({ id, data }) {
       {!isCollapsed && (
         <div className="space-y-4">
           <div className="mb-4">
-            <label className="block text-gray-700 mb-1">View</label>
-            <SearchableSelect options={apiViews} value={selectedView} onChange={handleChangeView} placeholder="Select View" isLoading={isLoadingViews} />
+            <div className="flex items-center space-x-2 mb-1">
+              <label className="block text-gray-700">View</label>
+              <button onClick={handleRefresh} className="p-1 rounded-md hover:bg-gray-200" title="Refresh Views">
+                <RefreshCw className={`h-3.5 w-3.5 text-gray-500 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+            <SearchableSelect id="view" openDropdownId={openDropdownId} setOpenDropdownId={setOpenDropdownId} options={apiViews} value={selectedView} onChange={handleChangeView} placeholder="Select View" isLoading={isLoadingViews || isFetchingPolicies} />
           </div>
 
           {isLoadingColumns && (
@@ -329,7 +350,16 @@ export function BaseNode({ id, data }) {
           )}
 
           <button
-            onClick={() => data.handleOk({ userCheckedColumns, viewType: "Source", settings: settingsList, userSelections, apiColumns: getFilterModalColumns() })}
+            onClick={() => {
+              setNodes((nds) =>
+                nds.map((n) =>
+                  n.id === id
+                    ? { ...n, data: { ...n.data, selectedView, userCheckedColumns, settingsList } }
+                    : n
+                )
+              );
+              data.handleOk({ userCheckedColumns, viewType: "Source", settings: settingsList, userSelections, apiColumns: getFilterModalColumns(), selectedView });
+            }}
             className="w-full p-3 text-white bg-[rgb(142,119,187)] hover:bg-[rgba(142,119,187,0.8)] rounded-lg text-center font-sans"
           >
             Ok
@@ -350,171 +380,87 @@ export function BaseNode({ id, data }) {
 export function ConnectionNode({ id, data }) {
   const { showToast } = useToast();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [selectedConnection, setSelectedConnection] = useState("");
-  const [selectedSchema, setSelectedSchema] = useState("");
-  const [selectedTable, setSelectedTable] = useState("");
+  const [openDropdownId, setOpenDropdownId] = useState(null);
+  const [selectedConnection, setSelectedConnection] = useState(data?.selectedConnection || "");
+  const [selectedSchema, setSelectedSchema] = useState(data?.selectedSchema || "");
+  const [selectedTable, setSelectedTable] = useState(data?.selectedTable || "");
   const [apiConnections, setApiConnections] = useState([]);
   const [apiSchemas, setApiSchemas] = useState([]);
   const [apiTables, setApiTables] = useState([]);
   const [apiColumns, setApiColumns] = useState([]);
   const [allowedColumns, setAllowedColumns] = useState([]);
   const [isAllSelected, setIsAllSelected] = useState(false);
-  const [isLoadingConnections, setIsLoadingConnections] = useState(false);
-  const [isLoadingSchemas, setIsLoadingSchemas] = useState(false);
-  const [isLoadingTables, setIsLoadingTables] = useState(false);
-  const [isLoadingColumns, setIsLoadingColumns] = useState(false);
 
   // ── Column search state ───────────────────────────────────────────────────
   const [columnSearchTerm, setColumnSearchTerm] = useState("");
 
-  const { settingsList, setSettingsList, userSelections, setUserSelections, userCheckedColumns, setUserCheckedColumns } = useStateContext();
+  const { setNodes, settingsList, setSettingsList, userSelections, setUserSelections, userCheckedColumns, setUserCheckedColumns } = useStateContext();
   const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
+
+  const { isFetching: isFetchingPolicies, refetch: refetchPolicyIds } = useFederationPolicyIds();
+  const { data: apiConnectionsRaw, isFetching: isLoadingConnections, refetch: refetchConnections } = useFederationConnectionsBaseNodes();
+  const { data: apiSchemasRaw, isFetching: isLoadingSchemas, refetch: refetchSchemas } = useFederationSchemas(selectedConnection);
+  const { data: apiTablesRaw, isFetching: isLoadingTables, refetch: refetchTables } = useFederationTables(selectedConnection, selectedSchema);
+  const { data: apiColumnsRaw, isFetching: isLoadingColumns, refetch: refetchColumns } = useFederationColumns(selectedConnection, selectedSchema, selectedTable);
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const handleRefresh = async (e) => {
+    e.stopPropagation();
+    setIsRefreshing(true);
+    try {
+      await refetchPolicyIds();
+      const promises = [refetchConnections()];
+      if (selectedConnection) promises.push(refetchSchemas());
+      if (selectedSchema) promises.push(refetchTables());
+      if (selectedTable) promises.push(refetchColumns());
+      await Promise.all(promises);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (apiConnectionsRaw) setApiConnections(apiConnectionsRaw);
+  }, [apiConnectionsRaw]);
+
+  useEffect(() => {
+    if (data?._isRestoring) {
+      if (data?.userCheckedColumns) setUserCheckedColumns(data.userCheckedColumns);
+      if (data?.settingsList) setSettingsList(data.settingsList);
+    }
+  }, [data]);
+
+  useEffect(() => {
+    if (apiSchemasRaw) setApiSchemas(apiSchemasRaw);
+  }, [apiSchemasRaw]);
+
+  useEffect(() => {
+    if (apiTablesRaw) setApiTables(apiTablesRaw);
+  }, [apiTablesRaw]);
+
+  useEffect(() => {
+    if (apiColumnsRaw) {
+      const mapped = apiColumnsRaw.map(c => ({ column: c.column, datatype: c.datatype }));
+      setApiColumns(mapped);
+      // We must also populate allowedColumns, mapping to column_name to match original behavior
+      setAllowedColumns(apiColumnsRaw.map(c => ({ column_name: c.column, datatype: c.datatype })));
+    }
+  }, [apiColumnsRaw]);
 
   const getFilterModalColumns = () => {
     if (apiColumns.length > 0 && allowedColumns.length > 0) {
       return apiColumns
-        .filter((column) => allowedColumns.some((allowedCol) => allowedCol.column_name.toLowerCase() === column.column.toLowerCase()))
+        .filter((column) => allowedColumns.some((allowedCol) => allowedCol?.column_name?.toLowerCase() === column?.column?.toLowerCase()))
         .map((column) => ({ name: column.column, type: column.datatype }));
     }
     return [];
   };
 
-  useEffect(() => {
-    const fetchConnections = async () => {
-      setIsLoadingConnections(true);
-      try {
-        const secureQueryResponse = await secureQuery({ user_query: "" }, token);
-        const policyIds = secureQueryResponse.matched_policy_ids || [];
-        if (policyIds.length === 0) { setApiConnections([]); return; }
-
-        const response = await fetch(`${hostnameV1}/federation/connections/list`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ matched_policy_ids: policyIds }),
-        });
-        if (!response.ok) throw new Error("Failed to fetch connections");
-        const connectionsData = await response.json();
-        setApiConnections(connectionsData.map((item) => item.connection_name));
-      } catch (error) {
-        console.error("Error fetching connections:", error);
-        showToast('Failed to load connections', 'error');
-        setApiConnections([]);
-      } finally {
-        setIsLoadingConnections(false);
-      }
-    };
-    fetchConnections();
-  }, [token, hostnameV1]);
-
-  useEffect(() => {
-    if (selectedConnection) {
-      const fetchSchemas = async () => {
-        setIsLoadingSchemas(true);
-        try {
-          const secureQueryResponse = await secureQuery({ user_query: "" }, token);
-          const policyIds = secureQueryResponse.matched_policy_ids || [];
-          if (policyIds.length === 0) { setApiSchemas([]); return; }
-
-          const response = await fetch(`${hostnameV1}/schemas/list`, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ matched_policy_ids: policyIds, connection_name: selectedConnection }),
-          });
-          if (!response.ok) throw new Error("Failed to fetch schemas");
-          const data = await response.json();
-          const connectionData = data.find((item) => item[selectedConnection]);
-          setApiSchemas(connectionData ? connectionData[selectedConnection] : []);
-        } catch (error) {
-          console.error("Error fetching schema data:", error);
-          showToast('Failed to load schemas', 'error');
-          setApiSchemas([]);
-        } finally {
-          setIsLoadingSchemas(false);
-        }
-      };
-      fetchSchemas();
-    }
-  }, [selectedConnection, token, hostnameV1]);
-
-  useEffect(() => {
-    if (selectedSchema) {
-      const fetchTables = async () => {
-        setIsLoadingTables(true);
-        try {
-          const secureQueryResponse = await secureQuery({ user_query: "" }, token);
-          const policyIds = secureQueryResponse.matched_policy_ids || [];
-          if (policyIds.length === 0) { setApiTables([]); return; }
-
-          const response = await fetch(`${hostnameV1}/tables/list`, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ matched_policy_ids: policyIds, connection_name: selectedConnection, schema_name: [selectedSchema] }),
-          });
-          if (!response.ok) throw new Error("Failed to fetch tables");
-          const data = await response.json();
-          const schemaData = data.schemas?.find((item) => item.connection_name === selectedConnection && item.schema === selectedSchema);
-          setApiTables(schemaData?.tables || []);
-        } catch (error) {
-          console.error("Error fetching table data:", error);
-          showToast('Failed to load tables', 'error');
-          setApiTables([]);
-        } finally {
-          setIsLoadingTables(false);
-        }
-      };
-      fetchTables();
-    }
-  }, [selectedSchema, selectedConnection, token, hostnameV1]);
-
-  useEffect(() => {
-    if (selectedTable) {
-      const fetchColumns = async () => {
-        setIsLoadingColumns(true);
-        try {
-          const detailedColumnsResponse = await fetch(
-            `${hostnameV1}/${selectedConnection}/schemas/${selectedSchema}/tables/${selectedTable}/columns`,
-            { method: "GET", headers: { authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
-          );
-          if (!detailedColumnsResponse.ok) throw new Error("Failed to fetch detailed columns");
-          setApiColumns(await detailedColumnsResponse.json());
-
-          const secureQueryResponse = await secureQuery({ user_query: "" }, token);
-          const policyIds = secureQueryResponse.matched_policy_ids || [];
-          if (policyIds.length === 0) { setAllowedColumns([]); return; }
-
-          const allowedColumnsResponse = await fetch(`${hostnameV1}/columns/list`, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ matched_policy_ids: policyIds, connection_name: selectedConnection, schema_name: [selectedSchema], table_name: [selectedTable] }),
-          });
-          if (!allowedColumnsResponse.ok) throw new Error("Failed to fetch allowed columns");
-          const allowedColumnsData = await allowedColumnsResponse.json();
-          if (allowedColumnsData?.columns) {
-            const columns = allowedColumnsData.columns
-              .find((item) => item.connection_name === selectedConnection && item.schema === selectedSchema && item.table_name === selectedTable)
-              ?.columns.map((col) => ({ column_name: col.column_name, datatype: col.metadata.DATA_TYPE })) || [];
-            setAllowedColumns(columns);
-          } else {
-            setAllowedColumns([]);
-          }
-        } catch (error) {
-          console.error("Error fetching columns:", error);
-          showToast('Failed to load columns', 'error');
-          setApiColumns([]);
-          setAllowedColumns([]);
-        } finally {
-          setIsLoadingColumns(false);
-        }
-      };
-      fetchColumns();
-    }
-  }, [selectedTable, selectedConnection, selectedSchema, token, hostnameV1]);
-
   // ── Derived: filtered visible columns ────────────────────────────────────
   const visibleColumns = apiColumns
-    .filter((col) => allowedColumns.some((allowedCol) => allowedCol.column_name.toLowerCase() === col.column.toLowerCase()))
-    .filter((col) => col.column.toLowerCase().includes(columnSearchTerm.toLowerCase()));
-
+    .filter((col) => allowedColumns.some((allowedCol) => allowedCol?.column_name?.toLowerCase() === col?.column?.toLowerCase()))
+    .filter((col) => col?.column?.toLowerCase().includes(columnSearchTerm?.toLowerCase() || ""));
+      
   const handleColumnChange = (column) => {
     const columnName = column.column;
     const dataType = column.datatype;
@@ -525,17 +471,17 @@ export function ConnectionNode({ id, data }) {
 
     setSettingsList((prev) => {
       const updatedSettingsList = prev.map((item) => {
-        if (item.name === columnName) return { ...item, output: isColumnChecked ? "No" : "Yes" };
+        if (item.name === columnName) return { ...item, originalOutput: isColumnChecked ? "No" : "Yes" };
         return item;
       });
       if (!isColumnChecked && !prev.some((item) => item.name === columnName)) {
-        updatedSettingsList.push({ ...defaultSetting, name: columnName, type: dataType });
+        updatedSettingsList.push({ ...defaultSetting, id: Date.now().toString(36) + Math.random().toString(36).substr(2), name: columnName, type: dataType, originalOutput: "Yes" });
       }
       return updatedSettingsList;
     });
     setUserCheckedColumns(updatedCheckedColumns);
     const currentApiColumnsConsidered = apiColumns.filter((col) =>
-      allowedColumns.some((allowedCol) => allowedCol.column_name.toLowerCase() === col.column.toLowerCase())
+      allowedColumns.some((allowedCol) => allowedCol?.column_name?.toLowerCase() === col?.column?.toLowerCase())
     );
     setIsAllSelected(updatedCheckedColumns.length === currentApiColumnsConsidered.length);
   };
@@ -555,15 +501,15 @@ export function ConnectionNode({ id, data }) {
     if (isAllSelected) {
       const targetNames = targetColumns.map((c) => c.column);
       setUserCheckedColumns((prev) => prev.filter((c) => !targetNames.includes(c)));
-      setSettingsList((prev) => prev.map((item) => ({ ...item, output: "No" })));
+      setSettingsList((prev) => prev.map((item) => ({ ...item, originalOutput: "No" })));
     } else {
       const updatedCheckedColumns = targetColumns.map((item) => item.column);
-      const newSettingList = targetColumns.map((item) => ({ ...defaultSetting, name: item.column, type: item.datatype }));
+      const newSettingList = targetColumns.map((item) => ({ ...defaultSetting, id: Date.now().toString(36) + Math.random().toString(36).substr(2), name: item.column, type: item.datatype, originalOutput: "Yes" }));
 
       const updatedSettingsList = [...settingsList];
       newSettingList.forEach((newSetting) => {
         const existingIndex = updatedSettingsList.findIndex((s) => s.name === newSetting.name);
-        if (existingIndex !== -1) updatedSettingsList[existingIndex] = { ...updatedSettingsList[existingIndex], output: "Yes" };
+        if (existingIndex !== -1) updatedSettingsList[existingIndex] = { ...updatedSettingsList[existingIndex], originalOutput: "Yes" };
         else updatedSettingsList.push(newSetting);
       });
       setUserCheckedColumns((prev) => [...new Set([...prev, ...updatedCheckedColumns])]);
@@ -586,6 +532,11 @@ export function ConnectionNode({ id, data }) {
       updatedSelections.set("connection", event.target.value);
       updatedSelections.delete("schema");
       updatedSelections.delete("table");
+      const apiPayload = updatedSelections.get("apiPayload");
+      if (apiPayload && apiPayload.filter_data) {
+        delete apiPayload.filter_data;
+        updatedSelections.set("apiPayload", apiPayload);
+      }
       return updatedSelections;
     });
   };
@@ -599,6 +550,11 @@ export function ConnectionNode({ id, data }) {
       const updatedSelections = new Map(prev);
       updatedSelections.set("schema", event.target.value);
       updatedSelections.delete("table");
+      const apiPayload = updatedSelections.get("apiPayload");
+      if (apiPayload && apiPayload.filter_data) {
+        delete apiPayload.filter_data;
+        updatedSelections.set("apiPayload", apiPayload);
+      }
       return updatedSelections;
     });
   };
@@ -610,6 +566,11 @@ export function ConnectionNode({ id, data }) {
     setUserSelections((prev) => {
       const updatedSelections = new Map(prev);
       updatedSelections.set("table", event.target.value);
+      const apiPayload = updatedSelections.get("apiPayload");
+      if (apiPayload && apiPayload.filter_data) {
+        delete apiPayload.filter_data;
+        updatedSelections.set("apiPayload", apiPayload);
+      }
       return updatedSelections;
     });
   };
@@ -640,16 +601,21 @@ export function ConnectionNode({ id, data }) {
         <>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-black mb-1">Connection</label>
-              <SearchableSelect options={apiConnections} value={selectedConnection} onChange={handleConnectionChange} placeholder="Select a connection" isLoading={isLoadingConnections} />
+              <div className="flex items-center space-x-2 mb-1">
+                <label className="block text-sm font-medium text-black">Connection</label>
+                <button onClick={handleRefresh} className="p-1 rounded-md hover:bg-gray-200" title="Refresh Connections">
+                  <RefreshCw className={`h-3.5 w-3.5 text-gray-500 ${isRefreshing ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+              <SearchableSelect id="connection" openDropdownId={openDropdownId} setOpenDropdownId={setOpenDropdownId} options={apiConnections} value={selectedConnection} onChange={handleConnectionChange} placeholder="Select a connection" isLoading={isLoadingConnections || isFetchingPolicies} />
             </div>
             <div>
               <label className="block text-sm font-medium text-black mb-1">Schema</label>
-              <SearchableSelect options={apiSchemas} value={selectedSchema} onChange={handleSchemaChange} placeholder="Select a schema" disabled={!selectedConnection} isLoading={isLoadingSchemas} />
+              <SearchableSelect id="schema" openDropdownId={openDropdownId} setOpenDropdownId={setOpenDropdownId} options={apiSchemas} value={selectedSchema} onChange={handleSchemaChange} placeholder="Select a schema" disabled={!selectedConnection} isLoading={isLoadingSchemas} />
             </div>
             <div>
               <label className="block text-sm font-medium text-black mb-1">Table</label>
-              <SearchableSelect options={apiTables} value={selectedTable} onChange={handleTableChange} placeholder="Select a table" disabled={!selectedSchema} isLoading={isLoadingTables} />
+              <SearchableSelect id="table" openDropdownId={openDropdownId} setOpenDropdownId={setOpenDropdownId} options={apiTables} value={selectedTable} onChange={handleTableChange} placeholder="Select a table" disabled={!selectedSchema} isLoading={isLoadingTables} />
             </div>
 
             {isLoadingColumns && (
@@ -726,7 +692,16 @@ export function ConnectionNode({ id, data }) {
 
           <button
             type="button"
-            onClick={() => data.handleOk({ userCheckedColumns, viewType: "Connection", settings: settingsList, userSelections, apiColumns: getFilterModalColumns() })}
+            onClick={() => {
+              setNodes((nds) =>
+                nds.map((n) =>
+                  n.id === id
+                    ? { ...n, data: { ...n.data, selectedConnection, selectedSchema, selectedTable, userCheckedColumns, settingsList } }
+                    : n
+                )
+              );
+              data.handleOk({ userCheckedColumns, viewType: "Connection", settings: settingsList, userSelections, apiColumns: getFilterModalColumns(), selectedConnection, selectedSchema, selectedTable });
+            }}
             className="w-full text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-1.5 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] mt-3"
           >
             OK

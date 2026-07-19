@@ -31,6 +31,12 @@ const SeverityBadge = ({ severity }) => {
     );
 };
 
+const SupportPartialBadge = ({ value }) => (
+    <span className={`${value ? 'text-[#069B68] bg-[#DCFCE7]' : 'text-[#EF4D5F] bg-[#FEE7EA]'} px-2 py-0.5 rounded-md text-xs font-medium`}>
+        {value ? 'Yes' : 'No'}
+    </span>
+);
+
 const StatusBadge = ({ status }) => (
     <span
         className={`${
@@ -145,6 +151,11 @@ const DomainRulesModal = ({ isOpen, onClose, domainId, domainName }) => {
             render: (row) => <RuleTypeBadge type={row.validation_type} />,
         },
         { key: 'expression', label: 'Expression', wrap: true },
+        {
+            key: 'support_partial',
+            label: 'Supports Partial',
+            render: (row) => <SupportPartialBadge value={row.support_partial} />,
+        },
         {
             key: 'severity',
             label: 'Severity',

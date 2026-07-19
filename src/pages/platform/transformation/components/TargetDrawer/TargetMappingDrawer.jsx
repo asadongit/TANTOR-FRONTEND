@@ -1,3 +1,4 @@
+import { Check, CheckCircle } from "lucide-react";
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 
 const TargetMappingDrawer = ({
@@ -10,7 +11,8 @@ const TargetMappingDrawer = ({
     // NEW props
     loadType,
     scdConfig = { primaryKeys: [], surrogateKey: "", checksumColumns: [], changeType: "" },
-    setScdConfig = () => { }
+    setScdConfig = () => { },
+    targetType
 }) => {
     const [dropdownOpen, setDropdownOpen] = useState({});
     const [searchTerms, setSearchTerms] = useState({});
@@ -18,6 +20,18 @@ const TargetMappingDrawer = ({
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [initialMappingReceived, setInitialMappingReceived] = useState(false);
     const [availableSourceColumns, setAvailableSourceColumns] = useState([]);
+
+    const isCSV = useMemo(
+        () => (targetType || "").toString().toLowerCase() === "csv",
+        [targetType]
+    );
+
+    // Row-based model for CSV: [{ id, targetName, sourceCol }]
+    const [csvColumns, setCsvColumns] = useState([]);
+    const [csvInitialized, setCsvInitialized] = useState(false);
+
+    // Track the live text input value for custom expression (before confirm)
+    const [customExpressionDraft, setCustomExpressionDraft] = useState({});
 
     const [localMapping, setLocalMapping] = useState({});
 
@@ -39,8 +53,6 @@ const TargetMappingDrawer = ({
         });
     }, [scdConfig]);
 
-    // --- PATCH: Always sync SCD config to parent/context on PK/SK/CHK change ---
-    // Helper to persist SCD config to parent/context/localStorage
     const persistScdConfig = useCallback((nextScd) => {
         const toPersist = {
             primaryKeys: nextScd.primaryKeys || [],
@@ -49,22 +61,18 @@ const TargetMappingDrawer = ({
             changeType: (nextScd.checksumColumns?.length ? (nextScd.changeType || "checksum") : "")
         };
 
-        // Save to localStorage
         try {
             window.localStorage.setItem(`scd_config_${nodeId}`, JSON.stringify(toPersist));
         } catch { }
 
-        // Update parent SCD config
         setScdConfig(toPersist);
 
-        // Update target node data and context
         try {
             const allNodes = window.allNodes || [];
             const targetNode = allNodes.find(n => n.id === nodeId);
             if (targetNode?.data?.onDataChange) {
                 targetNode.data.onDataChange({ scdConfig: toPersist });
             }
-            // Force transformation context update
             if (window.transformationContext) {
                 const { dispatch, ACTION_TYPES } = window.transformationContext;
                 if (dispatch && ACTION_TYPES) {
@@ -78,18 +86,16 @@ const TargetMappingDrawer = ({
                 }
             }
         } catch (error) {
-            // eslint-disable-next-line no-console
             console.error("Error updating SCD config:", error);
         }
     }, [nodeId, setScdConfig]);
-    // --- END PATCH ---
 
     const togglePk = useCallback((col) => {
         setLocalScd(prev => {
             const set = new Set(prev.primaryKeys || []);
             set.has(col) ? set.delete(col) : set.add(col);
             const next = { ...prev, primaryKeys: [...set] };
-            persistScdConfig(next); // PATCH: always persist SCD config
+            persistScdConfig(next);
             return next;
         });
     }, [persistScdConfig]);
@@ -100,7 +106,7 @@ const TargetMappingDrawer = ({
                 ...prev,
                 surrogateKey: prev.surrogateKey === col ? "" : col
             };
-            persistScdConfig(next); // PATCH: always persist SCD config
+            persistScdConfig(next);
             return next;
         });
     }, [persistScdConfig]);
@@ -111,18 +117,16 @@ const TargetMappingDrawer = ({
             set.has(col) ? set.delete(col) : set.add(col);
             const arr = [...set];
             const next = { ...prev, checksumColumns: arr, changeType: arr.length ? (prev.changeType || "checksum") : "" };
-            persistScdConfig(next); // PATCH: always persist SCD config
+            persistScdConfig(next);
             return next;
         });
     }, [persistScdConfig]);
 
-    // Function to collect all available source columns — uses post-transformation state
     const refreshSourceColumns = useCallback(() => {
         if (!window.allNodes || !window.allEdges) return;
 
         const sourceColsRaw = [];
 
-        // Find all transformation nodes connected to this target
         const incomingEdges = window.allEdges.filter(e => e.target === nodeId);
         const transformationNodeIds = incomingEdges.map(e => e.source)
             .filter(srcId => {
@@ -130,7 +134,6 @@ const TargetMappingDrawer = ({
                 return node && node.type === 'transformation';
             });
 
-        // ETL-correct approach: use post-transformation replayed columns
         if (window.replayedDataframeColumns && Object.keys(window.replayedDataframeColumns).length > 0) {
             transformationNodeIds.forEach(transId => {
                 const transIncoming = window.allEdges.filter(e => e.target === transId);
@@ -150,7 +153,6 @@ const TargetMappingDrawer = ({
             });
         }
 
-        // Fallback: gather from source nodes and transformation outputs directly
         transformationNodeIds.forEach(transId => {
             const transIncoming = window.allEdges.filter(e => e.target === transId);
             transIncoming.forEach(e => {
@@ -176,7 +178,6 @@ const TargetMappingDrawer = ({
             }
         });
 
-        // Deduplicate by name, preferring objects with datatypes
         const uniqueColsMap = new Map();
         sourceColsRaw.filter(col => col && col.name).forEach(col => {
             const existing = uniqueColsMap.get(col.name);
@@ -197,7 +198,6 @@ const TargetMappingDrawer = ({
                     else if (opt.value) allColsRaw.push({ name: opt.value, datatype: null });
                 });
 
-                // Deduplicate by name, preferring those with datatypes
                 const uniqueColsMap = new Map();
                 allColsRaw.filter(col => col && col.name).forEach(col => {
                     const existing = uniqueColsMap.get(col.name);
@@ -210,7 +210,6 @@ const TargetMappingDrawer = ({
             });
         }
 
-        // Always try to refresh columns from all nodes
         refreshSourceColumns();
     }, [sourceColumnOptions, refreshSourceColumns]);
 
@@ -222,7 +221,6 @@ const TargetMappingDrawer = ({
         window.addEventListener("tantor-columns-updated", handleColumnUpdate);
         window.addEventListener("tantor-refresh-all-columns", handleColumnUpdate);
 
-        // Refresh immediately on mount
         refreshSourceColumns();
 
         return () => {
@@ -232,6 +230,12 @@ const TargetMappingDrawer = ({
     }, [refreshSourceColumns]);
 
     useEffect(() => {
+        setInitialMappingReceived(false);
+    }, [nodeId]);
+
+    useEffect(() => {
+        if (initialMappingReceived) return;
+
         let effectiveMapping = {};
 
         const hasNonEmptyMapping =
@@ -245,7 +249,6 @@ const TargetMappingDrawer = ({
         if (hasNonEmptyMapping) {
             effectiveMapping = { ...targetMapping };
         } else {
-            // CREATE MODE: auto-map by name
             let allSourceCols = [];
             if (sourceColumnOptions && sourceColumnOptions.length > 0) {
                 allSourceCols = sourceColumnOptions.map(opt => opt.value);
@@ -272,7 +275,6 @@ const TargetMappingDrawer = ({
             });
         }
 
-        // Always ensure all target columns are present in the mapping
         const allTargetColumns = getAllTargetColumns();
         const completedMapping = { ...effectiveMapping };
         allTargetColumns.forEach(col => {
@@ -281,12 +283,101 @@ const TargetMappingDrawer = ({
             }
         });
 
+        // Detect which columns have a custom expression (value not in sourceColumnOptions)
+        const knownColNames = new Set(
+            sourceColumnOptions.map(opt => typeof opt.value === 'object' ? opt.value.name : opt.value)
+        );
+        const initialCustomDraft = {};
+        const customExpressionsToInject = [];
+
+        Object.entries(completedMapping).forEach(([targetCol, srcVal]) => {
+            const srcName = typeof srcVal === 'object' ? srcVal.name : srcVal;
+            if (srcName && srcName.trim() !== "" && !knownColNames.has(srcName)) {
+                // Pre-fill the draft so it is available when opening dropdown tabs
+                initialCustomDraft[targetCol] = srcName;
+                customExpressionsToInject.push({ name: srcName, datatype: null, isCustomExpression: true });
+            }
+        });
+
+        // Inject saved custom expressions into availableSourceColumns
+        // so they appear as selected options in the dropdown in edit mode
+        if (customExpressionsToInject.length > 0) {
+            setAvailableSourceColumns(prevCols => {
+                const merged = [...prevCols];
+                customExpressionsToInject.forEach(customCol => {
+                    const alreadyExists = merged.some(c => c.name === customCol.name);
+                    if (!alreadyExists) merged.push(customCol);
+                });
+                return merged;
+            });
+        }
+
+        setCustomExpressionDraft(initialCustomDraft);
+
         setLocalMapping(completedMapping);
         setInitialMappingReceived(true);
 
         window.localStorage.setItem(`targetMapping_${nodeId}`, JSON.stringify(completedMapping));
-        // --- END PATCH ---
-    }, [targetMapping, nodeId, getAllTargetColumns, sourceColumnOptions, availableSourceColumns]);
+    }, [targetMapping, nodeId, getAllTargetColumns, sourceColumnOptions, availableSourceColumns, initialMappingReceived]);
+
+
+    useEffect(() => {
+        if (!isCSV || csvInitialized) return;
+        if (!availableSourceColumns || availableSourceColumns.length === 0) return;
+
+        // If there's an existing saved mapping, hydrate rows from it instead of overwriting
+        const existingEntries = Object.entries(targetMapping || {}).filter(([, v]) => {
+            const val = typeof v === "object" ? v.name : v;
+            return val && val.trim() !== "";
+        });
+
+        let rows;
+        if (existingEntries.length > 0) {
+            rows = existingEntries.map(([targetName, sourceVal], idx) => ({
+                id: `csv_row_${idx}_${Date.now()}`,
+                targetName,
+                sourceCol: sourceVal
+            }));
+        } else {
+            rows = availableSourceColumns.map((col, idx) => ({
+                id: `csv_row_${idx}_${Date.now()}`,
+                targetName: col.name,
+                sourceCol: col
+            }));
+        }
+
+        setCsvColumns(rows);
+        setCsvInitialized(true);
+    }, [isCSV, availableSourceColumns, csvInitialized, targetMapping]);
+
+    // reset when switching nodes
+    useEffect(() => {
+        setCsvInitialized(false);
+        setCsvColumns([]);
+    }, [nodeId]);
+
+    const handleCsvTargetNameChange = useCallback((rowId, value) => {
+        setCsvColumns(prev =>
+            prev.map(r => (r.id === rowId ? { ...r, targetName: value } : r))
+        );
+    }, []);
+
+    const handleCsvSourceChange = useCallback((rowId, value) => {
+        setCsvColumns(prev =>
+            prev.map(r => (r.id === rowId ? { ...r, sourceCol: value } : r))
+        );
+    }, []);
+
+    const handleAddCsvColumn = useCallback(() => {
+        setCsvColumns(prev => [
+            ...prev,
+            { id: `csv_row_new_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, targetName: "", sourceCol: "" }
+        ]);
+    }, []);
+
+    const handleRemoveCsvColumn = useCallback((rowId) => {
+        setCsvColumns(prev => prev.filter(r => r.id !== rowId));
+    }, []);
 
     const filteredTargetColumns = useMemo(
         () => getAllTargetColumns().filter(col => {
@@ -300,20 +391,27 @@ const TargetMappingDrawer = ({
         const confirmed = window.confirm("Are you sure you want to clear all mappings?");
         if (!confirmed) return;
 
+        if (isCSV) {
+            setCsvColumns(prev => prev.map(row => ({ ...row, sourceCol: "" })));
+            setCustomExpressionDraft({});
+            window.localStorage.removeItem(`targetMappingConfirmed_${nodeId}`);
+            return;
+        }
+
         const cleared = {};
         getAllTargetColumns().forEach(col => {
             cleared[col] = "";
         });
         setLocalMapping(cleared);
+        setCustomExpressionDraft({});
 
         window.localStorage.removeItem(`targetMappingConfirmed_${nodeId}`);
 
         const previousMapping = JSON.stringify(localMapping);
         window.localStorage.setItem(`targetMapping_${nodeId}_backup`, previousMapping);
 
-    }, [getAllTargetColumns, nodeId, localMapping]);
+    }, [isCSV, getAllTargetColumns, nodeId, localMapping]);
 
-    // Add this new function to explicitly persist SCD config
     const forcePersistScdConfig = useCallback(() => {
         const finalScdConfig = {
             primaryKeys: localScd.primaryKeys || [],
@@ -322,15 +420,12 @@ const TargetMappingDrawer = ({
             changeType: (localScd.checksumColumns?.length ? (localScd.changeType || "checksum") : "")
         };
 
-        // Save to localStorage
         try {
             window.localStorage.setItem(`scd_config_${nodeId}`, JSON.stringify(finalScdConfig));
         } catch { }
 
-        // Update parent SCD config
         setScdConfig(finalScdConfig);
 
-        // Update target node data and context immediately
         try {
             const allNodes = window.allNodes || [];
             const targetNode = allNodes.find(n => n.id === nodeId);
@@ -338,7 +433,6 @@ const TargetMappingDrawer = ({
                 targetNode.data.onDataChange({ scdConfig: finalScdConfig });
             }
 
-            // Force transformation context update
             if (window.transformationContext) {
                 const { dispatch, ACTION_TYPES } = window.transformationContext;
                 if (dispatch && ACTION_TYPES) {
@@ -358,20 +452,25 @@ const TargetMappingDrawer = ({
         return finalScdConfig;
     }, [nodeId, localScd, setScdConfig]);
 
-    // FIXED: Move finalizeMappingAndClose before handleConfirmMapping to avoid reference error
     const finalizeMappingAndClose = useCallback(() => {
-        // Flatten the mapping to store only strings (names) instead of objects
-        const cleanedMapping = {};
-        Object.entries(localMapping).forEach(([targetCol, sourceCol]) => {
-            cleanedMapping[targetCol] = typeof sourceCol === 'object' ? sourceCol.name : sourceCol;
-        });
+        let cleanedMapping = {};
+
+        if (isCSV) {
+            csvColumns.forEach(row => {
+                const name = (row.targetName || "").trim();
+                if (!name) return; // skip rows with no target name
+                cleanedMapping[name] = typeof row.sourceCol === "object" ? row.sourceCol.name : row.sourceCol;
+            });
+        } else {
+            Object.entries(localMapping).forEach(([targetCol, sourceCol]) => {
+                cleanedMapping[targetCol] = typeof sourceCol === "object" ? sourceCol.name : sourceCol;
+            });
+        }
 
         window.localStorage.setItem(`targetMappingConfirmed_${nodeId}`, "true");
         window.localStorage.setItem(`targetMapping_${nodeId}`, JSON.stringify(cleanedMapping));
-
         setTargetMapping(cleanedMapping);
 
-        // Force persist SCD config regardless of mapping changes
         let finalScdConfig;
         if (isSCD) {
             finalScdConfig = forcePersistScdConfig();
@@ -384,7 +483,6 @@ const TargetMappingDrawer = ({
             };
         }
 
-        // FIXED: Final update to target node and context with both mapping and SCD config
         const allNodes = window.allNodes || [];
         const targetNode = allNodes.find(node => node.id === nodeId);
         if (targetNode && targetNode.data && targetNode.data.onDataChange) {
@@ -393,11 +491,9 @@ const TargetMappingDrawer = ({
                 scdConfig: finalScdConfig
             });
 
-            // FIXED: Force final context update with both mapping and SCD data
             if (window.transformationContext) {
                 const { dispatch, ACTION_TYPES } = window.transformationContext;
                 if (dispatch && ACTION_TYPES) {
-                    // Update target with both mapping and SCD config
                     dispatch({
                         type: ACTION_TYPES.UPDATE_TARGET,
                         payload: {
@@ -409,7 +505,6 @@ const TargetMappingDrawer = ({
                         }
                     });
 
-                    // Preserve target mapping
                     dispatch({
                         type: ACTION_TYPES.PRESERVE_TARGET_MAPPING,
                         payload: { targetId: nodeId, mapping: cleanedMapping }
@@ -419,27 +514,27 @@ const TargetMappingDrawer = ({
         }
 
         onClose();
-    }, [localMapping, nodeId, setTargetMapping, onClose, isSCD, forcePersistScdConfig]);
+    }, [isCSV, csvColumns, localMapping, nodeId, setTargetMapping, onClose, isSCD, forcePersistScdConfig]);
 
     const handleConfirmMapping = useCallback(() => {
-        // Force persist SCD config even if no mapping changes
         if (isSCD) {
             forcePersistScdConfig();
         }
 
-        const hasAnyMapping = Object.values(localMapping).some(val => {
-            const valToCheck = typeof val === 'object' ? val.name : val;
-            return valToCheck && valToCheck.trim() !== "";
-        });
+        const hasAnyMapping = isCSV
+            ? csvColumns.some(row => (row.targetName || "").trim() !== "")
+            : Object.values(localMapping).some(val => {
+                const valToCheck = typeof val === 'object' ? val.name : val;
+                return valToCheck && valToCheck.trim() !== "";
+            });
         if (!hasAnyMapping) {
             setShowConfirmModal(true);
             return;
         }
         finalizeMappingAndClose();
-    }, [localMapping, isSCD, forcePersistScdConfig, finalizeMappingAndClose]);
+    }, [isCSV, csvColumns, localMapping, isSCD, forcePersistScdConfig, finalizeMappingAndClose]);
 
     const handleModalConfirm = () => {
-        // Also ensure SCD config is persisted in modal confirm
         if (isSCD) {
             forcePersistScdConfig();
         }
@@ -464,10 +559,24 @@ const TargetMappingDrawer = ({
         });
     }, [nodeId]);
 
+    // ─── Custom Expression Handlers ────────────────────────────────────────────
 
-    // Use both sourceColumnOptions prop and our internal state for mapping
+    /** Confirm the typed custom expression, auto-map it, inject into all dropdowns */
+    const handleConfirmCustomExpression = useCallback((rowId, onChange) => {
+        const expr = (customExpressionDraft[rowId] || "").trim();
+        if (!expr) return;
+        onChange(expr);
+        setAvailableSourceColumns(prev => {
+            const alreadyExists = prev.some(c => c.name === expr);
+            if (alreadyExists) return prev;
+            return [...prev, { name: expr, datatype: null, isCustomExpression: true }];
+        });
+        setDropdownOpen(prev => ({ ...prev, [rowId]: false }));
+    }, [customExpressionDraft]);
+
+    // ───────────────────────────────────────────────────────────────────────────
+
     const allSourceColumnsForMapping = useMemo(() => {
-        // Collect all options from both sources
         const allOptions = [...sourceColumnOptions];
 
         if (availableSourceColumns.length > 0) {
@@ -476,7 +585,6 @@ const TargetMappingDrawer = ({
             });
         }
 
-        // Deduplicate by name, preferring objects with datatypes
         const uniqueOptionsMap = new Map();
         allOptions.forEach(opt => {
             const colName = typeof opt.value === 'object' ? opt.value.name : opt.value;
@@ -493,11 +601,153 @@ const TargetMappingDrawer = ({
         return Array.from(uniqueOptionsMap.values());
     }, [sourceColumnOptions, availableSourceColumns]);
 
-    // Make drawer wider for SCD to avoid clutter
     const drawerWidthClass = useMemo(
         () => (isSCD ? "max-w-3xl md:max-w-4xl" : "max-w-md md:max-w-lg"),
         [isSCD]
     );
+
+    // ─── Reusable Source Column Selector ───────────────────────────────────────
+    const renderSourceSelector = (rowId, currentValue, onChange) => {
+        const open = dropdownOpen[rowId] || false;
+        const search = searchTerms[rowId] || "";
+        const draft = customExpressionDraft[rowId] || "";
+
+        const filteredOptions = allSourceColumnsForMapping.filter(opt => {
+            const label = typeof opt.label === 'object' ? opt.label.name : opt.label;
+            return label && label.toLowerCase().includes(search.toLowerCase());
+        });
+
+        const selectedOption = allSourceColumnsForMapping.find(opt => {
+            const optValue = typeof opt.value === 'object' ? opt.value.name : opt.value;
+            const searchVal = typeof currentValue === 'object' ? currentValue.name : currentValue;
+            return optValue === searchVal;
+        });
+        const selectedLabelObj = selectedOption ? selectedOption.label : "";
+        const selectedLabel = typeof selectedLabelObj === 'object' ? selectedLabelObj.name : selectedLabelObj;
+        const currentName = typeof currentValue === 'object' ? currentValue.name : currentValue;
+        const isCurrentCustom =
+            currentName &&
+            currentName.trim() !== "" &&
+            !allSourceColumnsForMapping.some(opt => {
+                const optValue = typeof opt.value === 'object' ? opt.value.name : opt.value;
+                return optValue === currentName && !(typeof opt.value === 'object' && opt.value.isCustomExpression);
+            });
+
+        return (
+            <div className="relative min-w-0 w-full">
+                <button
+                    type="button"
+                    className={`w-full p-2 text-[13px] bg-white rounded border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-[#8E77BB] transition-all shadow-sm ${open ? "ring-2 ring-[#8E77BB] border-[#8E77BB]" : ""}`}
+                    onClick={() => {
+                        const nextOpen = !open;
+                        setDropdownOpen(prev => ({ ...prev, [rowId]: nextOpen }));
+                        if (nextOpen) {
+                            if (isCurrentCustom) {
+                                setCustomExpressionDraft(prev => ({ ...prev, [rowId]: currentName }));
+                            } else {
+                                setCustomExpressionDraft(prev => ({ ...prev, [rowId]: "" }));
+                            }
+                        }
+                    }}
+                >
+                    <span className={`truncate ${currentValue ? "" : "text-gray-400"}`}>
+                        {isCurrentCustom
+                            ? currentName
+                            : (selectedLabel || currentName || "Select source column")
+                        }
+                    </span>
+                    <span className="ml-auto pl-2 text-xs flex-shrink-0">&#9662;</span>
+                </button>
+
+                {open && (
+                    <div
+                        className="absolute z-20 left-0 right-0 bg-white border border-gray-300 rounded shadow-lg mt-1 overflow-hidden flex flex-col"
+                        style={{ maxHeight: "350px" }}
+                    >
+                        {/* Search Input */}
+                        <div className="sticky top-0 bg-white border-b border-gray-200 z-10 flex-shrink-0">
+                            <input
+                                type="search"
+                                placeholder="Search source columns..."
+                                className="w-full p-2 text-xs text-gray-700 focus:outline-none"
+                                value={search}
+                                onChange={e => setSearchTerms(prev => ({ ...prev, [rowId]: e.target.value }))}
+                                autoFocus
+                            />
+                        </div>
+
+                        {/* Options List */}
+                        <div className="overflow-y-auto flex-grow" style={{ maxHeight: "180px" }}>
+                            {/* No Mapping */}
+                            <div
+                                className={`p-2 text-xs text-gray-700 cursor-pointer hover:bg-[#f3eaff] ${!currentValue ? "bg-gray-100 font-semibold" : ""}`}
+                                onClick={() => {
+                                    onChange("");
+                                    setDropdownOpen(prev => ({ ...prev, [rowId]: false }));
+                                }}
+                            >
+                                <span className="text-gray-400">No Mapping</span>
+                            </div>
+
+                            {filteredOptions.length === 0 && (
+                                <div className="p-2 text-xs text-gray-400">No columns found</div>
+                            )}
+                            {filteredOptions.map(opt => {
+                                const optLabel = typeof opt.label === "object" ? opt.label.name : opt.label;
+                                const optValue = typeof opt.value === "object" ? opt.value.name : opt.value;
+                                const isSelected = typeof currentValue === "object"
+                                    ? currentValue.name === optValue
+                                    : currentValue === optValue;
+
+                                return (
+                                    <div
+                                        key={optValue}
+                                        className={`p-2 text-xs text-gray-700 cursor-pointer hover:bg-[#e9e3f7] ${isSelected ? "bg-[#e9e3f7] font-semibold text-[#8E77BB]" : ""}`}
+                                        onClick={() => {
+                                            onChange(opt.value);
+                                            setDropdownOpen(prev => ({ ...prev, [rowId]: false }));
+                                        }}
+                                    >
+                                        {optLabel}
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Custom Expression at the bottom */}
+                        <div className="border-t border-gray-200 p-2.5 bg-gray-50 flex-shrink-0">
+                            <div className="text-[11px] font-semibold text-gray-500 mb-1">Custom Expression</div>
+                            <div className="flex gap-1.5">
+                                <input
+                                    type="text"
+                                    className="flex-grow px-2 py-1 text-xs bg-white border border-gray-300 rounded text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB] placeholder-gray-400"
+                                    placeholder="e.g. key1.key2"
+                                    value={draft}
+                                    onChange={e =>
+                                        setCustomExpressionDraft(prev => ({ ...prev, [rowId]: e.target.value }))
+                                    }
+                                    onKeyDown={e => {
+                                        if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            handleConfirmCustomExpression(rowId, onChange);
+                                        }
+                                    }}
+                                />
+                                <button
+                                    type="button"
+                                    className="px-2 text-xs rounded bg-[#8E77BB] text-white font-medium hover:bg-[#7a6bb0] transition-colors focus:outline-none"
+                                    onClick={() => handleConfirmCustomExpression(rowId, onChange)}
+                                >
+                                    <Check size={14} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+    // ───────────────────────────────────────────────────────────────────────────
 
     return (
         <div className={`fixed right-0 top-0 h-full w-full ${drawerWidthClass} bg-white shadow-2xl z-50 flex flex-col border-l border-gray-200 transition-transform duration-300`}>
@@ -524,6 +774,7 @@ const TargetMappingDrawer = ({
                     </button>
                 </div>
             </div>
+
             <div className="flex-1 flex flex-col px-6 pb-6">
                 <div className="flex items-center justify-between gap-4 mb-4 mt-2">
                     <div className="text-base font-semibold text-[#8E77BB] tracking-wide">
@@ -539,12 +790,14 @@ const TargetMappingDrawer = ({
                 </div>
 
                 {!initialMappingReceived ? (
-                    // ...existing loader...
                     <div className="flex justify-center items-center h-40">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#8E77BB]"></div>
                     </div>
                 ) : (
-                    <div className="border border-gray-200 rounded-lg px-3 flex-1 overflow-y-auto min-h-[80px] bg-gray-50 shadow-lg" style={{ maxHeight: "80vh", overflowY: "auto" }}>
+                    <div
+                        className="border border-gray-200 rounded-lg px-3 flex-1 overflow-y-auto min-h-[80px] bg-gray-50 shadow-lg"
+                        style={{ maxHeight: "80vh", overflowY: "auto" }}
+                    >
                         {/* Header */}
                         {isSCD ? (
                             <div className="grid grid-cols-5 gap-2 font-bold text-base mb-3 sticky top-0 h-8 w-full bg-white z-10 border-b border-gray-100 pb-2 text-[#8E77BB]">
@@ -563,27 +816,51 @@ const TargetMappingDrawer = ({
 
                         {/* Rows */}
                         <div>
-                            {filteredTargetColumns.length === 0 && (
-                                <div className="text-center text-xs text-gray-400 py-8">No target columns found.</div>
-                            )}
-                            {filteredTargetColumns.map((targetCol) => {
-                                const open = dropdownOpen[targetCol] || false;
-                                const search = searchTerms[targetCol] || "";
-                                const filteredOptions = allSourceColumnsForMapping.filter(opt => {
-                                    const label = typeof opt.label === 'object' ? opt.label.name : opt.label;
-                                    return label && label.toLowerCase().includes(search.toLowerCase());
-                                });
+                            {isCSV ? (
+                                <>
+                                    {csvColumns.length === 0 && (
+                                        <div className="text-center text-xs text-gray-400 py-8">No columns yet. Click "+ Add Column" to start.</div>
+                                    )}
 
-                                const currentValue = localMapping[targetCol] || "";
-                                const selectedOption = allSourceColumnsForMapping.find(opt => {
-                                    const optValue = typeof opt.value === 'object' ? opt.value.name : opt.value;
-                                    const searchVal = typeof currentValue === 'object' ? currentValue.name : currentValue;
-                                    return optValue === searchVal;
-                                });
-                                const selectedLabelObj = selectedOption ? selectedOption.label : "";
-                                const selectedLabel = typeof selectedLabelObj === 'object' ? selectedLabelObj.name : selectedLabelObj;
+                                    {csvColumns.map(row => (
+                                        <div key={row.id} className="flex flex-row items-center mb-4 gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="Enter target column name"
+                                                className="flex-1 min-w-0 text-xs text-gray-800 font-medium px-2 py-2 h-8 bg-white rounded border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+                                                value={row.targetName}
+                                                onChange={e => handleCsvTargetNameChange(row.id, e.target.value)}
+                                            />
+                                            <div className="flex-1 min-w-0">
+                                                {renderSourceSelector(row.id, row.sourceCol, (val) => handleCsvSourceChange(row.id, val))}
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveCsvColumn(row.id)}
+                                                className="text-gray-400 hover:text-red-500 text-lg leading-none px-1 flex-shrink-0"
+                                                aria-label="Remove column"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    ))}
 
-                                if (isSCD) {
+                                    <button
+                                        type="button"
+                                        onClick={handleAddCsvColumn}
+                                        className="w-full mt-1 mb-3 py-2 text-xs font-medium text-[#8E77BB] border border-dashed border-[#8E77BB] rounded hover:bg-[#f3eaff] transition-colors"
+                                    >
+                                        + Add Column
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    {filteredTargetColumns.length === 0 && (
+                                        <div className="text-center text-xs text-gray-400 py-8">No target columns found.</div>
+                                    )}
+
+                                    {filteredTargetColumns.map((targetCol) => {
+                                        if (isSCD) {
                                     const pkChecked = (localScd.primaryKeys || []).includes(targetCol);
                                     const skChecked = localScd.surrogateKey === targetCol;
                                     const chkChecked = (localScd.checksumColumns || []).includes(targetCol);
@@ -602,141 +879,30 @@ const TargetMappingDrawer = ({
                                             <div className="text-xs text-gray-800 break-words font-medium px-1 py-1 h-8 bg-gray-50 rounded border border-gray-100 shadow-sm min-w-0">
                                                 {targetCol}
                                             </div>
-                                            <div className="relative min-w-0">
-                                                <button
-                                                    type="button"
-                                                    className={`w-full p-2 text-[13px] bg-white rounded border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-[#8E77BB] transition-all shadow-sm ${open ? 'ring-2 ring-[#8E77BB] border-[#8E77BB]' : ''}`}
-                                                    onClick={() => setDropdownOpen(prev => ({ ...prev, [targetCol]: !prev[targetCol] }))}
-                                                >
-                                                    <span className={currentValue ? "" : "text-gray-400"}>
-                                                        {selectedLabel || (typeof currentValue === 'object' ? currentValue.name : currentValue) || "Select source column"}
-                                                    </span>
-                                                    <span className="ml-auto pl-2 text-xs">&#9662;</span>
-                                                </button>
-                                                {open && (
-                                                    <div className="absolute z-20 left-0 right-0 bg-white border border-gray-300 rounded shadow-lg mt-1 max-h-56 overflow-auto">
-                                                        <input
-                                                            type="search"
-                                                            placeholder="Search source columns..."
-                                                            className="w-full p-2 text-xs border-b text-gray-700 border-gray-200 focus:outline-none"
-                                                            value={search}
-                                                            onChange={e => setSearchTerms(prev => ({ ...prev, [targetCol]: e.target.value }))}
-                                                            autoFocus
-                                                        />
-                                                        {filteredOptions.length === 0 && (
-                                                            <div className="p-2 text-xs text-gray-400">No columns found</div>
-                                                        )}
-                                                        <div>
-                                                            <div
-                                                                className={`p-2 text-xs text-gray-700 cursor-pointer hover:bg-[#f3eaff] rounded ${!currentValue ? "bg-gray-100" : ""}`}
-                                                                onClick={() => {
-                                                                    handleUpdateMapping(targetCol, "");
-                                                                    setDropdownOpen(prev => ({ ...prev, [targetCol]: false }));
-                                                                }}
-                                                            >
-                                                                <span className="text-gray-400">No Mapping</span>
-                                                            </div>
-                                                            {filteredOptions.map(opt => {
-                                                                const optLabel = typeof opt.label === 'object' ? opt.label.name : opt.label;
-                                                                const optValue = typeof opt.value === 'object' ? opt.value.name : opt.value;
-                                                                const isSelected = typeof currentValue === 'object'
-                                                                    ? currentValue.name === optValue
-                                                                    : currentValue === optValue;
-
-                                                                return (
-                                                                    <div
-                                                                        key={optValue}
-                                                                        className={`p-2 text-xs text-gray-700 cursor-pointer hover:bg-[#e9e3f7] rounded ${isSelected ? "bg-[#e9e3f7] font-semibold" : ""}`}
-                                                                        onClick={() => {
-                                                                            handleUpdateMapping(targetCol, opt.value);
-                                                                            setDropdownOpen(prev => ({ ...prev, [targetCol]: false }));
-                                                                        }}
-                                                                    >
-                                                                        {optLabel}
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
+                                            {renderSourceSelector(targetCol, localMapping[targetCol], (val) => handleUpdateMapping(targetCol, val))}
                                         </div>
                                     );
                                 }
 
-                                // non-SCD row (original)
+                                // Non-SCD row
                                 return (
                                     <div key={targetCol} className="flex flex-row items-center mb-4 gap-2">
                                         <div className="text-xs text-gray-800 break-words font-medium px-1 py-1 h-8 bg-gray-50 rounded border border-gray-100 shadow-sm min-w-0 flex-1">
                                             {targetCol}
                                         </div>
-                                        <div className="relative flex-1 min-w-0">
-                                            {/* ...existing source dropdown button... */}
-                                            {/* unchanged code copied from original for non-SCD */}
-                                            <button
-                                                type="button"
-                                                className={`w-full p-2 text-[13px] bg-white rounded border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-[#8E77BB] transition-all shadow-sm ${open ? 'ring-2 ring-[#8E77BB] border-[#8E77BB]' : ''}`}
-                                                onClick={() => setDropdownOpen(prev => ({ ...prev, [targetCol]: !prev[targetCol] }))}
-                                            >
-                                                <span className={currentValue ? "" : "text-gray-400"}>
-                                                    {selectedLabel || (typeof currentValue === 'object' ? currentValue.name : currentValue) || "Select source column"}
-                                                </span>
-                                                <span className="ml-auto pl-2 text-xs">&#9662;</span>
-                                            </button>
-                                            {open && (
-                                                <div className="absolute z-20 left-0 right-0 bg-white border border-gray-300 rounded shadow-lg mt-1 max-h-56 overflow-auto animate-fade-in">
-                                                    <input
-                                                        type="search"
-                                                        placeholder="Search source columns..."
-                                                        className="w-full p-2 text-xs border-b text-gray-700 border-gray-200 focus:outline-none"
-                                                        value={search}
-                                                        onChange={e => setSearchTerms(prev => ({ ...prev, [targetCol]: e.target.value }))}
-                                                        autoFocus
-                                                    />
-                                                    {filteredOptions.length === 0 && (
-                                                        <div className="p-2 text-xs text-gray-400">No columns found</div>
-                                                    )}
-                                                    <div>
-                                                        <div
-                                                            className={`p-2 text-xs text-gray-700 cursor-pointer hover:bg-[#f3eaff] rounded ${!currentValue ? "bg-gray-100" : ""}`}
-                                                            onClick={() => {
-                                                                handleUpdateMapping(targetCol, "");
-                                                                setDropdownOpen(prev => ({ ...prev, [targetCol]: false }));
-                                                            }}
-                                                        >
-                                                            <span className="text-gray-400">No Mapping</span>
-                                                        </div>
-                                                        {filteredOptions.map(opt => {
-                                                            const optLabel = typeof opt.label === 'object' ? opt.label.name : opt.label;
-                                                            const optValue = typeof opt.value === 'object' ? opt.value.name : opt.value;
-                                                            const isSelected = typeof currentValue === 'object'
-                                                                ? currentValue.name === optValue
-                                                                : currentValue === optValue;
-
-                                                            return (
-                                                                <div
-                                                                    key={optValue}
-                                                                    className={`p-2 text-xs text-gray-700 cursor-pointer hover:bg-[#e9e3f7] rounded ${isSelected ? "bg-[#e9e3f7] font-semibold" : ""}`}
-                                                                    onClick={() => {
-                                                                        handleUpdateMapping(targetCol, opt.value);
-                                                                        setDropdownOpen(prev => ({ ...prev, [targetCol]: false }));
-                                                                    }}
-                                                                >
-                                                                    {optLabel}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            )}
+                                        <div className="flex-1 min-w-0">
+                                            {renderSourceSelector(targetCol, localMapping[targetCol], (val) => handleUpdateMapping(targetCol, val))}
                                         </div>
                                     </div>
                                 );
                             })}
-                        </div>
-                    </div>
+                        </>
+                    )}
+                </div>
+                </div>
                 )}
             </div>
+
             {showConfirmModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
                     <div className="bg-white rounded shadow-lg p-6 max-w-xs w-full">

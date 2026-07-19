@@ -27,24 +27,44 @@ const STATUS_OPTIONS = [
 const TYPE_OPTIONS = [
     { value: 'All Types', label: 'All Types' },
     { value: 'Match Review', label: 'Match Review' },
-    { value: 'Data Quality', label: 'Data Quality' },
-    { value: 'Merge Approval', label: 'Merge Approval' },
+    // { value: 'Data Quality', label: 'Data Quality' },
+    // { value: 'Merge Approval', label: 'Merge Approval' },
 ];
 
 const PRIORITY_STYLES = {
-    Critical: { color: '#EF4D5F', bg: 'rgba(242, 118, 167, 0.3)' },
-    High: { color: '#EF4D5F', bg: 'rgba(242, 118, 167, 0.3)' },
-    Medium: { color: '#E08E40', bg: 'rgba(255, 201, 63, 0.25)' },
-    Low: { color: '#069B68', bg: 'rgba(42, 199, 146, 0.25)' },
+    CRITICAL: { color: '#EF4D5F', bg: 'rgba(242, 118, 167, 0.3)' },
+    HIGH: { color: '#EF4D5F', bg: 'rgba(242, 118, 167, 0.3)' },
+    MEDIUM: { color: '#E08E40', bg: 'rgba(255, 201, 63, 0.25)' },
+    LOW: { color: '#069B68', bg: 'rgba(42, 199, 146, 0.25)' },
 };
 
+const PRIORITY_LABELS = {
+    CRITICAL: 'Critical',
+    HIGH: 'High',
+    MEDIUM: 'Medium',
+    LOW: 'Low',
+};
 const STATUS_STYLES = {
     COMPLETED: { color: '#069B68', bg: 'rgba(42, 199, 146, 0.25)' },
     PENDING: { color: '#E08E40', bg: 'rgba(255, 201, 63, 0.25)' },
     'IN PROGRESS': { color: '#E08E40', bg: 'rgba(255, 201, 63, 0.25)' },
     OVERDUE: { color: '#EF4D5F', bg: 'rgba(242, 118, 167, 0.30)' },
 };
+const SLA_STYLES = {
+    'ON TRACK': { color: '#069B68', bg: 'rgba(42, 199, 146, 0.25)' },
+    'AT RISK': { color: '#E08E40', bg: 'rgba(255, 201, 63, 0.25)' },
+    'BREACHED': { color: '#EF4D5F', bg: 'rgba(242, 118, 167, 0.3)' },
+    'COMPLETED OVERDUE': { color: '#069B68', bg: 'rgba(42, 199, 146, 0.25)' },
+    'COMPLETED ON TIME': { color: '#069B68', bg: 'rgba(42, 199, 146, 0.25)' },
+};
 
+const SLA_LABELS = {
+    'ON TRACK': 'On Track',
+    'AT RISK': 'At Risk',
+    'BREACHED': 'Breached',
+    'COMPLETED OVERDUE':'Completed Overdue',
+    'COMPLETED ON TIME':'Completed On Time',
+};
 const STATUS_LABELS = {
     COMPLETED: 'Completed',
     PENDING: 'Pending',
@@ -78,13 +98,14 @@ const formatDisplay = (isoVal) =>
 
 //  Badges
 const PriorityBadge = ({ priority }) => {
-    const style = PRIORITY_STYLES[priority] || { color: '#6B7280', bg: '#F3F4F6' };
+    const normalizedPriority = String(priority ?? '').toUpperCase();
+    const style = PRIORITY_STYLES[normalizedPriority] || { color: '#6B7280', bg: '#F3F4F6' };
     return (
         <span
             className="inline-block rounded-md px-2.5 py-1 text-xs font-normal whitespace-nowrap"
             style={{ color: style.color, backgroundColor: style.bg }}
         >
-            {priority}
+            {PRIORITY_LABELS[normalizedPriority] || priority}
         </span>
     );
 };
@@ -97,6 +118,18 @@ const StatusBadge = ({ status }) => {
             style={{ color: style.color, backgroundColor: style.bg }}
         >
             {STATUS_LABELS[status] || status}
+        </span>
+    );
+};
+const SLABadge = ({ slaStatus }) => {
+    const normalized = String(slaStatus ?? '').toUpperCase();
+    const style = SLA_STYLES[normalized] || { color: '#6B7280', bg: '#F3F4F6' };
+    return (
+        <span
+            className="inline-block rounded-md px-2.5 py-1 text-xs font-normal whitespace-nowrap"
+            style={{ color: style.color, backgroundColor: style.bg }}
+        >
+            {SLA_LABELS[normalized] || slaStatus}
         </span>
     );
 };
@@ -181,16 +214,16 @@ const RowActions = ({ row, onCompare, onReassign }) => {
             color: '#332849',
             bg: '#FFFFFF',
             hoverBg: '#F2EBFF',
-            disabled: row.type !== 'Match Review',
+            disabled: row.type !== 'Match Review' || row.status === 'COMPLETED',
             onClick: handleCompare,
         },
         {
             icon: ReassignIcon,
-            label: 'Reassign',
+            label: 'Assign',
             color: '#332849',
             bg: '#FFFFFF',
             hoverBg: '#F2EBFF',
-            disabled: false,
+            disabled: row.type === 'Match Review' && row.status === 'COMPLETED',
             onClick: () => { setOpen(false); onReassign(row); },
         },
     ];
@@ -270,6 +303,7 @@ const TaskQueueHomepage = () => {
             pairId: row.pair_id,
             record1: row.entity_id,
             score: row.match_score ?? '—',
+            taskId:  row.actual_task_id,  
         });
     };
 
@@ -376,6 +410,11 @@ const TaskQueueHomepage = () => {
             render: (row) => row.status ? <StatusBadge status={row.status} /> : <span className="text-[#ccc]">—</span>,
         },
         {
+            key: 'sla_status',
+            label: 'SLA Status',
+            render: (row) => row.sla_status ? <SLABadge slaStatus={row.sla_status} /> : <span className="text-[#ccc]">—</span>,
+        },
+        {
             key: 'actions',
             label: '',
             sortable: false,
@@ -471,7 +510,7 @@ const TaskQueueHomepage = () => {
                                     className="flex items-center justify-center px-4 bg-[#8E77BB] text-white rounded-lg hover:bg-[#7a67a0] transition-colors font-[Satoshi] font-medium text-sm whitespace-nowrap flex-shrink-0"
                                     style={{ height: '40px' }}
                                 >
-                                    Bulk Reassign
+                                    Bulk Assign
                                 </button>
                             </>
                         ) : (
@@ -520,7 +559,7 @@ const TaskQueueHomepage = () => {
                     }}
                     isBulk={reassignModal.isBulk}
                     row={reassignModal.row}
-                    selectedRows={new Set(selectedRows)}
+                    selectedRows={new Set(selectedRows.map(String))}
                     tableData={tasks}
                 />
             </div>

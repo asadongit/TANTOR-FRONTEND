@@ -127,6 +127,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
     const [isEditMode, setIsEditMode] = useState(false);
     const [editPolicyId, setEditPolicyId] = useState(null);
     const [isStep3Modified, setIsStep3Modified] = useState(false);
+    const [isStep3Valid, setIsStep3Valid] = useState(true); 
 
     const connectionSteps = ['Step 1', 'Step 2', 'Step 3', 'Step 4', 'Step 5', 'Step 6', 'Reports (Optional)', 'Confirmation'];
     const steps = connectionSteps;
@@ -446,7 +447,10 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
             case 2:
                 return <Step3
                     name='Data'
-                    onDataChange={setStep3Data}
+                    onDataChange={(data, isValid) => {       
+                        setStep3Data(data);
+                        setIsStep3Valid(isValid ?? true);      
+                    }}
                     initialData={step3Data}
                     policyData={policyData}
                     setIsStep3Modified={setIsStep3Modified}
@@ -833,7 +837,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
 
     const togglePolicy = async (index) => {
         const filteredPolicy = filteredPolicyCards[index];
-        const policyIndex = policy.findIndex((p) => p.title === filteredPolicy.title);
+        const policyIndex = policy.findIndex((p) => p === filteredPolicy);
         if (policyIndex === -1) {
             console.error("Policy not found in full policy array");
             return;
@@ -1023,10 +1027,12 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
                                             disabled={
                                                 (activeStep === 0 && !step1Data.isFormValid) ||
                                                 (activeStep === 1 && !step2Data.isFormValid) ||
+                                                (activeStep === 2 && !isStep3Valid) ||
                                                 (activeStep === 5 && !step6Data.isFormValid)
                                             }
                                             className={`px-6 py-1.5 rounded-md ${(activeStep === 0 && !step1Data.isFormValid) ||
                                                 (activeStep === 1 && !step2Data.isFormValid) ||
+                                                (activeStep === 2 && !isStep3Valid) ||
                                                 (activeStep === 5 && !step6Data.isFormValid)
                                                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                                 : 'bg-[#8e78b7] text-white hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]'
@@ -1430,10 +1436,12 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
                                         disabled={
                                             (activeStep === 0 && !step1Data.isFormValid) ||
                                             (activeStep === 1 && !step2Data.isFormValid) ||
+                                            (activeStep === 2 && !isStep3Valid) ||
                                             (activeStep === 5 && !step6Data.isFormValid)
                                         }
                                         className={`px-6 py-1.5 rounded-md ${(activeStep === 0 && !step1Data.isFormValid) ||
                                             (activeStep === 1 && !step2Data.isFormValid) ||
+                                            (activeStep === 2 && !isStep3Valid) ||
                                             (activeStep === 5 && !step6Data.isFormValid)
                                             ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                             : 'bg-[#8e78b7] text-white hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]'

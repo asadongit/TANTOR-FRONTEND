@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useRef } from "react";
+import React, { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import ReactFlow, {
   addEdge,
   useNodesState,
@@ -31,6 +31,7 @@ import {
   restoreNodesAndEdgesFromEditData,
 } from "../utils/editFlowUtils";
 import UnStructureDataPrep from "./nodes/components/UnstructuredDataPrepModal"; // <-- add
+
 
 const nodeTypes = {
   define: DefineNode,
@@ -1209,13 +1210,27 @@ function TransformationCanvasContent() {
     });
   }, [edges, setNodes]);
 
-  useEffect(() => {
-    updateTransformationNodesData();
-  }, [edges, updateTransformationNodesData]);
+  const sourceTargetColumnsSignature = useMemo(() => {
+    return nodes
+      .filter((n) => n.type === "source" || n.type === "target")
+      .map(
+        (n) =>
+          `${n.id}:${n.data?.alias || ""}:${JSON.stringify(n.data?.columns || [])}`
+      )
+      .join("|");
+  }, [nodes]);
+
+  // useEffect(() => {
+  //   updateTransformationNodesData();
+  // }, [edges, updateTransformationNodesData]);
+
+  // useEffect(() => {
+  //   updateTransformationNodesData();
+  // }, [nodes.length, updateTransformationNodesData]);
 
   useEffect(() => {
     updateTransformationNodesData();
-  }, [nodes.length, updateTransformationNodesData]);
+  }, [edges, sourceTargetColumnsSignature, updateTransformationNodesData]);
 
   useEffect(() => {
     if (isEditMode || sessionStorage.getItem("editMode") === "true") return;

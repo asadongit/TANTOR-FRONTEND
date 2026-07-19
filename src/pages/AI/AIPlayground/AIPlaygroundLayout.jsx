@@ -19,6 +19,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAIPlayground } from '../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
+import { SeriesFilterModal } from './modals/XAI/SeriesFilterModal';
 import AnalyticsIcons from '../../../assets/ai/analytics.svg';
 import AutoAwesomeMosaicIcons from '../../../assets/ai/auto_awesome_mosaic.svg';
 import BidLandscapeIcons from '../../../assets/ai/bid_landscape.svg';
@@ -69,10 +70,13 @@ export function AIPlaygroundLayout({
     onPreprocessingStepChange,
     isStep7Preview,
     isStep8Preview,
+    isStep6MMSPreview,
     onPreviewData,
     onPreviewData8,
+    onPreviewData6MMS,
     isNextDisabled: isNextDisabledProp,
     onSaveModel,
+    isSaveModelDisabled = false,
     onNextClick,
     predictionType,
 isUnivariatePreview,
@@ -126,6 +130,8 @@ onUnivariatePreview
     const [showFinishModal, setShowFinishModal] = useState(false);
     const [showDeleteWorkflowModal, setShowDeleteWorkflowModal] = useState(false);
     const [deleteTargetModelIndex, setDeleteTargetModelIndex] = useState(null);
+    const [showSeriesFilterModal, setShowSeriesFilterModal] = useState(false);
+    const isSeriesEnsemble = isEnsemble && datasetState?.ensembleType === 'series';
 
     const cleanupMutation = useMutation({
         mutationFn: async () => {
@@ -276,8 +282,11 @@ onUnivariatePreview
 
     const isPreprocessingPage = location.pathname === '/ai/playground/data-preprocessing';
     // preview page
-    const isOnStep7 = isPreprocessingPage && currentPreprocessingStep === totalPreprocessingSteps && totalPreprocessingSteps === 7;
-    const isOnStep8 = isPreprocessingPage && currentPreprocessingStep === totalPreprocessingSteps && totalPreprocessingSteps === 8;
+    const isMultivariateTimeSeries = predictionType === 'multivariate_timeseries' || predictionType === 'multiseries_timeseries';
+    const isMultivariateMultiseries = predictionType === 'multivariate_multiseries';
+    const isOnStep7 = isPreprocessingPage && currentPreprocessingStep === totalPreprocessingSteps && totalPreprocessingSteps === 7 && !isMultivariateTimeSeries;
+    const isOnStep8 = isPreprocessingPage && currentPreprocessingStep === totalPreprocessingSteps && (totalPreprocessingSteps === 8 || (totalPreprocessingSteps === 7 && isMultivariateTimeSeries));
+    const isOnStep6MMS = isPreprocessingPage && currentPreprocessingStep === totalPreprocessingSteps && totalPreprocessingSteps === 6 && isMultivariateMultiseries;
     const isOnUnivariatePreviewStep = isPreprocessingPage && predictionType === 'univariate_timeseries' && currentPreprocessingStep === totalPreprocessingSteps;
 
     const shouldShowCancel = currentStageIndex >= 0 && currentStageIndex <= 3;
@@ -413,6 +422,25 @@ onUnivariatePreview
         }
 
         if (isOnStep8 && isStep8Preview) {
+            if (nextStage) {
+                navigate(nextStage.path, {
+                    state: {
+                        mode: readonly ? 'view' : 'edit',
+                        isEnsemble,
+                        ensembleCount: models.length,
+                        activeModelIndex: activeModelIndex
+                    }
+                });
+            }
+            return;
+        }
+
+        if (isOnStep6MMS && !isStep6MMSPreview) {
+            if (onPreviewData6MMS) onPreviewData6MMS(true);
+            return;
+        }
+
+        if (isOnStep6MMS && isStep6MMSPreview) {
             if (nextStage) {
                 navigate(nextStage.path, {
                     state: {
@@ -700,6 +728,8 @@ if (
         if (isOnStep7 && isStep7Preview) return `Continue to ${nextStage?.label || 'Next Stage'}`;
         if (isOnStep8 && !isStep8Preview) return 'Preview Data';
         if (isOnStep8 && isStep8Preview) return `Continue to ${nextStage?.label || 'Next Stage'}`;
+        if (isOnStep6MMS && !isStep6MMSPreview) return 'Preview Data';
+        if (isOnStep6MMS && isStep6MMSPreview) return `Continue to ${nextStage?.label || 'Next Stage'}`;
         if (isDeploymentStage && isEnsemble && activeModelIndex < models.length - 1) {
             return `Continue to ${truncateLabel(models[activeModelIndex + 1]?.label)}`;
         }
@@ -715,7 +745,7 @@ if (
         if (isDeploymentStage && isEnsemble && activeModelIndex < models.length - 1) {
             return false;
         }
-        return !isPreprocessingPage && currentStageIndex === workflowStages.length - 1 && !(isOnStep7 && !isStep7Preview) && !(isOnStep8 && !isStep8Preview);
+        return !isPreprocessingPage && currentStageIndex === workflowStages.length - 1 && !(isOnStep7 && !isStep7Preview) && !(isOnStep8 && !isStep8Preview) && !(isOnStep6MMS && !isStep6MMSPreview);
     };
 
     const getVisibleStages = () => {
@@ -856,6 +886,20 @@ if (
                 </div>
             )}
 
+            {/* Series Ensemble Filter Modal */}
+            <SeriesFilterModal
+                isOpen={showSeriesFilterModal}
+                onClose={() => setShowSeriesFilterModal(false)}
+                ensembleId={datasetState?.ensembleId}
+                workflowId={activeWorkflowId}
+                nextWorkflowId={models[activeModelIndex + 1]?.id}
+                isTimeseries={['univariate_timeseries', 'multivariate_timeseries'].includes(modelGenesisConfig?.modelling_type)}
+                onConfirm={() => {
+                    setShowSeriesFilterModal(false);
+                    handleNext();
+                }}
+            />
+
             {/* Add Workflow Modal */}
             {showAddWorkflowModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -934,7 +978,10 @@ if (
                 <div className="bg-white rounded-md px-6 py-2">
                     <div className="flex items-center justify-between w-full">
                         <div className="flex items-center gap-3">
-                            <button onClick={() => navigate('/ai/playground')} className="text-gray-600 hover:text-gray-900">
+                            <button
+    onClick={handleCancel}
+    className="text-gray-600 hover:text-gray-900">
+
                                 <ChevronLeft size={24} />
                             </button>
                             <h1 className="text-xl font-bold text-gray-700">Build Machine Learning</h1>
@@ -1106,7 +1153,7 @@ if (
 
                 <div className="bg-white border-t border-gray-200 px-6 py-2 flex-shrink-0" style={{ background: '#FFFFFF', boxShadow: '0px -4px 9px 0px #0000001A' }}>
                     <div className="w-full flex justify-between items-center">
-                        {!(isOnStep7 && isStep7Preview) && !(isOnStep8 && isStep8Preview) && !isDeploymentStage ? (
+                        {!(isOnStep7 && isStep7Preview) && !(isOnStep8 && isStep8Preview) && !(isOnStep6MMS && isStep6MMSPreview) && !isDeploymentStage ? (
                             shouldShowCancel ? (
                                 <button
                                     onClick={handleCancel}
@@ -1141,7 +1188,7 @@ if (
                                 {location.pathname === '/ai/playground/xai' && onSaveModel && isFinalEnsembleWorkflow && (
                                     <button
                                         onClick={onSaveModel}
-                                        disabled={isNavigating || isNextDisabled()}
+                                        disabled={isNavigating || isNextDisabled() || isSaveModelDisabled}
                                         className="px-6 py-2 border border-[#8e78b7] text-[#8e78b7] rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#f5f2fb]"
                                     >
                                         Save Model
@@ -1150,7 +1197,7 @@ if (
 
                                 {isXAIPage && isEnsemble && activeModelIndex < models.length - 1 && (
                                     <button
-                                        onClick={handleNext}
+                                        onClick={() => (isSeriesEnsemble ? setShowSeriesFilterModal(true) : handleNext())}
                                         disabled={isNextDisabled()}
                                         className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#7d67a6] disabled:hover:bg-[#8e78b7]"
                                     >
@@ -1178,7 +1225,7 @@ if (
 
                                 {isLastStage && isEnsemble && activeModelIndex < models.length - 1 && !isXAIPage && (
                                     <button
-                                        onClick={handleNext}
+                                        onClick={() => (isSeriesEnsemble ? setShowSeriesFilterModal(true) : handleNext())}
                                         disabled={isNextDisabled()}
                                         className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#7d67a6] disabled:hover:bg-[#8e78b7]"
                                     >

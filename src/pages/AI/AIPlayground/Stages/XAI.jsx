@@ -11,6 +11,7 @@ import { useAIPlayground } from '../../../../context/AIPlaygroundContext';
 import toast from 'react-hot-toast';
 import RefreshIcon from '../../../../assets/ai/replay.svg';
 import { data } from 'autoprefixer';
+import { fetchTsXAIConfig, runTsExplain } from '../../../../hooks/AI/XAI/useTimeseriesXAI';
 
 function XAI() {
   const hostnameAI = window._env_?.VITE_AI_API;
@@ -22,6 +23,8 @@ function XAI() {
     : null; 
   const ensembleId = datasetState?.ensembleId;
   const readonly = mode === 'view';
+  const modelling_type = workflowState?.modelGenesis?.config?.modelling_type;
+  const isTimeseries = ['univariate_timeseries', 'multivariate_timeseries'].includes(modelling_type);
 
   // Get all workflows in the session
   const workflows = Object.keys(workflowsState || {}).map(workflowId => ({
@@ -68,6 +71,12 @@ function XAI() {
 
   const formatToThreeDecimals = (value) => {
     return typeof value === 'number' ? value.toFixed(3) : value;
+  };
+
+  const formatContribution = (value) => {
+    if (typeof value !== 'number') return value;
+    if (value !== 0 && Math.abs(value) < 0.0005) return value.toExponential(2);
+    return value.toFixed(3);
   };
 
   const isRegression = xaiConfig?.modeling_type === 'regression';
@@ -305,30 +314,46 @@ function XAI() {
 
       setLoadingConfig(true);
       try {
-        const response = await fetch(
-          `${hostnameAI}/model/XAI_config`,
-          {
-            method: 'POST',
-            headers: {
-              'accept': 'application/json',
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              ensemble_id: datasetState?.ensembleId,
-              workflow_id: activeWorkflowId,
-              model_name: selectedModel
-            })
-          }
-        );
-
-        if (response.ok) {
-          const config = await response.json();
-          setXaiConfig(config);
-          setConfiguredModel(selectedModel);
-          setShowConfigModal(true);
+        let config;
+        if (isTimeseries) {
+          config = await fetchTsXAIConfig({
+            ensembleId: datasetState?.ensembleId,
+            workflowId: activeWorkflowId,
+            modelName: selectedModel
+          });
         } else {
-          toast.error('Failed to fetch XAI configuration. Please try again.', { duration: 4000, position: 'top-right' });
+          const response = await fetch(
+            `${hostnameAI}/model/XAI_config`,
+            {
+              method: 'POST',
+              headers: {
+                'accept': 'application/json',
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                ensemble_id: datasetState?.ensembleId,
+                workflow_id: activeWorkflowId,
+                model_name: selectedModel
+              })
+            }
+          );
+          if (!response.ok) {
+            toast.error('Failed to fetch XAI configuration. Please try again.', { duration: 4000, position: 'top-right' });
+            return;
+          }
+          config = await response.json();
         }
+        if (isTimeseries) {
+          const applicability = config?.xai_applicability;
+          const hasAnyApplicable = applicability && Object.values(applicability).some(Boolean);
+          if (!hasAnyApplicable) {
+            toast.error('XAI methods are not applicable for this model. Please choose another model.', { duration: 5000, position: 'top-right' });
+            return;
+          }
+        }
+        setXaiConfig(config);
+        setConfiguredModel(selectedModel);
+        setShowConfigModal(true);
       } catch (error) {
         console.error('Error fetching XAI configuration:', error);
         toast.error(error.message || 'Failed to fetch XAI configuration. Please try again.', { duration: 4000, position: 'top-right' });
@@ -343,93 +368,129 @@ function XAI() {
       setShowConfigModal(false);
       return;
     }
-    
-    if (isRegression) {
-      const pdpRange = xaiConfig?.pdp_target_value_range;
-      const cfRange = xaiConfig?.cf_target_value_range;
 
-      if (configData.pdpTargetValue === '' || isNaN(configData.pdpTargetValue)) {
-        toast.error("Enter valid PDP target value");
-        return;
-      }
-      
-      if (pdpRange) {
-        const pdpValue = Number(configData.pdpTargetValue);
-        if (pdpValue < pdpRange.min || pdpValue > pdpRange.max) {
-          toast.error(`PDP target value must be between ${pdpRange.min.toFixed(2)} and ${pdpRange.max.toFixed(2)}`);
+    if (!isTimeseries) {
+      if (isRegression) {
+        const pdpRange = xaiConfig?.pdp_target_value_range;
+        const cfRange = xaiConfig?.cf_target_value_range;
+
+        if (configData.pdpTargetValue === '' || isNaN(configData.pdpTargetValue)) {
+          toast.error("Enter valid PDP target value");
           return;
         }
-      }
 
-      if (configData.cfDesiredValue === '' || isNaN(configData.cfDesiredValue)) {
-        toast.error("Enter valid counterfactual value");
-        return;
-      }
-      
-      if (cfRange) {
-        const cfValue = Number(configData.cfDesiredValue);
-        if (cfValue < cfRange.min || cfValue > cfRange.max) {
-          toast.error(`Counterfactual value must be between ${cfRange.min.toFixed(2)} and ${cfRange.max.toFixed(2)}`);
+        if (pdpRange) {
+          const pdpValue = Number(configData.pdpTargetValue);
+          if (pdpValue < pdpRange.min || pdpValue > pdpRange.max) {
+            toast.error(`PDP target value must be between ${pdpRange.min.toFixed(2)} and ${pdpRange.max.toFixed(2)}`);
+            return;
+          }
+        }
+
+        if (configData.cfDesiredValue === '' || isNaN(configData.cfDesiredValue)) {
+          toast.error("Enter valid counterfactual value");
           return;
         }
-      }
-    } else {
-      if (!configData.pdpTargetClass) {
-        toast.error("Select PDP target class");
-        return;
-      }
 
-      if (!configData.cfDesiredClass) {
-        toast.error("Select counterfactual class");
-        return;
+        if (cfRange) {
+          const cfValue = Number(configData.cfDesiredValue);
+          if (cfValue < cfRange.min || cfValue > cfRange.max) {
+            toast.error(`Counterfactual value must be between ${cfRange.min.toFixed(2)} and ${cfRange.max.toFixed(2)}`);
+            return;
+          }
+        }
+      } else {
+        if (!configData.pdpTargetClass) {
+          toast.error("Select PDP target class");
+          return;
+        }
+
+        if (!configData.cfDesiredClass) {
+          toast.error("Select counterfactual class");
+          return;
+        }
       }
     }
     setGeneratingReport(true);
     try {
-      const payload = {
-  ensemble_id : datasetState?.ensembleId,
-        workflow_id: activeWorkflowId,
-  run_name: selectedModel,
-  run_shap: true,
-  run_pdp: true,
-  run_feature_flip: true,
-  run_counterfactuals: true,
-  run_lime: true,
-  pdp_features: configData.pdpFeatures,
-  lime_instance_index: configData.limeInstanceIndex,
-  cf_instance_index: configData.cfInstanceIndex,
+      if (isTimeseries) {
+        const dateColumn =
+          workflowState?.modelGenesis?.config?.time_column ||
+          workflowState?.modelGenesis?.config?.timeColumn ||
+          xaiConfig?.date_column ||
+          'date';
 
-  ...(isRegression
-    ? {
-        pdp_target_value: Number(configData.pdpTargetValue ?? 0),
-cf_desired_value: Number(configData.cfDesiredValue ?? 0),
-      }
-    : {
-        pdp_target_class: configData.pdpTargetClass,
-        cf_desired_class: configData.cfDesiredClass,
-      })
-};
-
-
-
-      const response = await fetch(
-        `${hostnameAI}/model/explain`,
-        {
-          method: 'POST',
-          headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        }
-      );
-
-      if (response.ok) {
-        const result = await response.json();
+        const tsPayload = {
+          ensemble_id: datasetState?.ensembleId,
+          workflow_id: activeWorkflowId,
+          run_name: selectedModel,
+          run_shap: true,
+          run_pdp: false,
+          run_lime: true,
+          run_counterfactuals: true,
+          run_feature_flip: true,
+          algorithm_name: xaiConfig?.algorithm_name ?? '',
+          lookback_window: null,
+          date_column: dateColumn,
+          lime_instance_index: configData.limeInstanceIndex,
+          cf_instance_index: configData.cfInstanceIndex,
+          cf_target_value: Number(configData.cfTargetValue),
+          cf_total: 3,
+          cf_delta_ratio: 0.1,
+          pdp_features: configData.pdpFeatures ?? [],
+          ff_delta_ratio: 0.1,
+          ff_sample_size: 200,
+          shap_max_display: 10,
+        };
+        const result = await runTsExplain(tsPayload);
         setReportData(result);
         setShowConfigModal(false);
         setReportGenerated(true);
         toast.success('Report generated successfully!', { duration: 4000, position: 'top-right' });
       } else {
-        const errorData = await response.json();
-        toast.error(errorData.message || 'Failed to generate report. Please try again.', { duration: 4000, position: 'top-right' });
+        const payload = {
+          ensemble_id: datasetState?.ensembleId,
+          workflow_id: activeWorkflowId,
+          run_name: selectedModel,
+          run_shap: true,
+          run_pdp: false,
+          run_feature_flip: false,
+          run_counterfactuals: true,
+          run_lime: true,
+          pdp_features: configData.pdpFeatures,
+          lime_instance_index: configData.limeInstanceIndex,
+          cf_instance_index: configData.cfInstanceIndex,
+
+          ...(isRegression
+            ? {
+                pdp_target_value: Number(configData.pdpTargetValue ?? 0),
+                cf_desired_value: Number(configData.cfDesiredValue ?? 0),
+              }
+            : {
+                pdp_target_class: configData.pdpTargetClass,
+                cf_desired_class: configData.cfDesiredClass,
+              })
+        };
+
+        const response = await fetch(
+          `${hostnameAI}/model/explain`,
+          {
+            method: 'POST',
+            headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          }
+        );
+
+        if (response.ok) {
+          const result = await response.json();
+          setReportData(result);
+          setShowConfigModal(false);
+          setReportGenerated(true);
+          toast.success('Report generated successfully!', { duration: 4000, position: 'top-right' });
+        } else {
+          const errorData = await response.json();
+          toast.error(errorData.message || 'Failed to generate report. Please try again.', { duration: 4000, position: 'top-right' });
+        }
       }
     } catch (error) {
       console.error('Error generating report:', error);
@@ -543,6 +604,15 @@ cf_desired_value: Number(configData.cfDesiredValue ?? 0),
     { key: 'direction', label: 'Direction', sortable: true }
   ];
 
+  const featureFlipColumnsTs = [
+    { key: 'id', label: 'Sno', sortable: true, width: '80px' },
+    { key: 'feature', label: 'Feature', sortable: true },
+    { key: 'changeUp', label: 'Avg % Forecast Change (↑)', sortable: true },
+    { key: 'changeDown', label: 'Avg % Forecast Change (↓)', sortable: true },
+    { key: 'direction', label: 'Dominant Direction', sortable: true },
+    { key: 'delta', label: 'Delta Applied', sortable: true }
+  ];
+
   const counterfactualColumns = [
     { key: 'id', label: 'Sno', sortable: true, width: '80px' },
     { key: 'feature', label: 'Feature', sortable: true },
@@ -559,6 +629,16 @@ cf_desired_value: Number(configData.cfDesiredValue ?? 0),
 
   const getFeatureFlipData = () => {
     if (!reportData?.feature_flip_summary) return [];
+    if (isTimeseries) {
+      return reportData.feature_flip_summary.map((item, index) => ({
+        id: index + 1,
+        feature: item.Feature,
+        changeUp: item['Avg % Forecast Change (↑)'],
+        changeDown: item['Avg % Forecast Change (↓)'],
+        direction: item['Dominant Direction'],
+        delta: item['Delta Applied']
+      }));
+    }
     return reportData.feature_flip_summary.map((item, index) => ({
       id: index + 1,
       feature: item.Feature,
@@ -582,14 +662,15 @@ cf_desired_value: Number(configData.cfDesiredValue ?? 0),
   const getLimeData = () => {
   const explanation =
     reportData?.lime_report?.explanation_for_class ||
-    reportData?.lime_report?.explanation_for_prediction;
+    reportData?.lime_report?.explanation_for_prediction ||
+    reportData?.lime_report?.explanation;
 
   if (!explanation) return [];
 
   return explanation.map((item, index) => ({
     id: index + 1,
     rule: item[0],
-    contribution: formatToThreeDecimals(item[1])
+    contribution: formatContribution(item[1])
   }));
 };
 
@@ -612,7 +693,11 @@ cf_desired_value: Number(configData.cfDesiredValue ?? 0),
   );
 
   return (
-    <AIPlaygroundLayout onSaveModel={handleSaveModelFromLayout} isNextDisabled={readonly}>
+    <AIPlaygroundLayout
+      onSaveModel={handleSaveModelFromLayout}
+      isNextDisabled={readonly}
+      isSaveModelDisabled={initializing || jobLoading || loadingModels || modelsList.length === 0}
+    >
 
       {pendingTasks.length > 0 && (() => {
         const PREVIEW_COUNT = 12;
@@ -964,7 +1049,7 @@ cf_desired_value: Number(configData.cfDesiredValue ?? 0),
           {reportData.feature_flip_summary && reportData.feature_flip_summary.length > 0 && (
             <div className="bg-white rounded-lg p-6 border border-gray-200">
               <h3 className="text-base font-semibold text-gray-900 mb-4">Feature Flip Summary</h3>
-              <DataTable columns={featureFlipColumns} data={getFeatureFlipData()} isLoading={false} isError={false} />
+              <DataTable columns={isTimeseries ? featureFlipColumnsTs : featureFlipColumns} data={getFeatureFlipData()} isLoading={false} isError={false} />
             </div>
           )}
 
@@ -1037,7 +1122,8 @@ cf_desired_value: Number(configData.cfDesiredValue ?? 0),
   onClose={() => setShowConfigModal(false)}
   onGenerate={handleGenerateReport}
   xaiConfig={xaiConfig}
-  isRegression={isRegression}   
+  isRegression={isRegression}
+  isTimeseries={isTimeseries}
   readonly={readonly}
   isGenerating={generatingReport}
 />
