@@ -72,8 +72,8 @@ export default function CameraRenderer({ config, context, threadId, isLoading, o
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const handleSubmit = async () => {
-    if (imageCaptured && onSubmit) {
-      setIsSubmitted(true);
+    if (isSubmitted || !imageCaptured || !onSubmit) return;
+    setIsSubmitted(true);
       
       // 1. Capture Device Fingerprint (User Agent)
       const userAgent = navigator.userAgent;

@@ -57,8 +57,7 @@ export default function FollowupRenderer({ config, isLoading, onSubmit }) {
 
   const handleSkip = () => {
     const filtered = {};
-    questions.forEach(q => {
-      const idx = questions.indexOf(q);
+    questions.forEach((q, idx) => {
       if (idx < total - 1 && answers[q.id] !== undefined && answers[q.id] !== null && String(answers[q.id]).trim() !== '') {
         filtered[q.id] = answers[q.id];
       }
@@ -66,7 +65,7 @@ export default function FollowupRenderer({ config, isLoading, onSubmit }) {
     onSubmit({ followup_answers: filtered, skipped: true });
   };
 
-  const renderField = (q) => {
+  const renderField = (q, idx) => {
     const type = q.type || 'text';
     const val = answers[q.id] ?? '';
 
@@ -122,7 +121,7 @@ export default function FollowupRenderer({ config, isLoading, onSubmit }) {
       );
     }
 
-    const isLast = questions.indexOf(q) === total - 1;
+    const isLast = idx === total - 1;
     return (
       <div>
         <textarea
@@ -162,7 +161,7 @@ export default function FollowupRenderer({ config, isLoading, onSubmit }) {
               )}
             </label>
           </div>
-          {renderField(q)}
+          {renderField(q, idx)}
           {errors[q.id] && (
             <div style={{ color: '#ef4444', fontSize: 11, marginTop: 4 }}>
               {errors[q.id]}
