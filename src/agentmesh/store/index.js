@@ -164,7 +164,6 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
           llm: n.llm || n.data?.llm || { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 },
           wait_seconds: n.wait_seconds || n.data?.wait_seconds || 0,
           skills: n.skills || n.data?.skills || [],
-          custom_python_rules: n.custom_python_rules || n.data?.custom_python_rules || '',
           python_rules: n.python_rules || n.data?.python_rules || [],
           deep_agent_backend: n.deep_agent_backend || n.data?.deep_agent_backend || 'postgres',
           deep_agent_root_dir: n.deep_agent_root_dir || n.data?.deep_agent_root_dir || './mnt/deep_agents',
@@ -1130,7 +1129,7 @@ export const useWorkflowStore = create((set, get) => ({
     const frontend_meta = {
       // Store positions of START/END nodes for full layout restoration
       system_positions: Object.fromEntries(
-        s.nodes.filter(n => systemIds.has(n.id) || ['webhook', 'cron', 'polling'].includes(n.data.type)).map(n => [n.id === '__start__' || n.id === '__end__' ? n.id : n.data.type, n.position])
+        s.nodes.filter(n => systemIds.has(n.id) || ['webhook', 'cron', 'polling'].includes(n.data?.type)).map(n => [n.id === '__start__' || n.id === '__end__' ? n.id : n.data?.type, n.position])
       ),
       cardboards: cardboardNodes.map(n => ({
         id: n.id,
@@ -1155,9 +1154,9 @@ export const useWorkflowStore = create((set, get) => ({
       });
 
     // Extract Triggers from special trigger nodes with validation
-    const webhookNode = s.nodes.find(n => n.data.type === 'webhook');
-    const cronNode = s.nodes.find(n => n.data.type === 'cron');
-    const pollingNode = s.nodes.find(n => n.data.type === 'polling');
+    const webhookNode = s.nodes.find(n => n.data?.type === 'webhook');
+    const cronNode = s.nodes.find(n => n.data?.type === 'cron');
+    const pollingNode = s.nodes.find(n => n.data?.type === 'polling');
 
     const triggers = {};
 

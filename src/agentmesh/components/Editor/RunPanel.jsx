@@ -652,7 +652,7 @@ export default function RunPanel({ onClose }) {
     return findProfileReportHtml(pausedInfo?.context) || findProfileReportHtml(latestContext);
   }, [pausedInfo?.context, latestContext]);
 
-  const shouldHideInput = pausedInfo.isPaused && PAUSE_UI[pausedInfo.nodeType]?.hidesInput && pausedInfo.nodeType !== 'stt_trigger';
+  const shouldHideInput = pausedInfo?.isPaused && PAUSE_UI[pausedInfo?.nodeType]?.hidesInput && pausedInfo?.nodeType !== 'stt_trigger';
 
   return (
     <div style={{
@@ -693,9 +693,9 @@ export default function RunPanel({ onClose }) {
           <div style={{ fontSize: 9, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 4, marginTop: 1, fontWeight: 700 }}>
             <span style={{
               width: 5, height: 5, borderRadius: '50%',
-              background: running ? '#8E77BB' : canRun ? '#8E77BB' : '#F59E0B'
+              background: '#8E77BB'
             }} />
-            {running ? 'TRANSMITTING' : canRun ? 'CONNECTED' : 'STANDBY'}
+            {running ? 'TRANSMITTING' : 'CONNECTED'}
           </div>
         </div>
 
@@ -834,7 +834,7 @@ export default function RunPanel({ onClose }) {
                 Agent Mesh Intelligence
               </div>
               <div style={{ fontSize: 14, color: '#6B7280', fontWeight: 500, maxWidth: 360, textAlign: 'center', lineHeight: 1.6 }}>
-                {canRun ? 'Engage the neural network with a prompt or specific instruction to begin orchestration.' : 'System initialization required.'}
+                {'Engage the neural network with a prompt or specific instruction to begin orchestration.'}
               </div>
             </div>
           )}
