@@ -734,7 +734,8 @@ export default function PropertiesPanel() {
           const ConfigComp = getConfigComp(data?.type);
           const canHaveHitl =
             data?.type &&
-            !["start", "end", "chat_model", "memory"].includes(data.type);
+            !["start", "end", "chat_model", "memory", "cardboard", "group"].includes(data.type) &&
+            !["form_node", "camera", "stt_trigger"].includes(data.type);
           const NODES_WITH_INTERNAL_ADVANCED = [
             "llm_agent",
             "deep_agent",

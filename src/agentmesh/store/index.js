@@ -1472,7 +1472,7 @@ export const useRunStore = create((set) => ({
   setEvents: (evts) => set({ streamEvents: evts }),
   finishRun: (output) => set({ running: false, runOutput: output }),
   setError: (err) => set({ running: false, runError: err }),
-  setPausedInfo: (info) => set({ pausedInfo: info }),
+  setPausedInfo: (info) => set((s) => ({ pausedInfo: { ...s.pausedInfo, ...info } })),
   removeEventsFromIndex: (index) => set((s) => ({ streamEvents: s.streamEvents.slice(0, index) })),
 
   setHistory: (history) => set({ history }),
