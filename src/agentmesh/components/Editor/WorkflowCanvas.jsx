@@ -175,6 +175,7 @@ export default function WorkflowCanvas() {
     previewGroupOriginalNode,
     groupNodes,
     ungroupNode,
+    isLoadingWorkflow,
   } = useWorkflowStore();
   const {
     selectedNodeId,
@@ -998,6 +999,35 @@ export default function WorkflowCanvas() {
         position: "relative",
       }}
     >
+      {isLoadingWorkflow && (
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(255, 255, 255, 0.85)",
+          backdropFilter: "blur(6px)",
+          zIndex: 1000,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 16
+        }}>
+          <div style={{
+            width: 44,
+            height: 44,
+            borderRadius: "50%",
+            border: "3.5px solid #F3F4F6",
+            borderTopColor: "var(--theme-primary, #8e77bb)",
+            animation: "canvasSpin 1s linear infinite"
+          }} />
+          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--theme-primary, #8e77bb)" }}>Loading workflow configuration...</span>
+          <style>{`
+            @keyframes canvasSpin {
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      )}
       {/* ── Left Palette Panel ── */}
       <div
         style={{

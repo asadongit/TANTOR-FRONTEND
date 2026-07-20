@@ -371,6 +371,7 @@ export const useWorkflowStore = create((set, get) => ({
   allWorkflows: [], // Global catalog for dropdowns
   loadingWorkflows: false,
   loadingAllWorkflows: false,
+  isLoadingWorkflow: false,
 
   // Global Enterprise Connections Vault Cache
   connectionsVault: [],
@@ -967,6 +968,7 @@ export const useWorkflowStore = create((set, get) => ({
   loadWorkflowIntoEditor: async (w) => {
     if (!w) return;
 
+    set({ isLoadingWorkflow: true });
     // If this is a summary object from the list endpoint (no config),
     // fetch the full workflow first before loading into the editor.
     if (!w.config) {
@@ -976,6 +978,7 @@ export const useWorkflowStore = create((set, get) => ({
         if (full) w = { ...w, ...full };
       } catch (e) {
         console.error('loadWorkflowIntoEditor: failed to fetch full config', e);
+        set({ isLoadingWorkflow: false });
         return;
       }
     }
@@ -1004,6 +1007,7 @@ export const useWorkflowStore = create((set, get) => ({
       isCompiled: w.is_active || false,
       createdAt: w.created_at || null,
       updatedAt: w.updated_at || null,
+      isLoadingWorkflow: false,
     });
     // ✅ VARIABLE EXPLORER: Clear data explorer when loading an existing workflow
     useRunStore.getState().reset();
