@@ -75,14 +75,6 @@ export default function RunPanel({ onClose }) {
     return findStartingTriggers(nodes, edges, 'camera');
   }, [nodes, edges]);
 
-  const startingOcrNodes = useMemo(() => {
-    return findStartingTriggers(nodes, edges, 'ocr_node');
-  }, [nodes, edges]);
-
-  const startingExtractorNodes = useMemo(() => {
-    return findStartingTriggers(nodes, edges, 'signature_stamp_extractor');
-  }, [nodes, edges]);
-
   const startingFormNodes = useMemo(() => {
     return findStartingTriggers(nodes, edges, 'form_node');
   }, [nodes, edges]);
@@ -91,7 +83,6 @@ export default function RunPanel({ onClose }) {
   const hasAutoTriggers = startingAutoTriggers.length > 0;
   const hasStartingSttNode = startingSttNodes.length > 0;
   const hasStartingCameraNode = startingCameraNodes.length > 0;
-  const hasStartingOcrNode = startingOcrNodes.length > 0 || startingExtractorNodes.length > 0;
   const hasStartingFormNode = startingFormNodes.length > 0;
 
   const hasOcrNodes = useMemo(() => {
@@ -102,7 +93,7 @@ export default function RunPanel({ onClose }) {
     return streamEvents.some(e => ['node_start', 'token', 'user_message'].includes(e.type));
   }, [streamEvents]);
 
-  const hideInput = !isChatStarted && (hasButtonTriggers || hasAutoTriggers || hasStartingOcrNode || hasStartingSttNode || hasStartingCameraNode || hasStartingFormNode);
+  const hideInput = !isChatStarted && (hasButtonTriggers || hasAutoTriggers || hasOcrNodes || hasStartingSttNode || hasStartingCameraNode || hasStartingFormNode);
 
   const hasBlackboardTool = useMemo(() => {
     return nodes.some(n => {
@@ -198,9 +189,9 @@ export default function RunPanel({ onClose }) {
   // Can the user run? 
   const canRun = true; // We auto-compile now
 
-  const onSend = async (overrideInput, overrideContext, overrideTargetId, isAutoTrigger) => {
+  const onSend = useCallback(async (overrideInput, overrideContext, overrideTargetId, isAutoTrigger) => {
     const textToSubmit = typeof overrideInput === 'string' ? overrideInput : '';
-    if (!textToSubmit.trim() || running) return;
+    if (!textToSubmit.trim() || useRunStore.getState().running) return;
     const currentInput = textToSubmit;
 
     // ── Auto-Compile Step ──
@@ -340,7 +331,11 @@ export default function RunPanel({ onClose }) {
     } catch (e) {
       setError(e.message || 'Workflow execution failed');
     }
-  };
+  }, [
+    isDirty, isCompiled, threadId, autoNewSession, workflowId,
+    history, startRun, addEvent, finishRun, setError, reset, setPausedInfo, addToHistory,
+    playAudio
+  ]);
 
   // 🚀 AUTO-TRIGGER LOGIC: If we arrived here via a "Quick Run" button on a card
   useEffect(() => {

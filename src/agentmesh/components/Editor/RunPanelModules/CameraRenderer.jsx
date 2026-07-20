@@ -7,13 +7,13 @@ export default function CameraRenderer({ config, context, threadId, isLoading, o
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [imageCaptured, setImageCaptured] = useState(null);
-  const [stream, setStream] = useState(null);
+  const streamRef = useRef(null);
 
   useEffect(() => {
     startCamera();
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
       }
     };
   }, []);
@@ -21,7 +21,7 @@ export default function CameraRenderer({ config, context, threadId, isLoading, o
   const startCamera = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
-      setStream(mediaStream);
+      streamRef.current = mediaStream;
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
       }
@@ -57,8 +57,9 @@ export default function CameraRenderer({ config, context, threadId, isLoading, o
       const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
       setImageCaptured(dataUrl);
       
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
       }
     }
   };
