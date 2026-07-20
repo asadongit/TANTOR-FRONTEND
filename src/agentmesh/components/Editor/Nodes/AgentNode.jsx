@@ -1,7 +1,7 @@
 import React, { memo, useState } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { useUIStore, useWorkflowStore } from '../../../store';
-import { AUTO_INJECT_TYPES } from '../../RunPanelModules/pauseRegistry';
+import { AUTO_INJECT_TYPES } from '../RunPanelModules/pauseRegistry';
 import {
   FiPlay, FiSquare, FiCpu, FiBox, FiGitMerge,
   FiTarget, FiShare2, FiBookOpen, FiLink, FiZap,
