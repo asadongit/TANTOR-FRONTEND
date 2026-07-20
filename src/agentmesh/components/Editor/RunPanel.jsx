@@ -24,6 +24,7 @@ import FollowupRenderer from './RunPanelModules/FollowupRenderer';
 import TurnRenderer from './RunPanelModules/TurnRenderer';
 import ChatInput from './RunPanelModules/ChatInput';
 import { VfsExplorer, BlackboardModal, ProfilingModal } from './RunPanelModules/sessiontool';
+import { STARTING_TRIGGER_TYPES } from './RunPanelModules/pauseRegistry';
 import { findStartingTriggers, resolvePauseConfig, processWorkflowMessages } from './RunPanelModules/utils';
 import HistorySidebar from './RunPanelModules/HistorySidebar';
 import PauseModal from './RunPanelModules/PauseModal';
@@ -67,23 +68,18 @@ export default function RunPanel({ onClose }) {
     return findStartingTriggers(nodes, edges, 'auto_trigger');
   }, [nodes, edges]);
 
-  const startingSttNodes = useMemo(() => {
-    return findStartingTriggers(nodes, edges, 'stt_trigger');
-  }, [nodes, edges]);
-
-  const startingCameraNodes = useMemo(() => {
-    return findStartingTriggers(nodes, edges, 'camera');
-  }, [nodes, edges]);
-
-  const startingFormNodes = useMemo(() => {
-    return findStartingTriggers(nodes, edges, 'form_node');
+  const startingNodes = useMemo(() => {
+    const result = {};
+    STARTING_TRIGGER_TYPES.forEach(type => {
+      result[type] = findStartingTriggers(nodes, edges, type);
+    });
+    return result;
   }, [nodes, edges]);
 
   const hasButtonTriggers = startingButtonTriggers.length > 0;
   const hasAutoTriggers = startingAutoTriggers.length > 0;
-  const hasStartingSttNode = startingSttNodes.length > 0;
-  const hasStartingCameraNode = startingCameraNodes.length > 0;
-  const hasStartingFormNode = startingFormNodes.length > 0;
+  const hasStartingSttNode = (startingNodes['stt_trigger'] || []).length > 0;
+  const hasStartingCameraNode = (startingNodes['camera'] || []).length > 0;
 
   const hasOcrNodes = useMemo(() => {
     return nodes.some(n => n.data?.type === 'ocr_node' || n.data?.type === 'signature_stamp_extractor');
@@ -93,7 +89,8 @@ export default function RunPanel({ onClose }) {
     return streamEvents.some(e => ['node_start', 'token', 'user_message'].includes(e.type));
   }, [streamEvents]);
 
-  const hideInput = !isChatStarted && (hasButtonTriggers || hasAutoTriggers || hasOcrNodes || hasStartingSttNode || hasStartingCameraNode || hasStartingFormNode);
+  const hasAnyStartingNode = STARTING_TRIGGER_TYPES.some(t => (startingNodes[t] || []).length > 0);
+  const hideInput = !isChatStarted && (hasButtonTriggers || hasAutoTriggers || hasOcrNodes || hasAnyStartingNode);
 
   const hasBlackboardTool = useMemo(() => {
     return nodes.some(n => {
@@ -1248,10 +1245,10 @@ export default function RunPanel({ onClose }) {
               {canRun && !running && !isChatStarted && hasStartingSttNode && !pausedInfo.isPaused && (
                 <div style={{ width: '100%' }}>
                   <SpeechRecorder
-                    autoStart={startingSttNodes[0]?.data?.auto_start === true}
-                    autoStop={startingSttNodes[0]?.data?.auto_stop !== false}
-                    silenceDelay={startingSttNodes[0]?.data?.silence_delay ?? 1500}
-                    lang={startingSttNodes[0]?.data?.stt_lang || 'en-US'}
+                    autoStart={startingNodes['stt_trigger']?.[0]?.data?.auto_start === true}
+                    autoStop={startingNodes['stt_trigger']?.[0]?.data?.auto_stop !== false}
+                    silenceDelay={startingNodes['stt_trigger']?.[0]?.data?.silence_delay ?? 1500}
+                    lang={startingNodes['stt_trigger']?.[0]?.data?.stt_lang || 'en-US'}
                     onTranscript={(text) => onSend(text)}
                     isAudioPlaying={audioPlaying}
                   />
@@ -1317,10 +1314,10 @@ export default function RunPanel({ onClose }) {
               {/* Ongoing STT chat: keep showing mic recorder instead of text box */}
               {!hideInput && hasStartingSttNode && !running && !pausedInfo.isPaused && (
                 <SpeechRecorder
-                  autoStart={startingSttNodes[0]?.data?.auto_start === true}
-                  autoStop={startingSttNodes[0]?.data?.auto_stop !== false}
-                  silenceDelay={startingSttNodes[0]?.data?.silence_delay ?? 1500}
-                  lang={startingSttNodes[0]?.data?.stt_lang || 'en-US'}
+                  autoStart={startingNodes['stt_trigger']?.[0]?.data?.auto_start === true}
+                  autoStop={startingNodes['stt_trigger']?.[0]?.data?.auto_stop !== false}
+                  silenceDelay={startingNodes['stt_trigger']?.[0]?.data?.silence_delay ?? 1500}
+                  lang={startingNodes['stt_trigger']?.[0]?.data?.stt_lang || 'en-US'}
                   onTranscript={(text) => onSend(text)}
                   isAudioPlaying={audioPlaying}
                 />

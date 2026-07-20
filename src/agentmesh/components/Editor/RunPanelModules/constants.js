@@ -1,3 +1,5 @@
+import { PAUSE_NODE_TYPES } from './pauseRegistry';
+
 export const THEME_BG = '#FFFFFF';
 export const THEME_GRAY = '#F9FAFB';
 export const THEME_BORDER = 'rgba(0, 0, 0, 0.08)';
@@ -109,15 +111,13 @@ export const findProfileReportHtml = (ctx) => {
 };
 
 /**
- * PAUSE_UI registry — add new pause-time node types here without touching RunPanel logic.
+ * PAUSE_UI derived from pauseRegistry — single source of truth.
  * hidesInput: true  → hides the normal bottom input bar entirely
  * showsHitl:  false → skips the standard HITL approve/rework/reject controls
  */
-export const PAUSE_UI = {
-  form_node:   { hidesInput: true,  showsHitl: false },
-  stt_trigger: { hidesInput: true,  showsHitl: false },
-  camera:      { hidesInput: true,  showsHitl: false },
-  ocr_node:    { hidesInput: true,  showsHitl: false },
-  followup_form:   { hidesInput: true,  showsHitl: false },
-  followup_selection: { hidesInput: false, showsHitl: false },
-};
+export const PAUSE_UI = Object.fromEntries(
+  Object.entries(PAUSE_NODE_TYPES).map(([type, cfg]) => [
+    type,
+    { hidesInput: cfg.hidesInput, showsHitl: cfg.showsHitl }
+  ])
+);

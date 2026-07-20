@@ -11,6 +11,7 @@ import { listTools, fixGrammar } from "../../api/agentmesh";
 import SkillGallery from "./SkillGallery";
 import { NODE_TYPES } from "./NodePalette";
 import SaveTemplateModal from "./SaveTemplateModal";
+import { AUTO_INJECT_TYPES } from "./RunPanelModules/pauseRegistry";
 
 import {
   FiTrash2,
@@ -735,7 +736,7 @@ export default function PropertiesPanel() {
           const canHaveHitl =
             data?.type &&
             !["start", "end", "chat_model", "memory", "cardboard", "group"].includes(data.type) &&
-            !["form_node", "camera", "stt_trigger"].includes(data.type);
+            !AUTO_INJECT_TYPES.includes(data.type);
           const NODES_WITH_INTERNAL_ADVANCED = [
             "llm_agent",
             "deep_agent",

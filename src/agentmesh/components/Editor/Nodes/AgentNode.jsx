@@ -1,6 +1,7 @@
 import React, { memo, useState } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { useUIStore, useWorkflowStore } from '../../../store';
+import { AUTO_INJECT_TYPES } from '../../RunPanelModules/pauseRegistry';
 import {
   FiPlay, FiSquare, FiCpu, FiBox, FiGitMerge,
   FiTarget, FiShare2, FiBookOpen, FiLink, FiZap,
@@ -538,18 +539,18 @@ function AgentNode({ id, data, selected }) {
       )}
 
       {/* 3. HITL Interrupts */}
-      {(data.interrupt_before || ["form_node", "camera", "stt_trigger"].includes(actualType)) && (
+      {(data.interrupt_before || AUTO_INJECT_TYPES.includes(actualType)) && (
         <div style={{
           position: 'absolute', top: -12, left: -12, width: 24, height: 24, borderRadius: 8,
           background: 'var(--theme-primary)', border: '2px solid white',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)', zIndex: 150,
           animation: 'pulse 2s infinite'
-        }} title={["form_node", "camera", "stt_trigger"].includes(actualType) ? "Pauses for user input (auto)" : "Interrupt BEFORE execution (HITL)"}>
+        }} title={AUTO_INJECT_TYPES.includes(actualType) ? "Pauses for user input (auto)" : "Interrupt BEFORE execution (HITL)"}>
           <FiUser size={12} color="#FFFFFF" />
         </div>
       )}
-      {data.interrupt_after && !["form_node", "camera", "stt_trigger"].includes(actualType) && (
+      {data.interrupt_after && !AUTO_INJECT_TYPES.includes(actualType) && (
         <div style={{
           position: 'absolute', top: -12, right: -12, width: 24, height: 24, borderRadius: 8,
           background: 'var(--theme-primary)', border: '2px solid white',
