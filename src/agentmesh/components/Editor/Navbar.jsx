@@ -2,7 +2,7 @@ import React from 'react';
 import toast from 'react-hot-toast';
 import { useWorkflowStore, useUIStore, useRunStore } from '../../store';
 import { compileWorkflow, saveWorkflow, listWorkflowCategories, deleteWorkflow, explainWorkflow, getWorkflow, cloneWorkflow, fixGrammar, publishWorkflow, getMarketplaceUsecase } from '../../api/agentmesh';
-import { FiUpload, FiDownload, FiPlus, FiX, FiCheck, FiAlertTriangle, FiCopy, FiChevronDown, FiChevronUp, FiBookOpen, FiZap, FiLoader, FiTrash2, FiInfo, FiMaximize2, FiMinimize2, FiShare2, FiSave, FiCode, FiDatabase, FiSend, FiRotateCcw, FiCpu } from 'react-icons/fi';
+import { FiUpload, FiDownload, FiPlus, FiX, FiCheck, FiAlertTriangle, FiCopy, FiChevronDown, FiChevronUp, FiBookOpen, FiZap, FiLoader, FiTrash2, FiInfo, FiMaximize2, FiMinimize2, FiShare2, FiSave, FiCode, FiDatabase, FiSend, FiRotateCcw, FiCpu, FiCompass } from 'react-icons/fi';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { AiMagicIcon } from '@hugeicons/core-free-icons';
 import { formatMessage } from '../Common/messageFormatting';
@@ -11,6 +11,7 @@ import SaveWorkflowTemplateModal from './SaveWorkflowTemplateModal';
 import { copyToClipboard } from '../../utils/copyToClipboard';
 import ArchitectBot from './ArchitectBot';
 import ShortcutKeysCanvasModal from './shortcutKeysCanvasModal';
+import GuidedTour from './GuidedTour';
 
 function TooltipWrapper({ text, children }) {
   const [visible, setVisible] = React.useState(false);
@@ -66,7 +67,7 @@ export default function Navbar() {
     nodes, edges, listSearch, setListSearch, createdAt, updatedAt
   } = useWorkflowStore();
   const {
-    activePage,
+    activePage, setActivePage,
     managementSearch, setManagementSearch,
     managementWfFilter, setManagementWfFilter,
     triggerRefresh,
@@ -99,6 +100,7 @@ export default function Navbar() {
   const ioDropdownRef = React.useRef(null);
   const ioTriggerRef = React.useRef(null);
   const [showApiConsole, setShowApiConsole] = React.useState(false);
+  const [showTour, setShowTour] = React.useState(false);
 
   const [showPublishModal, setShowPublishModal] = React.useState(false);
   const [showSaveTemplateModal, setShowSaveTemplateModal] = React.useState(false);
@@ -485,6 +487,7 @@ export default function Navbar() {
                   if (next) setActiveSettingsTab('general');
                   return next;
                 })}
+                data-tour="navbar-meta-btn"
                 style={{
                   display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: 0, margin: 0,
                   fontSize: 14, fontWeight: 500, color: 'var(--text-primary)',
@@ -536,6 +539,7 @@ export default function Navbar() {
                   useUIStore.getState().setSelectedNode(null);
                   useUIStore.getState().setSelectedEdge(null);
                 }}
+                data-tour="navbar-new-btn"
                 style={{ padding: '7px 14px', background: 'white', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 7, transition: 'background 0.15s' }}
                 onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
                 onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
@@ -546,6 +550,7 @@ export default function Navbar() {
               {/* Notes */}
               <button
                 onClick={toggleNotes}
+                data-tour="navbar-notes-btn"
                 title="Workflow Notes"
                 style={{
                   padding: '7px 14px', border: '1px solid var(--border)', borderRadius: 8,
@@ -565,6 +570,7 @@ export default function Navbar() {
               {/* Architect */}
               <button
                 onClick={() => setShowArchitect(prev => !prev)}
+                data-tour="navbar-architect-btn"
                 title="Workflow Architect Explainer"
                 style={{
                   padding: '7px 14px', border: '1px solid var(--border)', borderRadius: 8,
@@ -584,6 +590,7 @@ export default function Navbar() {
                 <button
                   ref={ioTriggerRef}
                   onClick={() => setIoDropdownOpen(v => !v)}
+                  data-tour="canvas-actions-btn"
                   style={{
                     padding: '7px 14px',
                     background: 'white',
@@ -672,6 +679,9 @@ export default function Navbar() {
                     >
                       <FiDownload size={14} /> Export JSON
                     </button>
+
+                    <hr style={{ margin: '4px 8px', border: 'none', borderTop: '1px solid var(--border)' }} />
+
                     <button
                       onClick={() => {
                         if (hasNodes) {
@@ -753,6 +763,9 @@ export default function Navbar() {
                     >
                       <FiShare2 size={14} /> Publish Usecase
                     </button>
+
+                    <hr style={{ margin: '4px 8px', border: 'none', borderTop: '1px solid var(--border)' }} />
+
                     <button
                       onClick={() => {
                         setShowShortcutsModal(true);
@@ -777,6 +790,20 @@ export default function Navbar() {
                     >
                       <FiCpu size={14} /> Shortcut Keys
                     </button>
+
+                    <button
+                      onClick={() => { setShowTour(true); setIoDropdownOpen(false); }}
+                      style={{
+                        padding: '8px 12px', background: 'none', border: 'none',
+                        textAlign: 'left', cursor: 'pointer', fontSize: 13,
+                        color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8,
+                        transition: 'background 0.15s', width: '100%'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                    >
+                      <FiCompass size={14} /> Guide
+                    </button>
                   </div>
                 )}
               </div>
@@ -784,6 +811,7 @@ export default function Navbar() {
               {/* Compile */}
               <button
                 onClick={handleCompile}
+                data-tour="canvas-compile-btn"
                 disabled={compiling || saving || !hasNodes}
                 style={{
                   padding: '7px 20px',
@@ -1746,6 +1774,7 @@ export default function Navbar() {
         </div>
       )}
       <ShortcutKeysCanvasModal isOpen={showShortcutsModal} onClose={() => setShowShortcutsModal(false)} />
+      <GuidedTour isOpen={showTour} onClose={() => setShowTour(false)} />
     </>
   );
 }
