@@ -1332,6 +1332,7 @@ export const useUIStore = create((set) => ({
   rightPanel: 'properties', // properties | palette
   sidebarCollapsed: false,
   showNotes: false,
+  showFlowchart: false,
   showNotifications: false,
   showVariableExplorer: false,
   setShowVariableExplorer: (v) => set({ showVariableExplorer: v }),
@@ -1384,6 +1385,7 @@ export const useUIStore = create((set) => ({
   setSelectedEdge: (id) => set({ selectedEdgeId: id, selectedNodeId: null, panelOpen: !!id, rightPanel: 'properties' }),
   togglePanel: () => set((s) => ({ panelOpen: !s.panelOpen })),
   toggleNotes: () => set((s) => ({ showNotes: !s.showNotes })),
+  toggleFlowchart: (val) => set((s) => ({ showFlowchart: typeof val === 'boolean' ? val : !s.showFlowchart })),
   setShowNotifications: (v) => set({ showNotifications: v }),
   setUnreadCount: (v) => set((s) => ({ unreadCount: typeof v === 'function' ? v(s.unreadCount) : v })),
   openPalette: () => set({ panelOpen: true, rightPanel: 'palette', selectedNodeId: null, selectedEdgeId: null }),

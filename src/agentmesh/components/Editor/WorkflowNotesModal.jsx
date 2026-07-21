@@ -382,51 +382,225 @@ export default function WorkflowNotesModal() {
   };
 
   return (
-    <div className="notes-overlay" onClick={toggleNotes}>
-      <div className="notes-modal" onClick={(e) => e.stopPropagation()}>
-        {/* Sidebar */}
-        <div className="notes-sidebar">
-          {/* Header */}
-          <div className="sidebar-header">
-            <div className="sidebar-title-container">
-              <FiBookOpen className="sidebar-logo" size={20} />
-              <h2 className="sidebar-title">Notes</h2>
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 99999,
+        background: "rgba(15, 23, 42, 0.75)",
+        backdropFilter: "blur(6px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+      }}
+      onClick={toggleNotes}
+    >
+      <div
+        className="notes-modal-wrapper"
+        style={{
+          width: "96vw",
+          maxWidth: 1280,
+          height: "90vh",
+          background: "var(--bg-canvas, #F8FAFC)",
+          borderRadius: 16,
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.35)",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          fontFamily: "Inter, system-ui, -apple-system, sans-serif",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* ── Top Header Bar (Matching Flowchart Studio Header) ────────────────── */}
+        <div
+          style={{
+            height: 56,
+            background: "var(--bg-panel, #FFFFFF)",
+            borderBottom: "1px solid var(--border, #E2E8F0)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "0 18px",
+            userSelect: "none",
+          }}
+        >
+          {/* Left Title & Workflow Pill Tag */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <FiBookOpen size={18} style={{ color: "var(--theme-primary, #2563EB)" }} />
+              <span style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary, #0F172A)" }}>
+                Workflow Notes
+              </span>
             </div>
-            <button
-              className="add-note-btn icon-only"
-              onClick={handleCreate}
-              title="Create Note"
+            <span
+              style={{
+                fontSize: 11,
+                background: "var(--theme-primary-glow, #EFF6FF)",
+                color: "var(--theme-primary, #2563EB)",
+                padding: "2px 10px",
+                borderRadius: 12,
+                fontWeight: 600,
+                border: "1px solid rgba(37, 99, 235, 0.15)",
+              }}
             >
-              <FiPlus size={18} />
-            </button>
+              {workflowName || "Untitled Workflow"}
+            </span>
+
+            {notes.length > 0 && (
+              <span
+                style={{
+                  fontSize: 11,
+                  background: "#F1F5F9",
+                  color: "#475569",
+                  padding: "2px 8px",
+                  borderRadius: 12,
+                  fontWeight: 600,
+                }}
+              >
+                {notes.length} {notes.length === 1 ? "Note" : "Notes"}
+              </span>
+            )}
           </div>
 
-          {/* Search, Filter & Sort */}
-          <div className="sidebar-filters">
-            <div className="search-wrapper">
-              <FiSearch className="search-icon" size={14} />
-              <input
-                placeholder="Search notes..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="search-input"
-              />
-              {search && (
-                <FiX
-                  className="clear-search"
-                  size={12}
-                  onClick={() => setSearch("")}
-                />
-              )}
-            </div>
+          {/* Right Action & Close Controls */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              onClick={handleCreate}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 14px",
+                borderRadius: 8,
+                background: "var(--theme-primary, #2563EB)",
+                color: "#FFFFFF",
+                border: "none",
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: "pointer",
+                boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+                transition: "all 0.15s ease",
+              }}
+            >
+              <FiPlus size={16} />
+              <span>New Note</span>
+            </button>
 
-            <div className="filter-sort-row">
-              <div className="filter-select-wrapper">
-                <FiFilter size={12} className="select-icon" />
+            <div style={{ width: 1, height: 20, background: "var(--border, #E2E8F0)", margin: "0 4px" }} />
+
+            <button
+              onClick={toggleNotes}
+              title="Close Notes"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                border: "none",
+                background: "transparent",
+                color: "#64748B",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#FEE2E2";
+                e.currentTarget.style.color = "#EF4444";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = "#64748B";
+              }}
+            >
+              <FiX size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* ── Main Modal Content Grid (Sidebar + Editor Panel) ────────────────── */}
+        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+          {/* Sidebar Panel */}
+          <div
+            style={{
+              width: 320,
+              background: "var(--bg-panel, #FFFFFF)",
+              borderRight: "1px solid var(--border, #E2E8F0)",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            {/* Search & Filters Header */}
+            <div
+              style={{
+                padding: 14,
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+                borderBottom: "1px solid var(--border, #E2E8F0)",
+                background: "#F8FAFC",
+              }}
+            >
+              <div className="search-wrapper" style={{ position: "relative" }}>
+                <FiSearch
+                  size={14}
+                  style={{
+                    position: "absolute",
+                    left: 12,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "#94A3B8",
+                  }}
+                />
+                <input
+                  placeholder="Search notes..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "8px 30px 8px 34px",
+                    borderRadius: 8,
+                    border: "1px solid #CBD5E1",
+                    background: "#FFFFFF",
+                    fontSize: 12,
+                    color: "#0F172A",
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
+                {search && (
+                  <FiX
+                    size={12}
+                    style={{
+                      position: "absolute",
+                      right: 10,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "#94A3B8",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => setSearch("")}
+                  />
+                )}
+              </div>
+
+              <div style={{ display: "flex", gap: 8 }}>
                 <select
                   value={filterCategory}
                   onChange={(e) => setFilterCategory(e.target.value)}
-                  className="sidebar-select"
+                  style={{
+                    flex: 1,
+                    padding: "6px 8px",
+                    borderRadius: 6,
+                    border: "1px solid #CBD5E1",
+                    background: "#FFFFFF",
+                    color: "#334155",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    outline: "none",
+                    cursor: "pointer",
+                  }}
                 >
                   <option value="All">All Categories</option>
                   {NOTE_CATEGORIES.map((c) => (
@@ -435,558 +609,385 @@ export default function WorkflowNotesModal() {
                     </option>
                   ))}
                 </select>
-              </div>
 
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="sidebar-select sort-select"
-              >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="alphabetical">A-Z Title</option>
-              </select>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  style={{
+                    width: 110,
+                    padding: "6px 8px",
+                    borderRadius: 6,
+                    border: "1px solid #CBD5E1",
+                    background: "#FFFFFF",
+                    color: "#334155",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    outline: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="alphabetical">A-Z Title</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Note Cards List */}
+            <div className="notes-list custom-scrollbar" style={{ flex: 1, overflowY: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+              {renderNotesList()}
             </div>
           </div>
 
-          {/* Notes list */}
-          <div className="notes-list custom-scrollbar">{renderNotesList()}</div>
-        </div>
-
-        {/* Main Editor Area */}
-        <div className="notes-editor-container">
-          {/* Main Toolbar */}
-          <div className="editor-toolbar">
-            <div className="toolbar-left">
-              {selectedNote && (
-                <div className="formatting-group">
-                  <button
-                    className="toolbar-btn"
-                    onClick={() => exec("bold")}
-                    title="Bold"
-                  >
-                    <FiBold size={14} />
-                  </button>
-                  <button
-                    className="toolbar-btn"
-                    onClick={() => exec("italic")}
-                    title="Italic"
-                  >
-                    <FiItalic size={14} />
-                  </button>
-                  <button
-                    className="toolbar-btn"
-                    onClick={() => exec("underline")}
-                    title="Underline"
-                  >
-                    <FiUnderline size={14} />
-                  </button>
-                  <div className="toolbar-divider" />
-                  <button
-                    className="toolbar-btn"
-                    onClick={() => exec("formatBlock", "<h1>")}
-                    title="Heading 1"
-                  >
-                    H1
-                  </button>
-                  <button
-                    className="toolbar-btn"
-                    onClick={() => exec("formatBlock", "<h2>")}
-                    title="Heading 2"
-                  >
-                    H2
-                  </button>
-                  <button
-                    className="toolbar-btn"
-                    onClick={() => exec("formatBlock", "<blockquote>")}
-                    title="Blockquote"
-                    style={{ fontFamily: "Georgia, serif", fontWeight: "bold" }}
-                  >
-                    “
-                  </button>
-                  <div className="toolbar-divider" />
-                  <button
-                    className="toolbar-btn"
-                    onClick={() => exec("insertUnorderedList")}
-                    title="Bullet List"
-                  >
-                    <FiList size={14} />
-                  </button>
-                  <button
-                    className="toolbar-btn"
-                    onClick={() => exec("justifyLeft")}
-                    title="Align Left"
-                  >
-                    <FiAlignLeft size={14} />
-                  </button>
-                  <button
-                    className="toolbar-btn"
-                    onClick={() => exec("justifyCenter")}
-                    title="Align Center"
-                  >
-                    <FiAlignCenter size={14} />
-                  </button>
-                  <button
-                    className="toolbar-btn"
-                    onClick={() => exec("justifyRight")}
-                    title="Align Right"
-                  >
-                    <FiAlignRight size={14} />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="toolbar-right">
-              {selectedNote && (
-                <>
-                  <div className="sync-status">
-                    {saveStatus === "saving" && (
-                      <span className="status-saving">
-                        <FiLoader className="spin" size={12} /> Syncing...
-                      </span>
-                    )}
-                    {saveStatus === "saved" && (
-                      <span className="status-saved">
-                        <FiCheck size={12} /> Autosaved
-                      </span>
-                    )}
-                    {saveStatus === "typing" && (
-                      <span className="status-typing">Typing...</span>
-                    )}
-                  </div>
-
-                  <select
-                    value={selectedNote.category}
-                    onChange={(e) => {
-                      setSelectedNote((prev) => ({
-                        ...prev,
-                        category: e.target.value,
-                      }));
-                      saveNote(
-                        selectedNote.id,
-                        editorRef.current.innerHTML,
-                        e.target.value,
-                      );
+          {/* Main Workspace Editor */}
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              background: "var(--bg-canvas, #F8FAFC)",
+            }}
+          >
+            {/* Editor Top Control Bar */}
+            <div
+              style={{
+                height: 48,
+                background: "var(--bg-panel, #FFFFFF)",
+                borderBottom: "1px solid var(--border, #E2E8F0)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "0 18px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                {selectedNote && (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 2,
+                      background: "#F1F5F9",
+                      padding: 3,
+                      borderRadius: 8,
+                      border: "1px solid #E2E8F0",
                     }}
-                    className="category-selector-dropdown"
                   >
-                    {NOTE_CATEGORIES.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-
-                  <button
-                    className="action-btn wizard-btn"
-                    onClick={handleFixGrammar}
-                    disabled={isGrammarFixing}
-                    title="Fix grammar with Wizard AI"
-                  >
-                    {isGrammarFixing ? (
-                      <FiLoader className="spin" size={13} />
-                    ) : (
-                      <FiZap size={13} />
-                    )}
-                    <span>Wizard</span>
-                  </button>
-
-                  <div className="toolbar-divider" />
-
-                  <button
-                    className="toolbar-btn action"
-                    onClick={handleCopy}
-                    title={copied ? "Copied!" : "Copy plaintext"}
-                  >
-                    {copied ? (
-                      <FiCheck size={14} style={{ color: "#34d399" }} />
-                    ) : (
-                      <FiCopy size={14} />
-                    )}
-                  </button>
-
-                  <button
-                    className="toolbar-btn action"
-                    onClick={handleDownload}
-                    title="Download note as text"
-                  >
-                    <FiDownload size={14} />
-                  </button>
-
-                  <button
-                    className="toolbar-btn action delete-btn"
-                    onClick={handleDelete}
-                    title="Delete note permanently"
-                  >
-                    <FiTrash2 size={14} />
-                  </button>
-                </>
-              )}
-              <div className="toolbar-divider" />
-              <button
-                className="toolbar-btn close-modal-btn"
-                onClick={toggleNotes}
-                title="Close Notes"
-              >
-                <FiX size={18} />
-              </button>
-            </div>
-          </div>
-
-          {/* Main Editing Canvas */}
-          {selectedNote ? (
-            <div className="editor-body custom-scrollbar">
-              <div className="editor-meta-bar">
-                <div className="meta-item">
-                  <FiTerminal size={12} />
-                  <span>
-                    Workflow Context: <strong>{workflowName}</strong>
-                  </span>
-                </div>
-                <div className="meta-item">
-                  <FiInfo size={12} />
-                  <span>
-                    Created:{" "}
-                    {new Date(selectedNote.created_at).toLocaleString()}
-                  </span>
-                </div>
+                    <button className="toolbar-btn" onClick={() => exec("bold")} title="Bold">
+                      <FiBold size={13} />
+                    </button>
+                    <button className="toolbar-btn" onClick={() => exec("italic")} title="Italic">
+                      <FiItalic size={13} />
+                    </button>
+                    <button className="toolbar-btn" onClick={() => exec("underline")} title="Underline">
+                      <FiUnderline size={13} />
+                    </button>
+                    <div style={{ width: 1, height: 14, background: "#CBD5E1", margin: "0 2px" }} />
+                    <button className="toolbar-btn" onClick={() => exec("formatBlock", "<h1>")} title="Heading 1" style={{ fontWeight: 700, fontSize: 11 }}>
+                      H1
+                    </button>
+                    <button className="toolbar-btn" onClick={() => exec("formatBlock", "<h2>")} title="Heading 2" style={{ fontWeight: 700, fontSize: 11 }}>
+                      H2
+                    </button>
+                    <button className="toolbar-btn" onClick={() => exec("formatBlock", "<blockquote>")} title="Blockquote" style={{ fontFamily: "Georgia, serif", fontWeight: 700 }}>
+                      “
+                    </button>
+                    <div style={{ width: 1, height: 14, background: "#CBD5E1", margin: "0 2px" }} />
+                    <button className="toolbar-btn" onClick={() => exec("insertUnorderedList")} title="Bullet List">
+                      <FiList size={13} />
+                    </button>
+                    <button className="toolbar-btn" onClick={() => exec("justifyLeft")} title="Align Left">
+                      <FiAlignLeft size={13} />
+                    </button>
+                    <button className="toolbar-btn" onClick={() => exec("justifyCenter")} title="Align Center">
+                      <FiAlignCenter size={13} />
+                    </button>
+                    <button className="toolbar-btn" onClick={() => exec("justifyRight")} title="Align Right">
+                      <FiAlignRight size={13} />
+                    </button>
+                  </div>
+                )}
               </div>
 
-              <div
-                key={selectedNote.id}
-                ref={(el) => {
-                  if (el) {
-                    if (el.innerHTML === "" && selectedNote.content) {
-                      el.innerHTML = selectedNote.content;
-                    }
-                    editorRef.current = el;
-                  }
-                }}
-                contentEditable
-                suppressContentEditableWarning
-                onInput={onInput}
-                className="editor-canvas"
-                placeholder="Start writing your thoughts..."
-              />
-            </div>
-          ) : (
-            <div className="editor-empty-state">
-              <FiDatabase size={48} className="empty-icon" />
-              <h3>No Note Selected</h3>
-              <p>
-                Select an existing note from the ledger or create a new one to
-                begin writing.
-              </p>
-              <button className="add-note-btn centered" onClick={handleCreate}>
-                <FiPlus size={16} />
-                <span>Create a Note</span>
-              </button>
-            </div>
-          )}
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                {selectedNote && (
+                  <>
+                    <div className="sync-status" style={{ fontSize: 11, fontWeight: 600 }}>
+                      {saveStatus === "saving" && (
+                        <span style={{ color: "#2563EB", display: "flex", alignItems: "center", gap: 4 }}>
+                          <FiLoader className="spin" size={12} /> Syncing...
+                        </span>
+                      )}
+                      {saveStatus === "saved" && (
+                        <span style={{ color: "#10B981", display: "flex", alignItems: "center", gap: 4 }}>
+                          <FiCheck size={12} /> Saved
+                        </span>
+                      )}
+                      {saveStatus === "typing" && <span style={{ color: "#94A3B8" }}>Typing...</span>}
+                    </div>
 
-          {/* Bottom Stats Footer */}
-          {selectedNote && (
-            <div className="editor-footer">
-              <div className="stat-pill">{stats.words} words</div>
-              <div className="stat-pill">{stats.chars} characters</div>
-              <div className="stat-pill">{stats.readTime} min read</div>
+                    <select
+                      value={selectedNote.category}
+                      onChange={(e) => {
+                        setSelectedNote((prev) => ({ ...prev, category: e.target.value }));
+                        saveNote(selectedNote.id, editorRef.current.innerHTML, e.target.value);
+                      }}
+                      style={{
+                        background: "#F8FAFC",
+                        border: "1px solid #CBD5E1",
+                        color: "#0F172A",
+                        padding: "4px 10px",
+                        borderRadius: 6,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        outline: "none",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {NOTE_CATEGORIES.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+
+                    <button
+                      onClick={handleFixGrammar}
+                      disabled={isGrammarFixing}
+                      title="Enhance & Fix Grammar with AI"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "5px 12px",
+                        borderRadius: 6,
+                        background: "linear-gradient(135deg, #2563EB, #7C3AED)",
+                        color: "#FFFFFF",
+                        border: "none",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: isGrammarFixing ? "not-allowed" : "pointer",
+                        opacity: isGrammarFixing ? 0.7 : 1,
+                      }}
+                    >
+                      {isGrammarFixing ? <FiLoader className="spin" size={12} /> : <FiZap size={12} />}
+                      <span>Wizard AI</span>
+                    </button>
+
+                    <div style={{ width: 1, height: 16, background: "#E2E8F0" }} />
+
+                    <button className="icon-action-btn" onClick={handleCopy} title={copied ? "Copied!" : "Copy plaintext"}>
+                      {copied ? <FiCheck size={14} style={{ color: "#10B981" }} /> : <FiCopy size={14} />}
+                    </button>
+
+                    <button className="icon-action-btn" onClick={handleDownload} title="Download note as text">
+                      <FiDownload size={14} />
+                    </button>
+
+                    <button className="icon-action-btn delete-btn" onClick={handleDelete} title="Delete note">
+                      <FiTrash2 size={14} />
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-          )}
+
+            {/* Document Canvas Body */}
+            {selectedNote ? (
+              <div className="editor-body custom-scrollbar" style={{ flex: 1, overflowY: "auto", padding: "28px 40px", display: "flex", flexDirection: "column", gap: 16 }}>
+                <div style={{ display: "flex", gap: 16, fontSize: 11, color: "#64748B", background: "#FFFFFF", padding: "8px 14px", borderRadius: 8, border: "1px solid #E2E8F0", alignSelf: "flex-start" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <FiTerminal size={12} style={{ color: "#2563EB" }} />
+                    <span>
+                      Context: <strong>{workflowName}</strong>
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <FiInfo size={12} />
+                    <span>Created: {new Date(selectedNote.created_at).toLocaleString()}</span>
+                  </div>
+                </div>
+
+                <div
+                  key={selectedNote.id}
+                  ref={(el) => {
+                    if (el) {
+                      if (el.innerHTML === "" && selectedNote.content) {
+                        el.innerHTML = selectedNote.content;
+                      }
+                      editorRef.current = el;
+                    }
+                  }}
+                  contentEditable
+                  suppressContentEditableWarning
+                  onInput={onInput}
+                  className="editor-canvas"
+                  placeholder="Start typing your workflow note here..."
+                  style={{
+                    flex: 1,
+                    minHeight: 320,
+                    fontSize: 14,
+                    lineHeight: 1.7,
+                    color: "#0F172A",
+                    outline: "none",
+                    whiteSpace: "pre-wrap",
+                    background: "#FFFFFF",
+                    padding: 24,
+                    borderRadius: 12,
+                    border: "1px solid #E2E8F0",
+                    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.02)",
+                  }}
+                />
+              </div>
+            ) : (
+              <div
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: 40,
+                  color: "#64748B",
+                  textAlign: "center",
+                }}
+              >
+                <div
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: "50%",
+                    background: "#EFF6FF",
+                    color: "#2563EB",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 16,
+                  }}
+                >
+                  <FiBookOpen size={28} />
+                </div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: "#0F172A", margin: "0 0 6px" }}>No Note Selected</h3>
+                <p style={{ fontSize: 13, color: "#64748B", maxWidth: 320, margin: "0 0 18px", lineHeight: 1.5 }}>
+                  Select a note from the sidebar or create a new note to start documenting your workflow architecture.
+                </p>
+                <button
+                  onClick={handleCreate}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "8px 16px",
+                    borderRadius: 8,
+                    background: "var(--theme-primary, #2563EB)",
+                    color: "#FFFFFF",
+                    border: "none",
+                    fontWeight: 600,
+                    fontSize: 13,
+                    cursor: "pointer",
+                  }}
+                >
+                  <FiPlus size={16} />
+                  <span>Create First Note</span>
+                </button>
+              </div>
+            )}
+
+            {/* Bottom Word Count / Stat Footer */}
+            {selectedNote && (
+              <div
+                style={{
+                  height: 32,
+                  padding: "0 18px",
+                  borderTop: "1px solid var(--border, #E2E8F0)",
+                  background: "var(--bg-panel, #FFFFFF)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 16,
+                }}
+              >
+                <span style={{ fontSize: 11, color: "#64748B", fontWeight: 500 }}>{stats.words} words</span>
+                <span style={{ fontSize: 11, color: "#64748B", fontWeight: 500 }}>{stats.chars} characters</span>
+                <span style={{ fontSize: 11, color: "#64748B", fontWeight: 500 }}>{stats.readTime} min read</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       <style>{`
-        /* Scoped styles adapting to AgentMesh theme color variables */
-        .notes-overlay {
-          position: fixed; 
-          inset: 0; 
-          z-index: 10000;
-          display: flex; 
-          align-items: center; 
-          justify-content: center;
-          background: rgba(15, 23, 42, 0.45); 
-          backdrop-filter: blur(10px);
-          animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .notes-modal {
-          width: 90%; 
-          maxWidth: 1200px; 
-          height: 85vh;
-          background: var(--bg-secondary); 
-          border-radius: 24px; 
-          display: flex; 
-          overflow: hidden;
-          box-shadow: var(--shadow-lg);
-          border: 1px solid var(--border);
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-          color: var(--text-primary);
-        }
-
-        /* Sidebar Styling */
-        .notes-sidebar {
-          width: 340px; 
-          background: var(--bg-primary); 
-          border-right: 1px solid var(--border);
-          display: flex; 
-          flex-direction: column;
-        }
-
-        .sidebar-header {
-          padding: 24px 20px 16px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-        }
-
-        .sidebar-title-container {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .sidebar-logo {
-          color: var(--theme-primary);
-        }
-
-        .sidebar-title {
-          font-size: 16px;
-          font-weight: 700;
-          color: var(--text-primary);
-          margin: 0;
-        }
-
-        .add-note-btn {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          border: none;
-          background: var(--accent-btn);
-          color: var(--accent-btn-text);
-          padding: 8px 12px;
-          border-radius: 8px;
-          cursor: pointer;
-          font-weight: 600;
-          font-size: 13px;
-          transition: all 0.2s ease;
-        }
-
-        .add-note-btn.icon-only {
-          width: 32px;
-          height: 32px;
-          padding: 0;
-          border-radius: 50%;
-          justify-content: center;
-        }
-
-        .add-note-btn:hover {
-          opacity: 0.9;
-          transform: translateY(-1px);
-        }
-
-        .add-note-btn.centered {
-          margin-top: 16px;
-        }
-
-        .sidebar-filters {
-          padding: 0 20px 16px;
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-          border-bottom: 1px solid var(--border-light);
-        }
-
-        .search-wrapper {
-          position: relative;
-          display: flex;
-          align-items: center;
-        }
-
-        .search-icon {
-          position: absolute;
-          left: 12px;
-          color: var(--text-muted);
-          pointer-events: none;
-        }
-
-        .clear-search {
-          position: absolute;
-          right: 12px;
-          color: var(--text-muted);
-          cursor: pointer;
-        }
-
-        .search-input {
-          width: 100%;
-          padding: 8px 32px 8px 34px;
-          border-radius: 8px;
-          border: 1px solid var(--border);
-          background: var(--bg-canvas);
-          color: var(--text-primary);
-          font-size: 13px;
-          outline: none;
-          transition: border-color 0.2s;
-        }
-
-        .search-input:focus {
-          border-color: var(--theme-primary);
-        }
-
-        .filter-sort-row {
-          display: flex;
-          gap: 8px;
-        }
-
-        .filter-select-wrapper {
-          position: relative;
-          flex: 1;
-          display: flex;
-          align-items: center;
-        }
-
-        .select-icon {
-          position: absolute;
-          left: 8px;
-          color: var(--text-muted);
-          pointer-events: none;
-        }
-
-        .sidebar-select {
-          width: 100%;
-          padding: 6px 8px 6px 26px;
-          border-radius: 6px;
-          border: 1px solid var(--border);
-          background: var(--bg-canvas);
-          color: var(--text-secondary);
-          font-size: 11px;
-          font-weight: 500;
-          outline: none;
-          cursor: pointer;
-        }
-
-        .sidebar-select.sort-select {
-          padding-left: 8px;
-          flex: 0 0 110px;
-        }
-
-        /* Note Items List */
-        .notes-list {
-          flex: 1;
-          overflow-y: auto;
-          padding: 12px;
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-
-        .sidebar-status-msg {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          padding: 40px 20px;
-          color: var(--text-muted);
-          font-size: 13px;
-          flex: 1;
-        }
-
         .note-item {
-          padding: 14px 16px;
-          border-radius: 12px;
+          padding: 12px;
+          border-radius: 10px;
           cursor: pointer;
-          background: transparent;
-          border: 1px solid transparent;
-          transition: all 0.2s ease;
+          background: #FFFFFF;
+          border: 1px solid #E2E8F0;
+          transition: all 0.15s ease;
         }
-
         .note-item:hover {
-          background: var(--bg-hover);
+          border-color: #CBD5E1;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
         }
-
         .note-item.active {
-          background: var(--bg-secondary);
-          border-color: var(--theme-primary);
-          box-shadow: 0 4px 12px var(--theme-primary-glow);
+          background: #EFF6FF;
+          border-color: #3B82F6;
+          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
         }
-
         .note-item-meta {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 6px;
+          margin-bottom: 4px;
         }
-
         .note-item-date {
-          font-size: 11px;
-          color: var(--text-muted);
+          font-size: 10px;
+          color: #94A3B8;
+          font-weight: 500;
         }
-
         .note-item-badge {
           font-size: 10px;
           font-weight: 600;
-          padding: 2px 6px;
+          padding: 1px 6px;
           border-radius: 4px;
-          border: 1px solid transparent;
         }
-
         .note-item-title {
           font-size: 13px;
           font-weight: 700;
-          color: var(--text-primary);
-          margin-bottom: 4px;
+          color: #0F172A;
+          margin-bottom: 2px;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
-
         .note-item-snippet {
           font-size: 11px;
-          color: var(--text-secondary);
+          color: #64748B;
           display: -webkit-box;
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
           overflow: hidden;
           line-height: 1.4;
         }
-
-        /* Editor Area */
-        .notes-editor-container {
-          flex: 1; 
-          display: flex; 
-          flex-direction: column; 
-          background: var(--bg-secondary);
-        }
-
-        .editor-toolbar {
-          padding: 14px 20px;
-          border-bottom: 1px solid var(--border);
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          background: var(--bg-primary);
-        }
-
-        .toolbar-left, .toolbar-right {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-
-        .formatting-group {
-          display: flex;
-          align-items: center;
-          background: var(--bg-canvas);
-          padding: 3px;
-          border-radius: 8px;
-          border: 1px solid var(--border);
-        }
-
         .toolbar-btn {
           border: none;
           background: transparent;
+          width: 26px;
+          height: 26px;
+          border-radius: 4px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #475569;
+          transition: all 0.15s ease;
+        }
+        .toolbar-btn:hover {
+          background: #E2E8F0;
+          color: #0F172A;
+        }
+        .icon-action-btn {
+          border: 1px solid #CBD5E1;
+          background: #FFFFFF;
           width: 28px;
           height: 28px;
           border-radius: 6px;
@@ -994,254 +995,69 @@ export default function WorkflowNotesModal() {
           display: flex;
           align-items: center;
           justify-content: center;
-          color: var(--text-secondary);
-          font-size: 12px;
-          font-weight: 600;
+          color: #64748B;
           transition: all 0.15s ease;
         }
-
-        .toolbar-btn:hover {
-          background: var(--bg-hover);
-          color: var(--text-primary);
+        .icon-action-btn:hover {
+          background: #F1F5F9;
+          color: #0F172A;
         }
-
-        .toolbar-btn.action {
-          color: var(--text-muted);
+        .icon-action-btn.delete-btn:hover {
+          background: #FEE2E2;
+          color: #EF4444;
+          border-color: #FCA5A5;
         }
-
-        .toolbar-btn.action:hover {
-          color: var(--text-primary);
-        }
-
-        .toolbar-btn.action.delete-btn:hover {
-          color: var(--red);
-          background: rgba(239, 68, 68, 0.1);
-        }
-
-        .toolbar-btn.close-modal-btn {
-          width: 32px;
-          height: 32px;
-          color: var(--text-muted);
-        }
-
-        .toolbar-btn.close-modal-btn:hover {
-          background: rgba(239, 68, 68, 0.15);
-          color: var(--red);
-        }
-
-        .toolbar-divider {
-          width: 1px;
-          height: 16px;
-          background: var(--border);
-          margin: 0 4px;
-        }
-
-        .sync-status {
-          font-size: 11px;
-          font-weight: 500;
-          margin-right: 8px;
-        }
-
-        .status-saving {
-          color: var(--theme-primary);
-          display: flex;
-          align-items: center;
-          gap: 4px;
-        }
-
-        .status-saved {
-          color: var(--green);
-          display: flex;
-          align-items: center;
-          gap: 4px;
-        }
-
-        .status-typing {
-          color: var(--text-muted);
-        }
-
-        .category-selector-dropdown {
-          background: var(--bg-canvas);
-          border: 1px solid var(--border);
-          color: var(--text-primary);
-          padding: 6px 12px;
-          border-radius: 8px;
-          font-size: 12px;
-          font-weight: 600;
-          cursor: pointer;
-          outline: none;
-        }
-
-        .action-btn {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          border: none;
-          padding: 6px 12px;
-          border-radius: 8px;
-          font-weight: 600;
-          font-size: 12px;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-
-        .wizard-btn {
-          background: var(--theme-primary-glow);
-          color: var(--theme-primary);
-          border: 1px solid var(--theme-primary);
-        }
-
-        .wizard-btn:hover:not(:disabled) {
-          background: var(--theme-primary);
-          color: var(--theme-primary-text);
-          box-shadow: 0 0 10px var(--theme-primary-glow-heavy);
-        }
-
-        .wizard-btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        /* Editing body */
-        .editor-body {
-          flex: 1;
-          overflow-y: auto;
-          padding: 30px 50px;
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-          background: var(--bg-canvas);
-        }
-
-        .editor-meta-bar {
-          display: flex;
-          gap: 16px;
-          font-size: 11px;
-          color: var(--text-secondary);
-          background: var(--bg-secondary);
-          padding: 8px 14px;
-          border-radius: 8px;
-          border: 1px solid var(--border);
-          align-self: flex-start;
-        }
-
-        .meta-item {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-
-        .editor-canvas {
-          flex: 1;
-          min-height: 300px;
-          font-size: 15px;
-          line-height: 1.7;
-          color: var(--text-primary);
-          outline: none;
-          white-space: pre-wrap;
-        }
-
-        .editor-canvas h1 {
-          font-size: 24px;
-          font-weight: 800;
-          color: var(--text-primary);
-          margin-top: 0;
-          margin-bottom: 12px;
-        }
-
-        .editor-canvas h2 {
-          font-size: 20px;
-          font-weight: 700;
-          color: var(--text-primary);
-          margin-top: 16px;
-          margin-bottom: 8px;
-        }
-
-        .editor-canvas blockquote {
-          border-left: 4px solid var(--theme-primary);
-          background: var(--theme-primary-glow);
-          padding: 10px 16px;
-          margin: 12px 0;
-          border-radius: 0 8px 8px 0;
-          font-style: italic;
-          color: var(--text-secondary);
-        }
-
-        .editor-canvas[placeholder]:empty:before {
-          content: attr(placeholder);
-          color: var(--text-muted);
-          cursor: text;
-        }
-
-        /* Footer styling */
-        .editor-footer {
-          padding: 10px 20px;
-          border-top: 1px solid var(--border);
-          display: flex;
-          gap: 12px;
-          background: var(--bg-primary);
-        }
-
-        .stat-pill {
-          font-size: 11px;
-          color: var(--text-secondary);
-          font-weight: 500;
-        }
-
-        /* Empty state */
-        .editor-empty-state {
-          flex: 1;
+        .sidebar-status-msg {
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          padding: 40px;
-          color: var(--text-muted);
-          text-align: center;
-        }
-
-        .empty-icon {
-          opacity: 0.2;
-          color: var(--theme-primary);
-          margin-bottom: 16px;
-        }
-
-        .editor-empty-state h3 {
-          font-size: 18px;
-          font-weight: 600;
-          color: var(--text-primary);
-          margin: 0 0 8px;
-        }
-
-        .editor-empty-state p {
+          gap: 10px;
+          padding: 40px 20px;
+          color: #94A3B8;
           font-size: 13px;
-          max-width: 300px;
-          margin: 0 0 16px;
-          line-height: 1.5;
         }
-
-        /* Custom Scrollbar */
+        .editor-canvas h1 {
+          font-size: 22px;
+          font-weight: 800;
+          color: #0F172A;
+          margin-top: 0;
+          margin-bottom: 12px;
+        }
+        .editor-canvas h2 {
+          font-size: 18px;
+          font-weight: 700;
+          color: #0F172A;
+          margin-top: 16px;
+          margin-bottom: 8px;
+        }
+        .editor-canvas blockquote {
+          border-left: 4px solid #2563EB;
+          background: #EFF6FF;
+          padding: 10px 16px;
+          margin: 12px 0;
+          border-radius: 0 8px 8px 0;
+          font-style: italic;
+          color: #1E3A8A;
+        }
+        .editor-canvas[placeholder]:empty:before {
+          content: attr(placeholder);
+          color: #94A3B8;
+          cursor: text;
+        }
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
           height: 6px;
         }
-
         .custom-scrollbar::-webkit-scrollbar-track {
           background: transparent;
         }
-
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: var(--border);
+          background: #CBD5E1;
           border-radius: 3px;
         }
-
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: var(--text-muted);
-        }
-
-        @keyframes fadeIn { 
-          from { opacity: 0; transform: scale(0.98); } 
-          to { opacity: 1; transform: scale(1); } 
+          background: #94A3B8;
         }
         @keyframes spin { 
           from { transform: rotate(0deg); } 
