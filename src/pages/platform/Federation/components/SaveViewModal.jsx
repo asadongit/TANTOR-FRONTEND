@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useStateContext } from "../context/contextViewProvider";
 import { Lock } from "lucide-react";
+import CircularProgress from "@mui/material/CircularProgress";
 
 const SaveViewModal = ({ toggleModal, handleSaveView }) => {
   const { finalPayload, handleFinalPayload, isEditMode, editViewName } = useStateContext("");
@@ -8,6 +9,9 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
   const [newViewName, setNewViewName] = useState(
     isEditMode ? editViewName : (finalPayload?.view_name || "")
   );
+
+  const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   const [isMaterializedView, setIsMaterializedView] = useState(() => {
     const val = finalPayload?.isMateralizedView;
@@ -94,7 +98,7 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
                     aria-label="Materialized view"
                     className="form-checkbox accent-[#8E77BB] w-4 h-4"
                   />
-                  <span className="text-sm font-medium">Materialized View</span>
+                  <span className="text-base font-normal">Materialized View</span>
                 </label>
               )}
 
@@ -124,7 +128,7 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
                     aria-label="Caching"
                     className="form-checkbox accent-[#8E77BB] w-4 h-4"
                   />
-                  <span className="text-sm font-medium">Caching</span>
+                  <span className="text-base font-normal">Caching</span>
                 </label>
               )}
 
@@ -149,7 +153,7 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
 
           {/* View Name field */}
           <div>
-            <label className="block text-[#282F49] text-sm font-semibold mb-1">
+            <label className="block text-[#282F49] text-sm font-medium text-gray-600 mb-1">
               View Name
             </label>
 
@@ -171,7 +175,10 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
               <input
                 type="text"
                 value={newViewName}
-                onChange={(e) => setNewViewName(e.target.value)}
+                onChange={(e) => {
+                  setNewViewName(e.target.value);
+                  setErrorMsg("");
+                }}
                 placeholder="Enter view name"
                 className="w-full mt-1 p-2.5 border rounded-lg text-gray-700 border-gray-300 focus:ring-2 focus:ring-[#8E77BB] focus:outline-none"
               />
@@ -185,16 +192,34 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
             )}
           </div>
 
+          {errorMsg && (
+            <div className="text-red-500 text-sm font-medium">
+              {errorMsg}
+            </div>
+          )}
+
           {/* Save button */}
           <button
-            onClick={(e) => {
+            onClick={async (e) => {
               e.preventDefault();
-              toggleModal();
-              handleSaveView({ newViewName });
+              if (!newViewName.trim()) {
+                setErrorMsg("Please enter a view name.");
+                return;
+              }
+              setErrorMsg("");
+              setSaving(true);
+              const result = await handleSaveView({ newViewName });
+              setSaving(false);
+              if (result && result.success) {
+                toggleModal();
+              } else if (result && result.error) {
+                setErrorMsg(result.error);
+              }
             }}
-            className="w-full bg-[#8E77BB] hover:bg-[#7a63a8] transition-colors text-white py-2.5 rounded-lg font-medium text-sm"
+            disabled={saving}
+            className="flex items-center justify-center w-full bg-[#8E77BB] hover:bg-[#7a63a8] disabled:opacity-70 disabled:cursor-not-allowed transition-colors text-white py-2.5 rounded-lg font-medium text-sm"
           >
-            {isEditMode ? "Update View" : "Save View"}
+            {saving ? <CircularProgress size={20} sx={{ color: "white" }} /> : isEditMode ? "Update View" : "Save View"}
           </button>
         </div>
       </div>

@@ -258,6 +258,14 @@ const FederationDashBoard = () => {
       return;
     }
 
+    if (row.type === "Custom View") {
+      sessionStorage.setItem("editMode", "true");
+      sessionStorage.setItem("editViewName", row.view_name);
+      sessionStorage.setItem("editOriginalPayload", JSON.stringify(row));
+      navigate("/editor");
+      return;
+    }
+
     const viewName = row.view_name;
     const toastId = toast.loading("Loading view data...");
     try {
@@ -268,22 +276,22 @@ const FederationDashBoard = () => {
           Authorization: `Bearer ${token}`
         }
       });
-      
+
       if (response.ok) {
         const data = await response.json();
-        
+
         sessionStorage.setItem("editMode", "true");
         sessionStorage.setItem("editViewName", viewName);
         sessionStorage.setItem("editOriginalPayload", JSON.stringify(data));
-        
+
         if (data.extra_info?.edit_flow) {
           sessionStorage.setItem("editFlowData", JSON.stringify(data.extra_info.edit_flow));
         }
 
         toast.success("View data loaded", { id: toastId });
-        
+
         const queryType = data?.extra_info?.queryType || (data.complex_query ? "Complex" : "Regular");
-        
+
         if (data.view_type === "Base") {
           navigate("/federation/view/source", { state: { viewType: data.view_type, queryType: queryType } });
         } else {
@@ -296,7 +304,7 @@ const FederationDashBoard = () => {
       console.error("Error loading view details:", error);
       toast.error("An error occurred while fetching view data", { id: toastId });
     }
-  };
+};
 
   useEffect(() => {
     // Initial fetch is handled automatically by useFederationDashboardData hook
@@ -491,7 +499,12 @@ const FederationDashBoard = () => {
 
             <button
               type="button"
-              onClick={() => navigate('/editor')}
+              onClick={() => {
+                sessionStorage.removeItem('editMode');
+                sessionStorage.removeItem('editViewName');
+                sessionStorage.removeItem('editOriginalPayload');
+                navigate('/editor');
+              }}
               className="h-10 text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-4 flex items-center justify-center dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
             >
               <Code className="h-5 w-5 mr-2" />
@@ -522,15 +535,18 @@ const FederationDashBoard = () => {
 
         <DataTable
           columns={columns}
-          data={
-            searchTerm.trim()
-              ? dashboardData.views_details?.filter(row =>
-                  Object.values(row).some(value =>
-                    String(value).toLowerCase().includes(searchTerm.toLowerCase())
-                  )
-                ) || []
-              : dashboardData.views_details || []
-          }
+          data={(() => {
+            const views = dashboardData.views_details || [];
+            const sortedViews = [...views].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            if (searchTerm.trim()) {
+              return sortedViews.filter(row =>
+                Object.values(row).some(value =>
+                  String(value).toLowerCase().includes(searchTerm.toLowerCase())
+                )
+              );
+            }
+            return sortedViews;
+          })()}
           actions={actions}
           isLoading={isTableLoading}
           refetch={fetchDashboardData}
