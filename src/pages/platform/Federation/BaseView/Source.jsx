@@ -403,15 +403,7 @@ export default function Source() {
     let apiPayload = { ...userSelections.get("apiPayload") };
 
     if (!apiPayload) {
-      setToast({
-        show: true,
-        message: "No API payload available",
-        type: "error",
-      });
-      setTimeout(() => {
-        setToast({ show: false, message: "", type: "" });
-      }, 3000);
-      return null;
+      return { success: false, error: "No API payload available" };
     }
 
     apiPayload.view_name = newViewName.toLowerCase();
@@ -439,29 +431,13 @@ export default function Source() {
         );
 
         if (!viewExistsResponse.ok) {
-          setToast({
-            show: true,
-            message: "Error checking if view exists",
-            type: "error",
-          });
-          setTimeout(() => {
-            setToast({ show: false, message: "", type: "" });
-          }, 3000);
-          return null;
+          return { success: false, error: "Error checking if view exists" };
         }
 
         const viewExists = await viewExistsResponse.json();
 
         if (viewExists.result) {
-          setToast({
-            show: true,
-            message: "View already exists",
-            type: "error",
-          });
-          setTimeout(() => {
-            setToast({ show: false, message: "", type: "" });
-          }, 3000);
-          return null;
+          return { success: false, error: "View already exists" };
         }
       }
 
@@ -510,15 +486,9 @@ export default function Source() {
       });
 
       if (!response.ok) {
-        setToast({
-          show: true,
-          message: isEditMode ? "Error while editing view.." : "Error while saving view..",
-          type: "error",
-        });
-        setTimeout(() => {
-          setToast({ show: false, message: "", type: "" });
-        }, 3000);
-        return null;
+        const errData = await response.json().catch(() => null);
+        const errText = errData?.detail || (isEditMode ? "Error while editing view.." : "Error while saving view..");
+        return { success: false, error: errText };
       }
 
       const data = await response.json();
@@ -537,18 +507,10 @@ export default function Source() {
         navigate("/federation");
       }, 3000);
 
-      return data;
+      return { success: true, data };
     } catch (error) {
       console.error("Error saving view:", error);
-      setToast({
-        show: true,
-        message: "Failed to save view",
-        type: "error",
-      });
-      setTimeout(() => {
-        setToast({ show: false, message: "", type: "" });
-      }, 3000);
-      return null;
+      return { success: false, error: error.message || "Failed to save view" };
     }
   };
 

@@ -570,15 +570,11 @@ export function BusinessFooter() {
       });
 
       if (viewExistsResponse.status !== 200) {
-        setToast({ show: true, message: "Error checking if view exists", type: "error" });
-        setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-        return null;
+        return { success: false, error: "Error checking if view exists" };
       }
       const viewExists = await viewExistsResponse.json();
       if (viewExists["result"]) {
-        setToast({ show: true, message: "View already exists", type: "error" });
-        setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-        return null;
+        return { success: false, error: "View already exists" };
       }
     }
 
@@ -620,23 +616,27 @@ export function BusinessFooter() {
 
     const endpoint = isEditMode ? `${hostnameV2}/edit-view` : `${hostnameV2}/save-view`;
 
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(newPayload),
-    });
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(newPayload),
+      });
 
-    const data = await response.json();
-
-    if (response.ok) {
-      setToast({ show: true, message: isEditMode ? "View Edited Successfully." : "View Saved Successfully.", type: "success" });
-      if (isEditMode) {
-        clearEditMode();
+      if (response.ok) {
+        setToast({ show: true, message: isEditMode ? "View Edited Successfully." : "View Saved Successfully.", type: "success" });
+        if (isEditMode) {
+          clearEditMode();
+        }
+        setTimeout(() => { setToast({ show: false, message: "", type: "" }); navigate("/federation"); }, 3000);
+        return { success: true };
+      } else {
+        const data = await response.json().catch(() => null);
+        const errText = data?.detail || (isEditMode ? "Error while editing view.." : "Error while saving view..");
+        return { success: false, error: errText };
       }
-      setTimeout(() => { setToast({ show: false, message: "", type: "" }); navigate("/federation"); }, 3000);
-    } else {
-      setToast({ show: true, message: isEditMode ? "Error while editing view.." : "Error while saving view..", type: "error" });
-      setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+    } catch (err) {
+      return { success: false, error: errText.message || "An unexpected error occurred" };
     }
   };
 
