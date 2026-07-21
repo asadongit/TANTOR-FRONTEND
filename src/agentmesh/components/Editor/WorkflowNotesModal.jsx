@@ -1006,24 +1006,6 @@ Rules:
                   onInput={onInput}
                   className="editor-canvas"
                   placeholder="Start typing your workflow note here..."
-                  style={{
-                    flex: 1,
-                    minHeight: 320,
-                    maxWidth: "100%",
-                    overflowWrap: "break-word",
-                    wordBreak: "break-word",
-                    fontSize: 14,
-                    lineHeight: 1.7,
-                    color: "#0F172A",
-                    outline: "none",
-                    whiteSpace: "pre-wrap",
-                    background: "#FFFFFF",
-                    padding: 24,
-                    borderRadius: 12,
-                    border: "1px solid #E2E8F0",
-                    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.02)",
-                    boxSizing: "border-box",
-                  }}
                 />
               </div>
             ) : (
