@@ -1,5 +1,7 @@
 stages:
   - check
+  - security
+  - security-trivy
   - clone
 
 variables:
@@ -31,6 +33,25 @@ check-disk-usage:
     fi
   rules:
     - if: '$CI_COMMIT_BRANCH =~ /^(dev|testing|int)$/'
+
+semgrep:
+  stage: security
+  image: semgrep/semgrep
+  rules:
+    - if: '$CI_COMMIT_BRANCH =~ /^(testing)$/'
+  variables:
+    # Enable GitLab SAST report format
+    SEMGREP_GITLAB_JSON: "1"
+  script:
+    - semgrep scan --config=auto . --gitlab-sast -o gl-sast-report.json || true
+    - semgrep scan --config=auto . --sarif -o semgrep-report.sarif || true
+  artifacts:
+    paths:
+      - semgrep-report.sarif
+      - gl-sast-report.json
+    reports:
+      sast: gl-sast-report.json
+
 
 clone-deployment:
   stage: clone   
