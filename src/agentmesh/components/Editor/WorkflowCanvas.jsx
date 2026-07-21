@@ -1039,7 +1039,7 @@ export default function WorkflowCanvas() {
           transition: "width 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
         }}
       >
-        <div style={{ width: 260 }}>
+        <div style={{ width: 260, height: "100%" }}>
           <NodePalette onClose={() => setPaletteOpen(false)} />
         </div>
       </div>
