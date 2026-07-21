@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useWorkflowStore, useUIStore } from "../../store";
 import {
   FiX,
@@ -10,20 +10,21 @@ import {
   FiList,
   FiSearch,
   FiBookOpen,
-  FiSave,
   FiZap,
   FiLoader,
   FiTerminal,
   FiDatabase,
   FiCopy,
   FiDownload,
-  FiFilter,
   FiAlignLeft,
   FiAlignCenter,
   FiAlignRight,
   FiCheck,
   FiInfo,
-  FiTrash,
+  FiRotateCcw,
+  FiRotateCw,
+  FiMaximize2,
+  FiMinimize2,
 } from "react-icons/fi";
 import {
   listWorkflowNotes,
@@ -31,6 +32,7 @@ import {
   deleteWorkflowNote,
   updateWorkflowNote,
   fixGrammar,
+  chatArchitect,
 } from "../../api/agentmesh";
 
 /**
@@ -107,6 +109,7 @@ export default function WorkflowNotesModal() {
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({ words: 0, chars: 0, readTime: 0 });
   const [copied, setCopied] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const editorRef = useRef(null);
   const autoSaveTimerRef = useRef(null);
@@ -143,6 +146,17 @@ export default function WorkflowNotesModal() {
     }
   };
 
+  const [history, setHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+
+  const pushHistoryState = (newHtml) => {
+    setHistory((prev) => {
+      const updated = prev.slice(0, historyIndex + 1);
+      return [...updated, newHtml];
+    });
+    setHistoryIndex((prev) => prev + 1);
+  };
+
   // 2. Controlled Note Selection
   const selectNote = (note) => {
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
@@ -150,7 +164,56 @@ export default function WorkflowNotesModal() {
     lastSavedContentRef.current = note?.content || "";
     setSaveStatus("idle");
     updateStats(note?.content || "");
+    const initialHtml = note?.content || "";
+    setHistory([initialHtml]);
+    setHistoryIndex(0);
   };
+
+  // Undo / Redo Handlers
+  const handleUndo = () => {
+    if (historyIndex > 0 && editorRef.current) {
+      const prevHtml = history[historyIndex - 1];
+      setHistoryIndex(historyIndex - 1);
+      editorRef.current.innerHTML = prevHtml;
+      if (selectedNote) {
+        saveNote(selectedNote.id, prevHtml, selectedNote.category);
+      }
+      updateStats(prevHtml);
+    }
+  };
+
+  const handleRedo = () => {
+    if (historyIndex < history.length - 1 && editorRef.current) {
+      const nextHtml = history[historyIndex + 1];
+      setHistoryIndex(historyIndex + 1);
+      editorRef.current.innerHTML = nextHtml;
+      if (selectedNote) {
+        saveNote(selectedNote.id, nextHtml, selectedNote.category);
+      }
+      updateStats(nextHtml);
+    }
+  };
+
+  // Keyboard shortcut listener for Ctrl+Z and Ctrl+Y / Shift+Ctrl+Z
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!showNotes || !selectedNote) return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        if (e.shiftKey) {
+          e.preventDefault();
+          handleRedo();
+        } else {
+          e.preventDefault();
+          handleUndo();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showNotes, selectedNote, historyIndex, history]);
 
   // 3. Robust Save
   const saveNote = async (id, content, category) => {
@@ -200,6 +263,7 @@ export default function WorkflowNotesModal() {
     setSaveStatus("typing");
     const newContent = editorRef.current ? editorRef.current.innerHTML : "";
     updateStats(newContent);
+    pushHistoryState(newContent);
 
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(() => {
@@ -223,25 +287,79 @@ export default function WorkflowNotesModal() {
     }
   };
 
-  const handleFixGrammar = async () => {
-    if (!selectedNote || !editorRef.current) return;
-    const raw = editorRef.current.innerText;
+  const AI_ARCHITECT_ACTIONS = [
+    { label: "Shorten", action: "shorten", prompt: "Concisely shorten and condense the text while preserving key information." },
+    { label: "Rephrase", action: "rephrase", prompt: "Rephrase and rewrite the text clearly for better clarity and flow." },
+    { label: "Elaborate", action: "elaborate", prompt: "Elaborate and expand on the details in the text with deeper context." },
+    { label: "More Formal", action: "formal", prompt: "Make the tone of the text professional, formal, and executive-ready." },
+    { label: "Bulletize", action: "bulletize", prompt: "Convert the content into clear, well-structured bullet points." },
+    { label: "Summarize", action: "summarize", prompt: "Provide a high-level summary of the main points in the text." },
+    { label: "Fix Grammar", action: "grammar", prompt: "Fix spelling, grammar, and punctuation errors in the text." },
+  ];
+
+  const handleAiArchitectAction = async (actionType) => {
+    if (!selectedNote || !editorRef.current || !actionType) return;
+    const raw = editorRef.current.innerText || editorRef.current.textContent;
+    if (!raw.trim()) {
+      alert("Please enter text in your note before applying AI Architect actions.");
+      return;
+    }
+
+    const selectedConfig = AI_ARCHITECT_ACTIONS.find(a => a.action === actionType);
+    if (!selectedConfig) return;
+
     try {
       setIsGrammarFixing(true);
-      const res = await fixGrammar(raw);
-      if (res.status === "success") {
-        const paragraphs = res.fixed.split("\n").filter((p) => p.trim());
-        const fixedHtml = paragraphs
-          .map((p) => {
-            if (p.startsWith("# ")) return `<h1>${p.substring(2)}</h1>`;
-            if (p.startsWith("## ")) return `<h2>${p.substring(3)}</h2>`;
-            return `<p>${p}</p>`;
-          })
-          .join("");
-        editorRef.current.innerHTML = fixedHtml;
-        saveNote(selectedNote.id, fixedHtml, selectedNote.category);
-        updateStats(fixedHtml);
+
+      const cachedProvider = localStorage.getItem("architect_provider") || "groq";
+      const cachedModel = localStorage.getItem("architect_model") || "llama-3.3-70b-versatile";
+      const cachedTemp = localStorage.getItem("architect_temperature") || "0.2";
+      const cachedKey = localStorage.getItem("architect_api_key") || "";
+
+      const activeLlm = {
+        provider: cachedProvider,
+        model: cachedModel,
+        temperature: Number.parseFloat(cachedTemp),
+        api_key_override: cachedKey,
+      };
+
+      const systemInstruction = `You are the AI Architect content assistant for Workflow Notes.
+Task: ${selectedConfig.prompt}
+Rules:
+1. Maintain rich HTML formatting when appropriate (e.g. <h1> for titles, <h2> for headers, <p> for paragraphs, <ul><li> for bullet points, <blockquote> for quotes).
+2. Return ONLY the transformed content in HTML format.
+3. Do NOT include markdown codeblock tags (like \`\`\`html) or conversational intro/outro text. Return raw HTML directly.`;
+
+      const messages = [
+        { role: 'system', content: systemInstruction },
+        { role: 'user', content: `Text to process:\n${raw}` }
+      ];
+
+      let transformedHtml = "";
+      try {
+        const res = await chatArchitect({ id: workflowId, name: workflowName }, {}, messages, activeLlm);
+        if (res && res.status === 'success' && res.reply) {
+          transformedHtml = res.reply.replace(/^```html\s*/i, '').replace(/```$/s, '').trim();
+        }
+      } catch (e) {
+        console.warn("AI Architect endpoint fallback to fixGrammar API:", e);
       }
+
+      if (!transformedHtml) {
+        const fallback = await fixGrammar(raw);
+        if (fallback.status === "success") {
+          transformedHtml = fallback.fixed.split("\n").filter(p => p.trim()).map(p => `<p>${p}</p>`).join("");
+        }
+      }
+
+      if (transformedHtml) {
+        editorRef.current.innerHTML = transformedHtml;
+        pushHistoryState(transformedHtml);
+        saveNote(selectedNote.id, transformedHtml, selectedNote.category);
+        updateStats(transformedHtml);
+      }
+    } catch (err) {
+      alert("AI Architect Error: " + err.message);
     } finally {
       setIsGrammarFixing(false);
     }
@@ -392,18 +510,18 @@ export default function WorkflowNotesModal() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: 20,
+        padding: isFullscreen ? 0 : 20,
       }}
       onClick={toggleNotes}
     >
       <div
         className="notes-modal-wrapper"
         style={{
-          width: "96vw",
-          maxWidth: 1280,
-          height: "90vh",
+          width: isFullscreen ? "100vw" : "96vw",
+          maxWidth: isFullscreen ? "100vw" : 1280,
+          height: isFullscreen ? "100vh" : "90vh",
           background: "var(--bg-canvas, #F8FAFC)",
-          borderRadius: 16,
+          borderRadius: isFullscreen ? 0 : 16,
           boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.35)",
           display: "flex",
           flexDirection: "column",
@@ -487,7 +605,35 @@ export default function WorkflowNotesModal() {
               <span>New Note</span>
             </button>
 
-            <div style={{ width: 1, height: 20, background: "var(--border, #E2E8F0)", margin: "0 4px" }} />
+            <button
+              onClick={() => setIsFullscreen((prev) => !prev)}
+              title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Window"}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                border: "none",
+                background: "transparent",
+                color: "#64748B",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#F1F5F9";
+                e.currentTarget.style.color = "#0F172A";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = "#64748B";
+              }}
+            >
+              {isFullscreen ? <FiMinimize2 size={16} /> : <FiMaximize2 size={16} />}
+            </button>
+
+            <div style={{ width: 1, height: 20, background: "var(--border, #E2E8F0)", margin: "0 2px" }} />
 
             <button
               onClick={toggleNotes}
@@ -683,6 +829,25 @@ export default function WorkflowNotesModal() {
                       <FiUnderline size={13} />
                     </button>
                     <div style={{ width: 1, height: 14, background: "#CBD5E1", margin: "0 2px" }} />
+                    <button
+                      className="toolbar-btn"
+                      onClick={handleUndo}
+                      disabled={historyIndex <= 0}
+                      title="Undo (Ctrl+Z)"
+                      style={{ opacity: historyIndex <= 0 ? 0.4 : 1, cursor: historyIndex <= 0 ? "not-allowed" : "pointer" }}
+                    >
+                      <FiRotateCcw size={13} />
+                    </button>
+                    <button
+                      className="toolbar-btn"
+                      onClick={handleRedo}
+                      disabled={historyIndex >= history.length - 1}
+                      title="Redo (Ctrl+Y)"
+                      style={{ opacity: historyIndex >= history.length - 1 ? 0.4 : 1, cursor: historyIndex >= history.length - 1 ? "not-allowed" : "pointer" }}
+                    >
+                      <FiRotateCw size={13} />
+                    </button>
+                    <div style={{ width: 1, height: 14, background: "#CBD5E1", margin: "0 2px" }} />
                     <button className="toolbar-btn" onClick={() => exec("formatBlock", "<h1>")} title="Heading 1" style={{ fontWeight: 700, fontSize: 11 }}>
                       H1
                     </button>
@@ -751,28 +916,46 @@ export default function WorkflowNotesModal() {
                       ))}
                     </select>
 
-                    <button
-                      onClick={handleFixGrammar}
-                      disabled={isGrammarFixing}
-                      title="Enhance & Fix Grammar with AI"
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                        padding: "5px 12px",
-                        borderRadius: 6,
-                        background: "linear-gradient(135deg, #2563EB, #7C3AED)",
-                        color: "#FFFFFF",
-                        border: "none",
-                        fontSize: 11,
-                        fontWeight: 600,
-                        cursor: isGrammarFixing ? "not-allowed" : "pointer",
-                        opacity: isGrammarFixing ? 0.7 : 1,
-                      }}
-                    >
-                      {isGrammarFixing ? <FiLoader className="spin" size={12} /> : <FiZap size={12} />}
-                      <span>Wizard AI</span>
-                    </button>
+                    <div style={{ display: "flex", alignItems: "center", position: "relative" }}>
+                      <select
+                        defaultValue=""
+                        disabled={isGrammarFixing}
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleAiArchitectAction(e.target.value);
+                            e.target.value = "";
+                          }
+                        }}
+                        style={{
+                          appearance: "none",
+                          padding: "5px 28px 5px 28px",
+                          borderRadius: 6,
+                          background: "var(--theme-primary, #2563EB)",
+                          color: "#FFFFFF",
+                          border: "none",
+                          fontSize: 11,
+                          fontWeight: 600,
+                          cursor: isGrammarFixing ? "not-allowed" : "pointer",
+                          opacity: isGrammarFixing ? 0.7 : 1,
+                          outline: "none",
+                          boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        <option value="" disabled hidden>
+                          {isGrammarFixing ? "Processing AI..." : "⚡ AI Architect"}
+                        </option>
+                        {AI_ARCHITECT_ACTIONS.map((item) => (
+                          <option key={item.action} value={item.action} style={{ background: "#FFFFFF", color: "var(--text-primary, #0F172A)", fontWeight: 500 }}>
+                            {item.label}
+                          </option>
+                        ))}
+                      </select>
+                      <span style={{ position: "absolute", left: 8, pointerEvents: "none", color: "#FFFFFF", display: "flex", alignItems: "center" }}>
+                        {isGrammarFixing ? <FiLoader className="spin" size={12} /> : <FiZap size={12} />}
+                      </span>
+                      <span style={{ position: "absolute", right: 8, pointerEvents: "none", color: "#FFFFFF", fontSize: 10 }}>▼</span>
+                    </div>
 
                     <div style={{ width: 1, height: 16, background: "#E2E8F0" }} />
 
@@ -794,7 +977,7 @@ export default function WorkflowNotesModal() {
 
             {/* Document Canvas Body */}
             {selectedNote ? (
-              <div className="editor-body custom-scrollbar" style={{ flex: 1, overflowY: "auto", padding: "28px 40px", display: "flex", flexDirection: "column", gap: 16 }}>
+              <div className="editor-body custom-scrollbar" style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: "28px 40px", display: "flex", flexDirection: "column", gap: 16 }}>
                 <div style={{ display: "flex", gap: 16, fontSize: 11, color: "#64748B", background: "#FFFFFF", padding: "8px 14px", borderRadius: 8, border: "1px solid #E2E8F0", alignSelf: "flex-start" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <FiTerminal size={12} style={{ color: "#2563EB" }} />
@@ -826,6 +1009,9 @@ export default function WorkflowNotesModal() {
                   style={{
                     flex: 1,
                     minHeight: 320,
+                    maxWidth: "100%",
+                    overflowWrap: "break-word",
+                    wordBreak: "break-word",
                     fontSize: 14,
                     lineHeight: 1.7,
                     color: "#0F172A",
@@ -836,6 +1022,7 @@ export default function WorkflowNotesModal() {
                     borderRadius: 12,
                     border: "1px solid #E2E8F0",
                     boxShadow: "0 1px 3px rgba(0, 0, 0, 0.02)",
+                    boxSizing: "border-box",
                   }}
                 />
               </div>
