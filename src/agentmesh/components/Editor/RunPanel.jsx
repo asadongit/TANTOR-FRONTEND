@@ -6,8 +6,9 @@ import {
   FiSend, FiRotateCcw, FiPaperclip, FiMic, FiChevronDown, FiChevronUp, FiArrowUp,
   FiAlertCircle, FiCpu, FiBox, FiActivity,
   FiMessageSquare, FiX, FiCheck, FiEdit, FiTrash, FiUser, FiMicOff, FiClock, FiPlus,
-  FiFolder, FiZap, FiStar, FiBriefcase, FiCheckSquare, FiRefreshCw, FiList, FiCamera
+  FiFolder, FiZap, FiStar, FiBriefcase, FiCheckSquare, FiRefreshCw, FiList, FiCamera, FiPlay
 } from 'react-icons/fi';
+
 import { motion, AnimatePresence } from 'framer-motion';
 // Import RunPanelModules submodules
 import {
@@ -246,19 +247,21 @@ export default function RunPanel({ onClose }) {
         
         const enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
 
-        console.log(`DEBUG [RunPanel]: Pause detected at ${res.next_node} (Original: ${pausedOriginalNodeId}). Enabled actions:`, enabledActions);
+        const isBp = Boolean(res.is_breakpoint || res.pause_type === 'breakpoint');
 
         setPausedInfo({
           isPaused: true,
+          isBreakpoint: isBp,
           nextNode: pausedOriginalNodeId,
           gateNodeId: res.next_node,
           pausedNodeOutput: pausedOutput,
           threadId: tid,
           enabledActions: enabledActions,
-          nodeType: nodeType,
+          nodeType: isBp ? 'breakpoint' : nodeType,
           nodeConfig: nodeConfig,
           context: res.context || {}
         });
+
       }
 
       // ── Process the full message history to extract artifacts ──
@@ -1068,14 +1071,74 @@ export default function RunPanel({ onClose }) {
                 )}
               </AnimatePresence>
               {pausedInfo.nodeType !== 'followup_selection' && (
-                <ActionButtonGroup
-                  actions={pausedInfo.enabledActions || ['approve', 'rework', 'reject']}
-                  onApprove={() => onResume('approve')}
-                  onRework={() => setPausedInfo({ ...pausedInfo, showReworkForm: !pausedInfo.showReworkForm })}
-                  onReject={() => onResume('reject')}
-                  isLoading={running}
-                />
+                (pausedInfo.isBreakpoint || pausedInfo.nodeType === 'breakpoint') ? (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: 'linear-gradient(135deg, #FEF2F2 0%, #FFF5F5 100%)',
+                    border: '1.5px solid #FCA5A5',
+                    borderRadius: 20,
+                    padding: '12px 20px',
+                    boxShadow: '0 8px 30px rgba(239, 68, 68, 0.15)',
+                    width: '100%',
+                    backdropFilter: 'blur(10px)',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: '50%',
+                        backgroundColor: '#EF4444',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#FFF',
+                        fontSize: 16,
+                        boxShadow: '0 0 12px rgba(239, 68, 68, 0.5)',
+                      }}>🛑</div>
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#991B1B', fontSize: 14, letterSpacing: '-0.2px' }}>
+                          Wire Breakpoint Paused
+                        </div>
+                        <div style={{ fontSize: 12, color: '#B91C1C', marginTop: 1 }}>
+                          Flow stopped before: <b>{nodes.find(n => n.id === pausedInfo.nextNode)?.data?.label || pausedInfo.nextNode || 'Target Node'}</b>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => onResume('approve')}
+                      disabled={running}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        borderRadius: 12,
+                        padding: '10px 18px',
+                        fontWeight: 600,
+                        fontSize: 13,
+                        cursor: running ? 'not-allowed' : 'pointer',
+                        boxShadow: '0 4px 14px rgba(239, 68, 68, 0.4)',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <FiPlay size={15} /> Resume Flow
+                    </button>
+                  </div>
+                ) : (
+                  <ActionButtonGroup
+                    actions={pausedInfo.enabledActions || ['approve', 'rework', 'reject']}
+                    onApprove={() => onResume('approve')}
+                    onRework={() => setPausedInfo({ ...pausedInfo, showReworkForm: !pausedInfo.showReworkForm })}
+                    onReject={() => onResume('reject')}
+                    isLoading={running}
+                  />
+                )
               )}
+
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', pointerEvents: 'auto' }}>

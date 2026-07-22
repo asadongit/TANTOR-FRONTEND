@@ -239,21 +239,23 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
   const mappedEdges = rawEdges.map((e, i) => {
     const cond = e.condition;
     const hasCond = cond && cond.key && cond.value;
+    const isBp = Boolean(e.is_breakpoint || e.data?.isBreakpoint);
     return {
-      id: `e${i}`,
+      id: e.id || `e${i}`,
       source: (e.source === 'START' || e.source === 'start' || e.source === startNode?.id) ? '__start__' : e.source,
       target: (e.target === 'END' || e.target === 'end' || e.target === endNode?.id) ? '__end__' : e.target,
       sourceHandle: e.source_handle || e.sourceHandle || null,
       targetHandle: e.target_handle || e.targetHandle || null,
-      data: { condition: e.condition },
+      data: { condition: e.condition, isBreakpoint: isBp, ...(e.data || {}) },
       animated: !!hasCond,
       label: hasCond ? `${cond.key} ${cond.operator || '=='} ${cond.value}` : null,
       labelStyle: { fill: '#4F46E5', fontWeight: 700, fontSize: 10 },
       labelBgStyle: { fill: '#F5F3FF', fillOpacity: 0.9, rx: 4, stroke: '#C7D2FE', strokeWidth: 1 },
       type: 'smoothstep',
-      style: { stroke: '#CBD5E1', strokeWidth: 1.5 },
+      style: { stroke: isBp ? '#ef4444' : '#CBD5E1', strokeWidth: isBp ? 2.5 : 1.5 },
     };
   });
+
 
   return { allNodes, rfEdges: mappedEdges };
 };
@@ -1148,14 +1150,18 @@ export const useWorkflowStore = create((set, get) => ({
     const finalEdges = s.edges
       .filter(e => !systemIds.has(e.source) || !systemIds.has(e.target))
       .map((e) => {
+        const isBp = Boolean(e.data?.isBreakpoint || e.is_breakpoint);
         return {
           source: e.source === '__start__' ? 'START' : e.source,
           target: e.target === '__end__' ? 'END' : e.target,
           source_handle: e.sourceHandle || null,
           target_handle: e.targetHandle || null,
           condition: e.data?.condition || null,
+          is_breakpoint: isBp,
+          data: { ...(e.data || {}), isBreakpoint: isBp },
         };
       });
+
 
     // Extract Triggers from special trigger nodes with validation
     const webhookNode = s.nodes.find(n => n.data?.type === 'webhook');

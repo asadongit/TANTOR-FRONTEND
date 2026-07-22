@@ -30,8 +30,16 @@ import ContextMenu from "./ContextMenu";
 import VariableExplorer from "./VariableExplorer";
 import NodeSearch from "./NodeSearch";
 import PilotPanel from "./PilotPanel";
+import BreakpointEdge from "./Edges/BreakpointEdge";
+
+const edgeTypes = {
+  default: BreakpointEdge,
+  smoothstep: BreakpointEdge,
+  bezier: BreakpointEdge,
+};
 
 const NON_DIRTY_CHANGE_TYPES = new Set(["select", "dimensions", "reset"]);
+
 
 // Helper to calculate distance from point p to line segment ab
 const getDistanceToSegment = (p, a, b) => {
@@ -643,11 +651,30 @@ export default function WorkflowCanvas() {
   }, [setSelectedNode, setSelectedEdge]);
 
   const onEdgeClick = useCallback(
-    (_, edge) => {
-      setSelectedEdge(edge.id);
+    (event, edge) => {
+      if (event && event.altKey) {
+        useWorkflowStore.getState().takeHistorySnapshot();
+        const updatedEdges = edges.map((e) => {
+          if (e.id === edge.id) {
+            const currentBp = Boolean(e.data?.isBreakpoint);
+            return {
+              ...e,
+              data: {
+                ...(e.data || {}),
+                isBreakpoint: !currentBp,
+              },
+            };
+          }
+          return e;
+        });
+        setEdgesDirty(updatedEdges);
+      } else {
+        setSelectedEdge(edge.id);
+      }
     },
-    [setSelectedEdge],
+    [edges, setEdgesDirty, setSelectedEdge],
   );
+
 
   const isValidConnection = useCallback(
     (connection) => {
@@ -1409,6 +1436,8 @@ export default function WorkflowCanvas() {
             }}
             onPaneContextMenu={onPaneContextMenu}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+
             defaultEdgeOptions={{
               type: canvasWireStyle === "curve" ? "default" : "smoothstep",
               animated: false,
