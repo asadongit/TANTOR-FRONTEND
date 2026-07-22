@@ -140,7 +140,7 @@ const VariantDataTable = ({ variantKey, displayData }) => {
     );
 };
 
-function Step7({ readonly: readonlyProp, onShowPreview, showPreview, onApiCall }) {
+function Step7({ readonly: readonlyProp, onShowPreview, showPreview, onApiCall, isDataPreprocessingAuto: isDataPreprocessingAutoProp }) {
     const hostnameAI = window._env_?.VITE_AI_API;
     const { workflowsState, activeWorkflowId, datasetState, updatePreprocessingStep, updateWorkflowStage, mode } = useAIPlayground();
     const workflowState = activeWorkflowId
@@ -157,6 +157,8 @@ function Step7({ readonly: readonlyProp, onShowPreview, showPreview, onApiCall }
     const modelGenesisConfig = workflowState?.modelGenesis?.config;
     const modellingType = modelGenesisConfig?.modelling_type || 'binary';
     const isRegression = modellingType === 'regression';
+    // Use prop if provided, otherwise calculate from config
+    const isDataPreprocessingAuto = isDataPreprocessingAutoProp !== undefined ? isDataPreprocessingAutoProp : (modelGenesisConfig?.dataPreprocessing && ['Swift', 'Standard', 'Comprehensive'].includes(modelGenesisConfig?.dataPreprocessing));
 
     const IMBALANCE_HANDLING_CONFIG = {
         methods: [
@@ -174,8 +176,7 @@ function Step7({ readonly: readonlyProp, onShowPreview, showPreview, onApiCall }
     };
 
     const samplingMethods = IMBALANCE_HANDLING_CONFIG.methods.filter(m => m.availability[modellingType] === 'yes');
-    const dataPreprocessingMode = readonly ? modelGenesisConfig?.data_preprocessing_mode : modelGenesisConfig?.dataPreprocessing;
-    const isDataPreprocessingAuto = dataPreprocessingMode && ['Swift', 'Standard', 'Comprehensive'].includes(dataPreprocessingMode);
+    // Note: isDataPreprocessingAuto is now passed as prop from parent for reliability in preview mode
 
     useEffect(() => {
         if (isRegression) {
@@ -212,7 +213,7 @@ function Step7({ readonly: readonlyProp, onShowPreview, showPreview, onApiCall }
                 throw new Error('Missing required identifiers: ensemble_id or workflow_id');
             }
 
-            const response = await fetch(`${hostnameAI}/data/preprocess/imbalance_handling`, {
+            const response = await fetch(`${hostnameAI}/data/preprocess_supervised/imbalance_handling`, {
                 method: 'POST',
                 headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestBody)

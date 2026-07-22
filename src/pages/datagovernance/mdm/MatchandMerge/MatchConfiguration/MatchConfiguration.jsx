@@ -7,7 +7,6 @@ import DeterministicIcon from '../../../../../assets/mdm/device_hub.svg';
 import HybridIcon from '../../../../../assets/mdm/assistant_on_hub.svg';
 import EditIcon from '../../../../../assets/mdm/edit.svg';
 import BlockIcon from '../../../../../assets/mdm/block.svg';
-import PlayArrowIcon from '../../../../../assets/mdm/play_arrow.svg';
 import CreateRuleSetModal from './modals/CreateRuleSetModal.jsx';
 import EditRuleSetModal from './modals/EditRuleSetModal.jsx';
 import RuleSetRulesDrawer from './modals/RuleSetRulesDrawer.jsx';
@@ -249,14 +248,6 @@ const MatchRulesTab = ({ filteredRules, isLoading, isError, onRefetch, selectedD
                             </button>
 
                             <button
-                                onClick={() => { onTestRule(row.rule_id); setOpen(false); }}
-                                className="flex items-center gap-3 px-3.5 py-2.5 rounded-[10px] border-none cursor-pointer bg-white w-full"
-                            >
-                                <img src={PlayArrowIcon} alt="Test" className="w-4 h-4" />
-                                <span className="text-[#818181] text-sm font-medium">Test</span>
-                            </button>
-
-                            <button
                                 onClick={() => { setToggleTarget(row); setToggleModalOpen(true); setOpen(false); }}
                                 className="flex items-center gap-3 px-3.5 py-2.5 rounded-[10px] border-none cursor-pointer bg-white w-full"
                             >
@@ -282,7 +273,7 @@ const MatchRulesTab = ({ filteredRules, isLoading, isError, onRefetch, selectedD
     };
 
     const columns = useMemo(() => [
-        { key: 'rule_name', label: 'Attribute', render: (row) => <span className="text-sm font-normal text-[#23252D]">{row.rule_name}</span> },
+        { key: 'rule_name', label: 'Rule Name', render: (row) => <span className="text-sm font-normal text-[#8E77BB]">{row.rule_name}</span> },
         { key: 'algorithm', label: 'Algorithm', render: (row) => <AlgoBadge algo={row.algorithm} /> },
         { key: 'weight', label: 'Weight', render: (row) => <span className="text-sm text-gray-600">{row.weight}</span> },
         { key: 'threshold', label: 'Threshold', render: (row) => <span className="text-sm text-gray-600">{row.threshold}</span> },
@@ -294,35 +285,6 @@ const MatchRulesTab = ({ filteredRules, isLoading, isError, onRefetch, selectedD
 
     return (
         <div>
-            {/* Match Thresholds */}
-            {!isError && (
-                <div className="bg-[#FAFAFA] rounded-xl p-3.5 mb-4">
-                    <p className="text-lg font-medium text-[#332849] mb-3">Match Thresholds</p>
-                    <div className="grid grid-cols-3 gap-3">
-                        <div className="bg-[#F7FFFC] border border-[#36AD8F] rounded-lg px-4 py-3 flex items-center justify-between">
-                            <div>
-                                <p className="text-base font-medium text-[#332849]">Auto-Merge</p>
-                                <p className="text-xs text-[#818181]">Automatic merge</p>
-                            </div>
-                            <span className="text-2xl font-bold text-[#36AD8F]">≥95%</span>
-                        </div>
-                        <div className="bg-[#FFF8F2] border border-[#E08E40] rounded-lg px-4 py-3 flex items-center justify-between">
-                            <div>
-                                <p className="text-base font-medium text-[#332849]">Review</p>
-                                <p className="text-xs text-[#818181]">Manual review</p>
-                            </div>
-                            <span className="text-2xl font-bold text-[#E08E40]">75—95%</span>
-                        </div>
-                        <div className="bg-[#FAFAFA] border border-[#818181] rounded-lg px-4 py-3 flex items-center justify-between">
-                            <div>
-                                <p className="text-base font-medium text-[#332849]">No Match</p>
-                                <p className="text-xs text-[#818181]">Not duplicates</p>
-                            </div>
-                            <span className="text-2xl font-bold text-[#818181]">&lt;75%</span>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {isError && !isLoading && (
                 <div className="flex flex-col items-center justify-center py-12 gap-4">
@@ -410,15 +372,11 @@ const MatchConfiguration = () => {
     }, [rules, typeFilter]);
 
     const ruleSetColumns = useMemo(() => [
-        {
-            key: 'ruleName',
-            label: 'Rule Name',
-            render: (row) => (
-                <button className="text-[#8E77BB] hover:underline font-normal text-left text-sm">
-                    {row.ruleName}
-                </button>
-            ),
-        },
+        { key: 'ruleName', label: 'Rule Set Name', render: (row) => (
+            <span className="font-normal text-left text-sm text-[#8E77BB]">
+                {row.ruleName}
+            </span>
+        ), },
         { key: 'domain', label: 'Domain', render: (row) => <DomainTag name={row.domain} /> },
         { key: 'type', label: 'Type', render: (row) => <TypeBadge type={row.type} /> },
         { key: 'rules', label: 'Rules', render: (row) => <span className="text-sm font-normal text-gray-600">{row.rules} Rules</span> },
@@ -450,13 +408,6 @@ const MatchConfiguration = () => {
                     <p className="text-sm text-[#818181] mt-0.5">Configure matching algorithms, rules, and thresholds</p>
                 </div>
                 <div className="flex gap-3">
-                    <button
-                        onClick={openOverallTest}
-                        className="flex gap-2 items-center text-sm py-2 px-3 text-[#818181] border border-[#818181] rounded-lg shadow-sm hover:bg-gray-50 transition-colors"
-                    >
-                        <img src={PlayArrowIcon} alt="Test" className="w-4 h-4" />
-                        Test
-                    </button>
                     <button
                         onClick={() => setCreateOpen(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-[#8E77BB] text-white rounded-lg hover:bg-[#7a67a0] text-sm font-medium transition-colors"
@@ -528,7 +479,6 @@ const MatchConfiguration = () => {
                                     <option>All</option>
                                     <option>Active</option>
                                     <option>Inactive</option>
-                                    <option>Draft</option>
                                 </select>
                                 <ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" />
                             </div>

@@ -1,277 +1,985 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { AIPlaygroundLayout } from '../../AIPlaygroundLayout';
-import { Check, Eye } from 'lucide-react';
-import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
-import DataCleaning from './Steps/DataCleaning';
-import FeatureSelection from './Steps/FeatureSelection';
-import FeatureEngineering from './Steps/FeatureEngineering';
-import ScalingTransformation from './Steps/ScalingTransformation';
-import StatisticalAnalysis from './Steps/StatisticalAnalysis';
-import FeatureImportance from './Steps/FeatureImportance';
-import Step7 from './Steps/Step7';
-import { useLocation, useNavigate } from 'react-router-dom';
-import DataPreviewModal from '../../modals/DataPreprocessing/DataPreviewModal';
+  import React, { useState, useRef, useEffect } from 'react';
+  import { AIPlaygroundLayout } from '../../AIPlaygroundLayout';
+  import { Check, Eye } from 'lucide-react';
+  import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 
-const preprocessingSteps = [
-  { id: 1, label: 'Data Pre-processing' },
-  { id: 2, label: 'Feature Selection' },
-  { id: 3, label: 'Feature Engineering' },
-  { id: 4, label: 'Scaling & Transformation' },
-  { id: 5, label: 'Statistical Analysis' },
-  { id: 6, label: 'Feature Importance' },
-  { id: 7, label: 'Imbalance handling' },
-];
+  //  supervised preprocessing steps
+  import DataCleaning from './Steps/DataCleaning';
+  import FeatureSelection from './Steps/FeatureSelection';
+  import FeatureEngineering from './Steps/FeatureEngineering';
+  import ScalingTransformation from './Steps/ScalingTransformation';
+  import StatisticalAnalysis from './Steps/StatisticalAnalysis';
+  import FeatureImportance from './Steps/FeatureImportance';
+  import Step7 from './Steps/Step7';
 
-function DataPreprocessing() {
-  const hostnameAI = window._env_?.VITE_AI_API;
-  const { workflowsState, activeWorkflowId, mode, datasetState, updateWorkflowStage } = useAIPlayground();
-  const workflowState = activeWorkflowId
-    ? workflowsState?.[activeWorkflowId]
-    : null;  
-  const readonly = mode === 'view';
-  const navigate = useNavigate();
+  // Routing utilities
+  import { useLocation, useNavigate } from 'react-router-dom';
+  // Modal for previewing processed data
+  import DataPreviewModal from '../../modals/DataPreprocessing/DataPreviewModal';
 
-  useEffect(() => {
-    if (!datasetState?.ensembleId) {
-      navigate('/ai/playground')
-    }
-  }, []);
+  // Time series preprocessing components
+  import TimeSeriesDataCleaning from './timeseries/components/TimeSeriesDataCleaning';
+  import HandleMissingValues from './timeseries/components/HandleMissingValues';
+  import FeatureIntegrity from './timeseries/components/FeatureIntegrity';
+  import DataStabilization from './timeseries/components/DataStabilization';
+  import Seasonality from './timeseries/components/Seasonality';
+  import StationarityTreatment from './timeseries/components/StationarityTreatment';
+  import FeatureDependency from './timeseries/FeatureDependency';
+  import ScalingandEncoding from './timeseries/components/ScalingandEncoding';
 
-  const modelGenesisConfig = workflowState?.modelGenesis?.config;
-
-  const dataPreprocessingMode = readonly
-    ? modelGenesisConfig?.data_preprocessing_mode
-    : modelGenesisConfig?.dataPreprocessing;
-  const modelSelectionMode = modelGenesisConfig?.modelSelection;
-
-  const isDataPreprocessingAuto = dataPreprocessingMode &&
-    ['Swift', 'Standard', 'Comprehensive'].includes(dataPreprocessingMode);
-
-  const isModelSelectionAuto = modelSelectionMode &&
-    ['Swift', 'Standard', 'Comprehensive'].includes(modelSelectionMode);
-
-  const [currentStep, setCurrentStep] = useState(isDataPreprocessingAuto ? 7 : 1);
-  const [isStep7Preview, setIsStep7Preview] = useState(isDataPreprocessingAuto);
-  const [isStep1Valid, setIsStep1Valid] = useState(true);
-  const [isStep2Valid, setIsStep2Valid] = useState(true);
-  const [isStep4Valid, setIsStep4Valid] = useState(true);
-  const [isStep5Valid, setIsStep5Valid] = useState(true);
-  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
-  const [isApiCallInProgress, setIsApiCallInProgress] = useState(false);
-
-  const isInteractionLocked = readonly || isApiCallInProgress;
-
-  const step1ApiCallRef = useRef(null);
-  const step2ApiCallRef = useRef(null);
-  const step3ApiCallRef = useRef(null);
-  const step4ApiCallRef = useRef(null);
-  const step5ApiCallRef = useRef(null);
-  const step6ApiCallRef = useRef(null);
-  const step7ApiCallRef = useRef(null);
-  // if the data preprocessing is manual and model selection is auto , jobID api gets called 
-  const handleNextClick = async () => {
-    setIsApiCallInProgress(true);
-
-    try {
-      if (currentStep === 7 && isStep7Preview && isModelSelectionAuto) {
-
-        try {
-          const autoModeJobId = workflowState?.modelGenesis?.apiResponse?.job_id ?? null;
-
-          const jobId = isDataPreprocessingAuto
-            ? autoModeJobId
-            : workflowState?.dataPreprocessing?.step7?.apiResponse?.job_id;
-          
-        
-          
-          if (jobId && hostnameAI) {
-            const response = await fetch(`${hostnameAI}/jobs/${jobId}`, {
-              method: 'GET',
-              headers: { 'accept': 'application/json' }
-            });
-
-            if (response.ok) {
-              const data = await response.json();
-             
-              updateWorkflowStage?.('completedJobs', {
-                config: { job_id: jobId },
-                apiResponse: data
-              });
-
-            } else {
-           
-            }
-          } else {
-           
-          }
-        } catch (error) {
-          console.error('Error fetching job details:', error);
-        }
-        return true;
-      }
-
-      if (currentStep === 7 && isStep7Preview) return true;
-
-      const stepApiRefs = [
-        null,
-        step1ApiCallRef.current,
-        step2ApiCallRef.current,
-        step3ApiCallRef.current,
-        step4ApiCallRef.current,
-        step5ApiCallRef.current,
-        step6ApiCallRef.current,
-        step7ApiCallRef.current,
+  /**
+   * Returns preprocessing steps based on prediction type.
+   */
+  const getPreprocessingSteps = (predictionType) => {
+    if (predictionType === 'univariate_timeseries') {
+      return [
+        { id: 1, label: 'Handle Missing Values', isTimeSeries: true },
+        { id: 2, label: 'Feature Integrity', isTimeSeries: true },
+        { id: 3, label: 'Data Stabilization', isTimeSeries: true },
+        { id: 4, label: 'Stationarity Analysis', isTimeSeries: true },
+        { id: 5, label: 'Stationarity Treatment', isTimeSeries: true },
+       
       ];
-
-      const apiCallFn = stepApiRefs[currentStep] ?? null;
-      if (typeof apiCallFn !== 'function') return true;
-
-      return await apiCallFn();
-    } finally {
-      setIsApiCallInProgress(false);
     }
+
+    if (
+      predictionType === 'multivariate_timeseries' ||
+      predictionType === 'multiseries_timeseries'
+    ) {
+      return [
+        { id: 1, label: 'Handle Missing Values', isTimeSeries: true },
+        { id: 2, label: 'Feature Integrity', isTimeSeries: true },
+        { id: 3, label: 'Data Stabilization', isTimeSeries: true },
+        { id: 4, label: 'Seasonality Treatment', isTimeSeries: true },
+        { id: 5, label: 'Stationarity Treatment', isTimeSeries: true },
+        { id: 6, label: 'Feature Dependency', isTimeSeries: true },
+        { id: 7, label: 'Scaling & Encoding', isTimeSeries: true },
+      ];
+    }
+
+    if (predictionType === 'multivariate_multiseries') {
+      return [
+        { id: 1, label: 'Data Pre-processing' },
+        { id: 2, label: 'Feature Selection' },
+        { id: 3, label: 'Feature Engineering' },
+        { id: 4, label: 'Scaling & Transformation' },
+        { id: 5, label: 'Statistical Analysis' },
+        { id: 6, label: 'Feature Importance' },
+      ];
+    }
+
+    // Standard ML workflow steps
+    return [
+      { id: 1, label: 'Data Pre-processing' },
+      { id: 2, label: 'Feature Selection' },
+      { id: 3, label: 'Feature Engineering' },
+      { id: 4, label: 'Scaling & Transformation' },
+      { id: 5, label: 'Statistical Analysis' },
+      { id: 6, label: 'Feature Importance' },
+      { id: 7, label: 'Imbalance handling' },
+    ];
   };
 
-  const handlePreviewClick = () => {
-    setIsPreviewModalOpen(true);
-  };
+  function DataPreprocessing() {
+    // AI backend hostname from environment config
+    const hostnameAI = window._env_?.VITE_AI_API;
 
-  const renderStepContent = () => {
+    // Global workflow state from context
+    const {
+      workflowsState,
+      activeWorkflowId,
+      mode,
+      datasetState,
+      updateWorkflowStage,
+      updatePreprocessingStep,
+    } = useAIPlayground();
+
+    // Current workflow state
+    const workflowState = activeWorkflowId ? workflowsState?.[activeWorkflowId]: null;
+
+    // Determines whether screen is in readonly/view mode
+    const readonly = mode === 'view';
+    const navigate = useNavigate();
+
+    /**
+     * Redirect user back to playground
+     * if dataset is not available.
+     */
+    useEffect(() => {
+      if (!datasetState?.ensembleId) {
+        navigate('/ai/playground');
+      }
+    }, []);
+
+    // Model configuration object
+    const modelGenesisConfig = workflowState?.modelGenesis?.config;
+
+    // Prediction type determines preprocessing flow
+    const predictionType = modelGenesisConfig?.modelling_type;
+
+    // Dynamic step list
+    const preprocessingSteps = getPreprocessingSteps(predictionType);
+
+    // Data preprocessing mode
+    const dataPreprocessingMode = readonly
+      ? modelGenesisConfig?.data_preprocessing_mode
+      : modelGenesisConfig?.dataPreprocessing;
+
+    // Model selection mode
+    const modelSelectionMode = modelGenesisConfig?.modelSelection;
+
+    /**
+     * Checks whether preprocessing is auto-generated
+     * using predefined modes.
+     */
+    const isDataPreprocessingAuto = !!(
+      dataPreprocessingMode &&
+      ['Swift', 'Standard', 'Comprehensive'].includes(
+        dataPreprocessingMode
+      )
+    );
+
+    /**
+     * Checks whether model selection is auto-generated.
+     */
+    const isModelSelectionAuto = !!(
+      modelSelectionMode &&
+      ['Swift', 'Standard', 'Comprehensive'].includes(
+        modelSelectionMode
+      )
+    );
+
+    // Current active preprocessing step if it is univariate it starts from 2
+   const [currentStep, setCurrentStep] = useState(() => {
+  if (isDataPreprocessingAuto) {
+    if (predictionType === 'univariate_timeseries') return 5;
+    if (
+      predictionType === 'multivariate_timeseries' ||
+      predictionType === 'multiseries_timeseries'
+    ) return 7;
+    if (predictionType === 'multivariate_multiseries') return 6;
+    return 7;
+  }
+
+  return 1;
+});
+
+    // Whether preview screen is open on step 7
+    const [isStep7Preview, setIsStep7Preview] = useState(isDataPreprocessingAuto);
+    // Whether preview screen is open on step 8 (time series)
+    const [isStep8Preview, setIsStep8Preview] = useState(false);
+    // Whether preview screen is open on step 6 (multivariate_multiseries — its last step, no dedicated Imbalance Handling page)
+    const [isStep6MMSPreview, setIsStep6MMSPreview] = useState(isDataPreprocessingAuto && predictionType === 'multivariate_multiseries');
+
+    //preview screen state for univariate time series
+    const [isUnivariatePreview, setIsUnivariatePreview] = useState(false);
+
+    // Validation states for individual steps
+    const [isStep1Valid, setIsStep1Valid] = useState(true);
+    const [isStep2Valid, setIsStep2Valid] = useState(true);
+    const [isStep4Valid, setIsStep4Valid] = useState(true);
+    const [isStep5Valid, setIsStep5Valid] = useState(true);
+
+    // Preview modal state
+    const [isPreviewModalOpen, setIsPreviewModalOpen] =
+      useState(false);
+
+    // Global API loading state
+    const [isApiCallInProgress, setIsApiCallInProgress] =
+      useState(false);
+
+    /**
+     * Auto-advance from step 6 if stationarity analysis was not enabled in step 5 and it's not univariate timeseries
+     */
+    useEffect(() => {
+      if (currentStep === 5) {
+        const step5Config = workflowState?.dataPreprocessing?.step5?.config;
+        const wasStationarityAnalysisEnabledInStep5 = step5Config?.stationarity_analysis_active ?? false;
+        const isMultivariateTimeseries = predictionType === 'multivariate_timeseries';
+        if (!wasStationarityAnalysisEnabledInStep5 && isMultivariateTimeseries) {
+          setCurrentStep(6);
+        }
+      }
+    }, [currentStep, workflowState?.dataPreprocessing?.step5?.config]);
+
+    /**
+     * Auto-advance to preview mode after step 8 for time series if auto-preprocessing is enabled*/
+    useEffect(() => {
+      const isTimeSeries =
+        predictionType &&
+        [
+
+          'multivariate_timeseries'
+        ].includes(predictionType);
+
+      if (isTimeSeries && currentStep === 7 && isDataPreprocessingAuto) {
+        setIsStep8Preview(true);
+      }
+    }, [currentStep, isDataPreprocessingAuto, predictionType]);
+
+    /**
+     * Auto-advance to preview mode for univariate timeseries at step 5 if auto-preprocessing is enabled
+     */
+    useEffect(() => {
+      if (
+        predictionType === 'univariate_timeseries' &&
+        currentStep === 5 &&
+        isDataPreprocessingAuto
+      ) {
+        setIsUnivariatePreview(true);
+      }
+    }, [currentStep, isDataPreprocessingAuto, predictionType]);
+
+
+    /**
+     * Locks user interactions while
+     * API calls are in progress or in readonly mode.
+     */
+    const isInteractionLocked =
+      readonly || isApiCallInProgress;
+
+    /**
+     * Refs used to store step-specific API handlers.
+     * Each child step registers its API function here.
+     */
+    const step1ApiCallRef = useRef(null);
+    const step2ApiCallRef = useRef(null);
+    const step3ApiCallRef = useRef(null);
+    const step4ApiCallRef = useRef(null);
+    const step5ApiCallRef = useRef(null);
+    const step6ApiCallRef = useRef(null);
+    const step7ApiCallRef = useRef(null);
+    const step8ApiCallRef = useRef(null);
+
+
+
+    /**
+     * Handles next button click.
+     * Executes API calls for current step.
+     */
+    const handleNextClick = async () => {
+      setIsApiCallInProgress(true);
+
+      try {
+        /**
+         * Special handling:
+         * If step 7 preview is active and model selection is auto,
+         * fetch completed job details.
+         */
+        if (
+          currentStep === 7 &&
+          isStep7Preview &&
+          isModelSelectionAuto
+        ) {
+          try {
+            // Job ID from auto preprocessing response
+            const autoModeJobId =
+              workflowState?.modelGenesis?.apiResponse?.job_id ??
+              null;
+
+            // Select correct job ID based on preprocessing mode
+            const jobId = isDataPreprocessingAuto
+              ? autoModeJobId
+              : workflowState?.dataPreprocessing?.step7
+                  ?.apiResponse?.job_id;
+
+            // Fetch completed job details
+            if (jobId && hostnameAI) {
+              const response = await fetch(
+                `${hostnameAI}/jobs/${jobId}`,
+                {
+                  method: 'GET',
+                  headers: { accept: 'application/json' },
+                }
+              );
+
+              if (response.ok) {
+                const data = await response.json();
+
+                // Save completed job response
+                updateWorkflowStage?.('completedJobs', {
+                  config: { job_id: jobId },
+                  apiResponse: data,
+                });
+              }
+            }
+          } catch (error) {
+            console.error(
+              'Error fetching job details:',
+              error
+            );
+          }
+
+          return true;
+        }
+
+        // Prevent duplicate execution in preview mode
+        if (currentStep === 7 && isStep7Preview) return true;
+        if (currentStep === 6 && isStep6MMSPreview && predictionType === 'multivariate_multiseries') return true;
+
+        /**
+         * Special handling for step 5 preview (univariate timeseries):
+         * Call the API to execute stationarity treatment, fetch job if available.
+         */
+        if (currentStep === 5 && isUnivariatePreview) {
+          // Only call the live API when preprocessing is manual.
+          // In auto mode, genesis already handled this — calling it again causes AxiosError.
+          if (!isDataPreprocessingAuto) {
+            const apiCallFn = step5ApiCallRef.current;
+            if (typeof apiCallFn === 'function') {
+              const result = await apiCallFn();
+              if (!result) return false;
+            }
+          }
+
+          try {
+            // Job ID from auto preprocessing response
+            const autoModeJobId =
+              workflowState?.modelGenesis?.apiResponse?.job_id ??
+              null;
+
+            // StationarityTreatment always writes its response to 'step6' internally,
+            // even when rendered as step 5 in the univariate flow.
+            // Select correct job ID based on preprocessing mode
+            const jobId = isDataPreprocessingAuto
+              ? autoModeJobId
+              : workflowState?.dataPreprocessing?.step6
+                  ?.apiResponse?.job_id;
+
+            // Fetch completed job details
+            if (jobId && hostnameAI) {
+              const response = await fetch(
+                `${hostnameAI}/jobs/${jobId}`,
+                {
+                  method: 'GET',
+                  headers: { accept: 'application/json' },
+                }
+              );
+
+              if (response.ok) {
+                const data = await response.json();
+
+                // Save completed job response
+                updateWorkflowStage?.('completedJobs', {
+                  config: { job_id: jobId },
+                  apiResponse: data,
+                });
+              }
+            }
+          } catch (error) {
+            console.error(
+              'Error fetching job details:',
+              error
+            );
+          }
+
+          return true;
+        }
+
+        /**
+         * Special handling for step 8 preview (time series):
+         * Call the API to execute scaling and encoding, fetch job if available.
+         */
+        if (currentStep === 7 && isStep8Preview) {
+          // Only call the live API when preprocessing is manual.
+          // In auto mode, genesis already handled this — calling it again causes AxiosError.
+          if (!isDataPreprocessingAuto) {
+            const apiCallFn = step8ApiCallRef.current;
+            if (typeof apiCallFn === 'function') {
+              const result = await apiCallFn();
+              if (!result) return false;
+            }
+          }
+
+          try {
+            // Job ID from auto preprocessing response
+            const autoModeJobId =
+              workflowState?.modelGenesis?.apiResponse?.job_id ??
+              null;
+
+            // Select correct job ID based on preprocessing mode
+            const jobId = isDataPreprocessingAuto
+              ? autoModeJobId
+              : workflowState?.dataPreprocessing?.step8
+                  ?.apiResponse?.job_id;
+
+            // Fetch completed job details
+            if (jobId && hostnameAI) {
+              const response = await fetch(
+                `${hostnameAI}/jobs/${jobId}`,
+                {
+                  method: 'GET',
+                  headers: { accept: 'application/json' },
+                }
+              );
+
+              if (response.ok) {
+                const data = await response.json();
+
+                // Save completed job response
+                updateWorkflowStage?.('completedJobs', {
+                  config: { job_id: jobId },
+                  apiResponse: data,
+                });
+              }
+            }
+          } catch (error) {
+            console.error(
+              'Error fetching job details:',
+              error
+            );
+          }
+
+          return true;
+        }
+
+        /**
+         * Array mapping step number
+         * to corresponding API function.
+         */
+        const stepApiRefs = [
+          null,
+          step1ApiCallRef.current,
+          step2ApiCallRef.current,
+          step3ApiCallRef.current,
+          step4ApiCallRef.current,
+          step5ApiCallRef.current,
+          step6ApiCallRef.current,
+          step7ApiCallRef.current,
+          step8ApiCallRef.current,
+        ];
+
+        // Get current step API function
+        const apiCallFn = stepApiRefs[currentStep] ?? null;
+
+        // Skip if no API exists
+        if (typeof apiCallFn !== 'function') return true;
+
+        // Execute current step API
+        const apiResult = await apiCallFn();
+
+        /**
+         * Multivariate Multiseries has no dedicated Imbalance Handling page —
+         * fire that API (disabled) right after Feature Importance (the step
+         * that immediately precedes it in the standard ML flow) succeeds.
+         */
+        if (
+          apiResult &&
+          currentStep === 6 &&
+          predictionType === 'multivariate_multiseries'
+        ) {
+          try {
+            const requestBody = {
+              ensemble_id: datasetState?.ensembleId,
+              workflow_id: activeWorkflowId,
+              imbalance_handling: false,
+              imbalance_handling_method: 'smote',
+              use_class_weights: false,
+              sampling_strategy: 'auto',
+            };
+            const response = await fetch(
+              `${hostnameAI}/data/preprocess_supervised/imbalance_handling`,
+              {
+                method: 'POST',
+                headers: {
+                  accept: 'application/json',
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody),
+              }
+            );
+
+            if (!response.ok) return false;
+
+            // step7 is otherwise unused for multivariate_multiseries (its step
+            // list stops at 6) — reuse it to hold this response for the preview
+            // screen, mirroring how Step7.jsx itself persists to 'step7'.
+            const data = await response.json();
+            updatePreprocessingStep('step7', {
+              config: requestBody,
+              apiResponse: data,
+            });
+          } catch (error) {
+            console.error('Error calling imbalance handling API:', error);
+            return false;
+          }
+        }
+
+        return apiResult;
+      } finally {
+        // Reset loading state
+        setIsApiCallInProgress(false);
+      }
+    };
+
+    /**
+     * Opens processed data preview modal.
+     */
+    const handlePreviewClick = () => {
+      setIsPreviewModalOpen(true);
+    };
+
+    /**
+     * Dynamically renders preprocessing step component
+     * based on workflow type and current step.
+     */
+    const renderStepContent = () => {
+
+  // =========================
+  // Univariate Time Series
+  // =========================
+  if (predictionType === 'univariate_timeseries') {
     switch (currentStep) {
       case 1:
-        return <DataCleaning readonly={isInteractionLocked} onValidationChange={setIsStep1Valid} onApiCall={(fn) => step1ApiCallRef.current = fn} />;
-      case 2:
-        return <FeatureSelection readonly={isInteractionLocked} onValidationChange={setIsStep2Valid} onApiCall={(fn) => step2ApiCallRef.current = fn} />;
-      case 3:
-        return <FeatureEngineering readonly={isInteractionLocked} onApiCall={(fn) => step3ApiCallRef.current = fn} />;
-      case 4:
-        return <ScalingTransformation readonly={isInteractionLocked} onValidationChange={setIsStep4Valid} onApiCall={(fn) => step4ApiCallRef.current = fn} />;
-      case 5:
-        return <StatisticalAnalysis readonly={isInteractionLocked} onValidationChange={setIsStep5Valid} onApiCall={(fn) => step5ApiCallRef.current = fn} />;
-      case 6:
-        return <FeatureImportance readonly={isInteractionLocked} onApiCall={(fn) => step6ApiCallRef.current = fn} />;
-      case 7:
-        return <Step7 readonly={isInteractionLocked} showPreview={isStep7Preview} onApiCall={(fn) => step7ApiCallRef.current = fn} />;
-      default:
-        return <DataCleaning readonly={isInteractionLocked} onValidationChange={setIsStep1Valid} onApiCall={(fn) => step1ApiCallRef.current = fn} />;
-    }
-  };
-
-  const getIsNextDisabled = () => {
-    if (isApiCallInProgress) return true;
-    if (currentStep === 1 && !isStep1Valid) return true;
-    if (currentStep === 2 && !isStep2Valid) return true;
-    if (currentStep === 4 && !isStep4Valid) return true;
-    if (currentStep === 5 && !isStep5Valid) return true;
-    return false;
-  };
-
-  const showPreviewButton = currentStep > 1 && !(currentStep === 7 && isStep7Preview);
-
   return (
-    <>
-      <AIPlaygroundLayout
-        currentPreprocessingStep={currentStep}
-        totalPreprocessingSteps={preprocessingSteps.length}
-        onPreprocessingStepChange={setCurrentStep}
-        isStep7Preview={isStep7Preview}
-        onPreviewData={setIsStep7Preview}
-        onNextClick={handleNextClick}
-        isNextDisabled={getIsNextDisabled()}
-      >
+    <HandleMissingValues
+      readonly={isInteractionLocked}
+      onValidationChange={setIsStep2Valid}
+      onApiCall={(fn) =>
+        (step1ApiCallRef.current = fn)
+      }
+      predictionType={predictionType}
+    />
+  );
 
-        <div className="w-full h-full overflow-hidden">
-          <div className="flex flex-row h-full overflow-hidden">
-            {!(currentStep === 7 && isStep7Preview) && (
-              <div className="w-72 flex-shrink-0 h-full overflow-hidden">
-                <div className="bg-white px-3 border-r border-[#CCCCCC] h-full flex flex-col">
+      case 2:
+        return (
+          <FeatureIntegrity
+            readonly={isInteractionLocked}
+            onApiCall={(fn) =>
+              (step2ApiCallRef.current = fn)
+            }
+            predictionType={predictionType}
+          />
+        );
 
-                  {/* Header */}
-                  <h3 className="bg-[#FAFAFA] text-sm font-medium text-gray-700 mb-3 px-3 py-2 rounded-md flex-shrink-0">
-                    Pre-processing Steps{' '}
-                    <span className="text-gray-400 ml-2">
-                      {currentStep} of {preprocessingSteps.length}
-                    </span>
-                  </h3>
+      case 3:
+        return (
+          <DataStabilization
+            readonly={isInteractionLocked}
+            onApiCall={(fn) =>
+              (step3ApiCallRef.current = fn)
+            }
+            predictionType={predictionType}
+          />
+        );
 
-                  <div className="flex-1 min-h-0 flex flex-col justify-between pb-4">
-                    {preprocessingSteps.map((step, index) => {
-                      const isCompleted = readonly
-                        ? step.id !== currentStep
-                        : step.id < currentStep;
-                      const isLast = index === preprocessingSteps.length - 1;
+      case 4:
+        return (
+          <Seasonality
+            readonly={isInteractionLocked}
+            onApiCall={(fn) =>
+              (step4ApiCallRef.current = fn)
+            }
+            predictionType={predictionType}
+          />
+        );
 
-                      return (
-                        <React.Fragment key={step.id}>
-                          {/* Step row — flex-shrink-0 so it never compresses */}
-                          <button
-                            onClick={() => !isApiCallInProgress && setCurrentStep(step.id)}
-                            disabled={isApiCallInProgress}
-                            className={`flex items-center gap-3 w-full text-left transition-colors flex-shrink-0 ${isApiCallInProgress ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${currentStep === step.id ? 'text-[#8e78b7]' : 'text-gray-500'
+
+      case 5:
+        return (
+          <StationarityTreatment
+            readonly={isInteractionLocked}
+            onApiCall={(fn) =>
+              (step5ApiCallRef.current = fn)
+            }
+            showPreview={isUnivariatePreview}
+            isDataPreprocessingAuto={isDataPreprocessingAuto}
+          />
+        );
+
+      default:
+        return null;
+    }
+  }
+
+  const isTimeSeries =
+    predictionType &&
+    [
+      'multivariate_timeseries',
+      'multiseries_timeseries',
+    ].includes(predictionType);
+
+  /**
+   * Time series workflow rendering
+   */
+  if (isTimeSeries) {
+    switch (currentStep) {
+      case 1:
+        return (
+          <HandleMissingValues
+            readonly={isInteractionLocked}
+            onValidationChange={setIsStep2Valid}
+            onApiCall={(fn) =>
+              (step1ApiCallRef.current = fn)
+            }
+            predictionType={predictionType}
+          />
+        );
+
+      case 2:
+        return (
+          <FeatureIntegrity
+            readonly={isInteractionLocked}
+            onApiCall={(fn) =>
+              (step2ApiCallRef.current = fn)
+            }
+            predictionType={predictionType}
+          />
+        );
+
+      case 3:
+        return (
+          <DataStabilization
+            readonly={isInteractionLocked}
+            onApiCall={(fn) =>
+              (step3ApiCallRef.current = fn)
+            }
+            predictionType={predictionType}
+          />
+        );
+
+      case 4:
+        return (
+          <Seasonality
+            readonly={isInteractionLocked}
+            onApiCall={(fn) =>
+              (step4ApiCallRef.current = fn)
+            }
+            predictionType={predictionType}
+          />
+        );
+
+      case 5: {
+        const step5Config = workflowState?.dataPreprocessing?.step5?.config;
+        const wasStationarityAnalysisEnabledInStep5 = step5Config?.stationarity_analysis_active ?? false;
+
+        if (!wasStationarityAnalysisEnabledInStep5) {
+          return null;
+        }
+
+        return (
+          <StationarityTreatment
+            readonly={isInteractionLocked}
+            onApiCall={(fn) =>
+              (step5ApiCallRef.current = fn)
+            }
+            showPreview={false}
+            isDataPreprocessingAuto={isDataPreprocessingAuto}
+          />
+        );
+      }
+
+      case 6:
+        return (
+          <FeatureDependency
+            readonly={isInteractionLocked}
+            onApiCall={(fn) =>
+              (step6ApiCallRef.current = fn)
+            }
+          />
+        );
+
+      case 7:
+        return (
+          <ScalingandEncoding
+            readonly={isInteractionLocked}
+            onApiCall={(fn) =>
+              (step7ApiCallRef.current = fn)
+            }
+            showPreview={isStep8Preview}
+            isDataPreprocessingAuto={isDataPreprocessingAuto}
+            predictionType={predictionType}
+          />
+        );
+
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * Standard ML workflow rendering
+   */
+  switch (currentStep) {
+    case 1:
+      return (
+        <DataCleaning
+          readonly={isInteractionLocked}
+          onValidationChange={setIsStep1Valid}
+          onApiCall={(fn) =>
+            (step1ApiCallRef.current = fn)
+          }
+          predictionType={predictionType}
+        />
+      );
+
+    case 2:
+      return (
+        <FeatureSelection
+          readonly={isInteractionLocked}
+          onValidationChange={setIsStep2Valid}
+          onApiCall={(fn) =>
+            (step2ApiCallRef.current = fn)
+          }
+        />
+      );
+
+    case 3:
+      return (
+        <FeatureEngineering
+          readonly={isInteractionLocked}
+          onApiCall={(fn) =>
+            (step3ApiCallRef.current = fn)
+          }
+          predictionType={predictionType}
+        />
+      );
+
+    case 4:
+      return (
+        <ScalingTransformation
+          readonly={isInteractionLocked}
+          onValidationChange={setIsStep4Valid}
+          onApiCall={(fn) =>
+            (step4ApiCallRef.current = fn)
+          }
+        />
+      );
+
+    case 5:
+      return (
+        <StatisticalAnalysis
+          readonly={isInteractionLocked}
+          onValidationChange={setIsStep5Valid}
+          onApiCall={(fn) =>
+            (step5ApiCallRef.current = fn)
+          }
+        />
+      );
+
+    case 6:
+      return (
+        <FeatureImportance
+          readonly={isInteractionLocked}
+          onApiCall={(fn) =>
+            (step6ApiCallRef.current = fn)
+          }
+          showPreview={
+            predictionType === 'multivariate_multiseries'
+              ? isStep6MMSPreview
+              : false
+          }
+          isDataPreprocessingAuto={isDataPreprocessingAuto}
+        />
+      );
+
+    case 7:
+      return (
+        <Step7
+          readonly={isInteractionLocked}
+          showPreview={isStep7Preview}
+          isDataPreprocessingAuto={
+            isDataPreprocessingAuto
+          }
+          onApiCall={(fn) =>
+            (step7ApiCallRef.current = fn)
+          }
+        />
+      );
+
+    default:
+      return (
+        <DataCleaning
+          readonly={isInteractionLocked}
+          onValidationChange={setIsStep1Valid}
+          onApiCall={(fn) =>
+            (step1ApiCallRef.current = fn)
+          }
+          predictionType={predictionType}
+        />
+      );
+  }
+};
+
+    /**
+     * Determines whether next button
+     * should be disabled.
+     */
+    const getIsNextDisabled = () => {
+      if (isApiCallInProgress) return true;
+      if (currentStep === 1 && !isStep1Valid) return true;
+      if (currentStep === 2 && !isStep2Valid) return true;
+      if (currentStep === 4 && !isStep4Valid) return true;
+      if (currentStep === 5 && !isStep5Valid) return true;
+
+      return false;
+    };
+    const isPreviewMode =
+  (currentStep === 7 && isStep7Preview) ||
+  (currentStep === 7 && isStep8Preview) ||
+  (
+    predictionType === 'univariate_timeseries' &&
+    currentStep === 5 &&
+    isUnivariatePreview
+  ) ||
+  (
+    currentStep === 6 &&
+    isStep6MMSPreview &&
+    predictionType === 'multivariate_multiseries'
+  );
+    /**
+     * Show preview button only after step 1
+     * and not inside final preview screen.
+     */
+    const showPreviewButton =currentStep >= 1 && !isPreviewMode;
+
+  !isPreviewMode;
+
+    return (
+      <>
+        <AIPlaygroundLayout
+          currentPreprocessingStep={currentStep}
+          totalPreprocessingSteps={
+            preprocessingSteps.length
+          }
+          onPreprocessingStepChange={setCurrentStep}
+          isStep7Preview={isStep7Preview}
+          isStep8Preview={isStep8Preview}
+          isStep6MMSPreview={isStep6MMSPreview}
+          onPreviewData={setIsStep7Preview}
+          onPreviewData8={setIsStep8Preview}
+          onPreviewData6MMS={setIsStep6MMSPreview}
+          onNextClick={handleNextClick}
+          isNextDisabled={getIsNextDisabled()}
+          predictionType={predictionType}
+isUnivariatePreview={isUnivariatePreview}
+onUnivariatePreview={setIsUnivariatePreview}
+        >
+          <div className="w-full h-full overflow-hidden">
+            <div className="flex flex-row h-full overflow-hidden">
+              
+              {/* Sidebar hidden during final preview */}
+              {!isPreviewMode && (
+                <div className="w-72 flex-shrink-0 h-full overflow-hidden">
+                  <div className="bg-white px-3 border-r border-[#CCCCCC] h-full flex flex-col">
+
+                    {/* Sidebar header */}
+                    <h3 className="bg-[#FAFAFA] text-sm font-medium text-gray-700 mb-3 px-3 py-2 rounded-md flex-shrink-0">
+                      Pre-processing Steps{' '}
+                      <span className="text-gray-400 ml-2">
+                        {currentStep} of{' '}
+                        {preprocessingSteps.length}
+                      </span>
+                    </h3>
+
+                    {/* Steps list */}
+                    <div className="flex-1 min-h-0 flex flex-col justify-between pb-4">
+                      {preprocessingSteps.map((step, index) => {
+                        // Completed steps
+                        const isCompleted = readonly
+                          ? step.id !== currentStep
+                          : step.id < currentStep;
+
+                        const isLast =
+                          index ===
+                          preprocessingSteps.length - 1;
+
+                        return (
+                          <React.Fragment key={step.id}>
+                            {/* Step button */}
+                            <button
+                              onClick={() =>
+                                !isApiCallInProgress &&
+                                setCurrentStep(step.id)
+                              }
+                              disabled={isApiCallInProgress}
+                              className={`flex items-center gap-3 w-full text-left transition-colors flex-shrink-0 ${
+                                isApiCallInProgress
+                                  ? 'cursor-not-allowed opacity-50'
+                                  : 'cursor-pointer'
+                              } ${
+                                currentStep === step.id
+                                  ? 'text-[#8e78b7]'
+                                  : 'text-gray-500'
                               }`}
-                          >
-                            <div
-                              className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-medium border transition-all ${isCompleted
-                                  ? 'bg-[#e6f6f4] text-[#2ba995] border-[#2ba995]'
-                                  : currentStep === step.id
+                            >
+                              {/* Step circle */}
+                              <div
+                                className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-medium border transition-all ${
+                                  isCompleted
+                                    ? 'bg-[#e6f6f4] text-[#2ba995] border-[#2ba995]'
+                                    : currentStep === step.id
                                     ? 'bg-purple-100 border-[#8e78b7] text-[#8e78b7]'
                                     : 'bg-white border-gray-300 text-gray-500'
                                 }`}
-                            >
-                              {isCompleted ? <Check className="w-4 h-4" /> : step.id}
-                            </div>
-                            <span className="text-sm font-medium whitespace-nowrap">
-                              {step.label}
-                            </span>
-                          </button>
+                              >
+                                {isCompleted ? (
+                                  <Check className="w-4 h-4" />
+                                ) : (
+                                  step.id
+                                )}
+                              </div>
 
-                          {/* Connector: flex-1 + min-h-0 grows to fill the equal gap */}
-                          {!isLast && (
-                            <div className="flex-1 min-h-0 flex justify-start pl-[15px]">
-                              <div className="w-px bg-gray-200 h-full" />
-                            </div>
-                          )}
-                        </React.Fragment>
-                      );
-                    })}
+                              {/* Step label */}
+                              <span className="text-sm font-medium whitespace-nowrap">
+                                {step.label}
+                              </span>
+                            </button>
+
+                            {/* Vertical connector line */}
+                            {!isLast && (
+                              <div className="flex-1 min-h-0 flex justify-start pl-[15px]">
+                                <div className="w-px bg-gray-200 h-full" />
+                              </div>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    </div>
                   </div>
-
-                </div>
-              </div>
-            )}
-            <div
-              className={`flex-1 min-w-0 h-full px-6 flex flex-col ${currentStep === 7 && isStep7Preview
-                  ? 'overflow-y-auto'
-                  : 'overflow-y-auto'
-                }`}
-            >
-              {showPreviewButton && (
-                <div className="flex justify-end mb-4">
-                  <button
-                    onClick={handlePreviewClick}
-                    disabled={isApiCallInProgress}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all shadow-md ${isApiCallInProgress ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-[#8e78b7] text-white hover:bg-[#7a6ba0] hover:shadow-lg'}`}
-                  >
-                    <Eye className="w-4 h-4" />
-                    <span className="font-medium">Preview Processed Data</span>
-                  </button>
                 </div>
               )}
 
-              {renderStepContent()}
+              {/* Main content area */}
+              <div className="flex-1 min-w-0 h-full px-6 flex flex-col overflow-y-auto">
+
+                {/* Preview button */}
+                {showPreviewButton && (
+                  <div className="flex justify-end mb-4">
+                    <button
+                      onClick={handlePreviewClick}
+                      disabled={isApiCallInProgress}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all shadow-md ${
+                        isApiCallInProgress
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-[#8e78b7] text-white hover:bg-[#7a6ba0] hover:shadow-lg'
+                      }`}
+                    >
+                      <Eye className="w-4 h-4" />
+                      <span className="font-medium">
+                        Preview Processed Data
+                      </span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Dynamic step component */}
+                {renderStepContent()}
+              </div>
             </div>
-
           </div>
-        </div>
-      </AIPlaygroundLayout>
+        </AIPlaygroundLayout>
 
-      <DataPreviewModal
-        isOpen={isPreviewModalOpen}
-        onClose={() => setIsPreviewModalOpen(false)}
-        currentStep={currentStep}
-      />
-    </>
-  );
-}
+        {/* Data preview modal */}
+        <DataPreviewModal
+          isOpen={isPreviewModalOpen}
+          onClose={() => setIsPreviewModalOpen(false)}
+          currentStep={currentStep}
+          predictionType={predictionType}
+        />
+      </>
+    );
+  }
 
-export default DataPreprocessing;
+  export default DataPreprocessing;

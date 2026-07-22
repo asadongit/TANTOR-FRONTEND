@@ -18,6 +18,7 @@ function StatisticalAnalysis({ readonly: readonlyProp, onValidationChange, onApi
     const vifReport = step4Response?.vif_report || [];
 
     const vifDropperRef = useRef(null);
+    const maxDroppableFeatures = Math.max(vifReport.length - 1, 0);
 
     const [toggles, setToggles] = useState({
         correlation: false,
@@ -44,13 +45,24 @@ function StatisticalAnalysis({ readonly: readonlyProp, onValidationChange, onApi
         if ((mode === 'view' || mode === 'edit') && workflowState?.dataPreprocessing?.step5?.config) {
             const config = workflowState.dataPreprocessing.step5.config;
             setVifDropperEnabled(config.vif_column_dropper || false);
-            setSelectedFeatures(config.vif_columns_to_drop || []);
+            const configuredSelectedFeatures = config.vif_columns_to_drop || [];
+            setSelectedFeatures(
+                configuredSelectedFeatures.length > maxDroppableFeatures
+                    ? configuredSelectedFeatures.slice(0, maxDroppableFeatures)
+                    : configuredSelectedFeatures
+            );
             setToggles({
                 correlation: true,
                 vif: config.vif_column_dropper
             });
         }
-    }, [mode, workflowState]);
+    }, [mode, workflowState, maxDroppableFeatures]);
+
+    useEffect(() => {
+        if (selectedFeatures.length > maxDroppableFeatures) {
+            setSelectedFeatures(prev => prev.slice(0, maxDroppableFeatures));
+        }
+    }, [maxDroppableFeatures, selectedFeatures.length]);
 
     const riskCounts = vifReport.reduce((acc, curr) => {
         const risk = curr.Multicollinearity_Risk?.toLowerCase();
@@ -61,7 +73,7 @@ function StatisticalAnalysis({ readonly: readonlyProp, onValidationChange, onApi
     }, { low: 0, moderate: 0, high: 0 });
 
     // Derived error flag — only active after Next is clicked
-    const featuresError = showFieldErrors && vifDropperEnabled && selectedFeatures.length === 0;
+    const featuresError = showFieldErrors && vifDropperEnabled && vifReport.length > 0 && selectedFeatures.length === vifReport.length;
 
     // Always report valid to parent — Next is never disabled
     useEffect(() => {
@@ -71,10 +83,10 @@ function StatisticalAnalysis({ readonly: readonlyProp, onValidationChange, onApi
     // Auto-clear errors when fixed
     useEffect(() => {
         if (!showFieldErrors) return;
-        if (!(vifDropperEnabled && selectedFeatures.length === 0)) {
+        if (!(vifDropperEnabled && vifReport.length > 0 && selectedFeatures.length === vifReport.length)) {
             setShowFieldErrors(false);
         }
-    }, [selectedFeatures, vifDropperEnabled, showFieldErrors]);
+    }, [selectedFeatures, vifDropperEnabled, showFieldErrors, vifReport.length]);
 
     const toggleSwitch = (key) => {
         if (readonly) return;
@@ -98,19 +110,18 @@ function StatisticalAnalysis({ readonly: readonlyProp, onValidationChange, onApi
     const toggleFeatureSelection = (featureName) => {
         if (readonly) return;
         setSelectedFeatures(prev =>
-            prev.includes(featureName) ? prev.filter(f => f !== featureName) : [...prev, featureName]
+            prev.includes(featureName)
+                ? prev.filter(f => f !== featureName)
+                : prev.length >= maxDroppableFeatures
+                    ? prev
+                    : [...prev, featureName]
         );
-    };
-
-    const toggleAllFeatures = () => {
-        if (readonly) return;
-        setSelectedFeatures(selectedFeatures.length === vifReport.length ? [] : vifReport.map(row => row.Feature));
     };
 
     const handleStatisticalAnalysis = useCallback(async () => {
         if (readonly) return true;
 
-        if (vifDropperEnabled && selectedFeatures.length === 0) {
+        if (vifDropperEnabled && vifReport.length > 0 && selectedFeatures.length === vifReport.length) {
             setShowFieldErrors(true);
 
             setExpandedSections(prev => ({ ...prev, vif: true }));
@@ -136,7 +147,7 @@ function StatisticalAnalysis({ readonly: readonlyProp, onValidationChange, onApi
                 throw new Error('Missing required identifiers: ensemble_id or workflow_id');
             }
 
-            const response = await fetch(`${hostnameAI}/data/preprocess/statistical_analysis`, {
+            const response = await fetch(`${hostnameAI}/data/preprocess_supervised/statistical_analysis`, {
                 method: 'POST',
                 headers: {
                     'accept': 'application/json',
@@ -336,24 +347,13 @@ function StatisticalAnalysis({ readonly: readonlyProp, onValidationChange, onApi
                             </div>
                             {vifDropperEnabled && (
                                 <div className="flex items-center gap-4 text-sm text-gray-600">
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={vifReport.length > 0 && selectedFeatures.length === vifReport.length}
-                                            onChange={toggleAllFeatures}
-                                            disabled={readonly}
-                                            style={{ accentColor: '#8E77BB' }}
-                                            className="w-4 h-4 border-[#CCCCCC] rounded focus:ring-[#8E77BB]"
-                                        />
-                                        <span className="text-[#8e78b7] font-medium">Select All</span>
-                                    </label>
                                     <span>Total Rows: {vifReport.length} | Selected: {selectedFeatures.length}</span>
                                 </div>
                             )}
                         </div>
 
                         {featuresError && (
-                            <p className="text-xs text-[#EF4D5F] mb-3 pl-0.5">Please select at least one feature to drop</p>
+                            <p className="text-xs text-[#EF4D5F] mb-3 pl-0.5">You must leave at least one feature undropped</p>
                         )}
 
                         <div className={`border rounded-lg overflow-hidden max-h-96 overflow-y-auto transition-colors ${
@@ -397,7 +397,7 @@ function StatisticalAnalysis({ readonly: readonlyProp, onValidationChange, onApi
                                                                 type="checkbox"
                                                                 checked={selectedFeatures.includes(row.Feature)}
                                                                 onChange={() => toggleFeatureSelection(row.Feature)}
-                                                                disabled={readonly}
+                                                                disabled={readonly || (!selectedFeatures.includes(row.Feature) && selectedFeatures.length >= maxDroppableFeatures)}
                                                                 style={{ accentColor: featuresError ? '#EF4D5F' : '#8E77BB' }}
                                                                 className={`w-4 h-4 rounded border transition-colors ${
                                                                     featuresError

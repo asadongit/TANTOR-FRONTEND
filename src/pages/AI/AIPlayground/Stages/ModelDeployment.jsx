@@ -30,7 +30,7 @@ function ModelDeployment() {
               src={mlflowUrl}
               className="w-full h-full"
               title="MLflow Experiment"
-              style={{ minHeight: '600px' }}
+              style={{ minHeight: '6000px' }}
             />
           </div>
         ) : (

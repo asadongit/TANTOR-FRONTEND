@@ -4,7 +4,7 @@ import { useAuth } from '../../../../../../context/AuthContext';
 import { toast } from 'react-hot-toast';
 import SearchableDropdown from '../../../components/SearchableDropdown';
 import MultiSelectDropdown from '../../../components/MultiSelectDropdown';
-import { useAllRules, useEditAttribute } from '../../../../../../hooks/mdm/domainManagement';
+import { useDQDimensions, useRulesByDimensions, useEditAttribute } from '../../../../../../hooks/mdm/domainManagement';
 
 const inputClass =
     'w-full border border-[#CCCCCC] rounded-lg px-3.5 py-2.5 text-sm font-normal text-[#282F49] outline-none bg-white font-[Satoshi,sans-serif] leading-none box-border focus:border-[#8E77BB] focus:ring-2 focus:ring-purple-100 transition-all';
@@ -29,17 +29,6 @@ const REQUIRED_OPTIONS = [
     { label: 'No',  value: 'No' },
 ];
 
-const SURVIVORSHIP_OPTIONS = [
-    { label: 'Most Recent',    value: 'most_recent' },
-    { label: 'Most Frequent',  value: 'most_frequent' },
-    { label: 'Longest',        value: 'longest' },
-    { label: 'Shortest',       value: 'shortest' },
-    { label: 'First Non-Null', value: 'first_non_null' },
-    { label: 'Last Non-Null',  value: 'last_non_null' },
-    { label: 'Max',            value: 'max' },
-    { label: 'Min',            value: 'min' },
-    { label: 'Manual',         value: 'manual' },
-];
 
 const getLengthMode = (dtValue) =>
     DATA_TYPE_OPTIONS.find(o => o.value === dtValue)?.lengthMode ?? null;
@@ -53,6 +42,17 @@ const resolveDataTypeValue = (rawType, lengthPrecision) => {
     if (upper === 'VARCHAR' && lengthPrecision) return 'VARCHAR_N';
     if (upper === 'NUMERIC' && lengthPrecision) return 'NUMERIC_PS';
     return DATA_TYPE_OPTIONS.find(o => o.payloadType === upper && o.lengthMode === null)?.value || upper;
+};
+
+
+
+const isLengthValid = (dataType, lengthPrecision) => {
+    const mode = getLengthMode(dataType);
+    if (!mode) return true;
+    if (mode === 'length') return !!lengthPrecision?.toString().trim();
+    // precision_scale
+    const parts = (lengthPrecision || '').split('/');
+    return !!(parts[0]?.trim() && parts[1]?.trim());
 };
 
 const LengthPrecisionInput = ({ dataType, lengthPrecision, onChange }) => {
@@ -70,7 +70,7 @@ const LengthPrecisionInput = ({ dataType, lengthPrecision, onChange }) => {
                     min={1}
                     placeholder="e.g. 100"
                     value={lengthPrecision}
-                    onChange={e => onChange('lengthPrecision', e.target.value)}
+                    onChange={e => onChange('lengthPrecision', e.target.value)}  
                     className={inputClass}
                 />
             </div>
@@ -92,7 +92,7 @@ const LengthPrecisionInput = ({ dataType, lengthPrecision, onChange }) => {
                     min={1}
                     placeholder="e.g. 10"
                     value={precision}
-                    onChange={e => onChange('lengthPrecision', `${e.target.value}/${scale}`)}
+                    onChange={e => onChange('lengthPrecision', `${e.target.value}/${scale}`)}  
                     className={inputClass}
                 />
             </div>
@@ -105,7 +105,7 @@ const LengthPrecisionInput = ({ dataType, lengthPrecision, onChange }) => {
                     min={0}
                     placeholder="e.g. 2"
                     value={scale}
-                    onChange={e => onChange('lengthPrecision', `${precision}/${e.target.value}`)}
+                    onChange={e => onChange('lengthPrecision', `${precision}/${e.target.value}`)}  
                     className={inputClass}
                 />
             </div>
@@ -113,71 +113,57 @@ const LengthPrecisionInput = ({ dataType, lengthPrecision, onChange }) => {
     );
 };
 
-const isLengthValid = (dataType, lengthPrecision) => {
-    const mode = getLengthMode(dataType);
-    if (!mode) return true;
-    if (mode === 'length') return !!lengthPrecision?.toString().trim();
-    // precision_scale
-    const parts = (lengthPrecision || '').split('/');
-    return !!(parts[0]?.trim() && parts[1]?.trim());
-};
-
 const EditAttributeModal = ({ isOpen, onClose, onComplete, attributeData, domainName, domainId }) => {
-    console.log("attribute data @@@ ", attributeData);
     const { decodedToken } = useAuth();
 
     const [formData, setFormData] = useState({
-        attributeName: '', displayName: '', dataType: '', lengthPrecision: '',
-        required: '', ruleIds: [], customRegex: '', matchWeight: '', survivorshipStrategy: '',
+        attributeName: '', displayName: '', sourceAttributeName: '', sourceDisplayName: '', dataType: '', lengthPrecision: '',
+        required: '', dqDimension: [], ruleIds: [], 
     });
 
-    const { rules: allRules }             = useAllRules();
-    const { isSubmitting, editAttribute } = useEditAttribute();
+const { dimensions, isLoading: dimsLoading } = useDQDimensions();
+const { rules, isLoading: rulesLoading, fetchRules } = useRulesByDimensions();
+const { isSubmitting, editAttribute } = useEditAttribute();
 
-    useEffect(() => {
-        if (attributeData) {
-            const rawType        = attributeData.dataType || attributeData.data_type || '';
-            const rawLength      = attributeData.lengthPrecision || attributeData.length_precision || '';
-            const resolvedDtValue = resolveDataTypeValue(rawType, rawLength);
+const handleChange = (field, value) => setFormData(p => ({ ...p, [field]: value }));
 
-            setFormData({
-                attributeName:        attributeData.attributeName || '',
-                displayName:          attributeData.display_name || '',
-                dataType:             resolvedDtValue,
-                lengthPrecision:      rawLength,
-                required:             attributeData.required || '',
-                ruleIds:              (attributeData.dqRules || []).map(r => r.rule_id),
-                customRegex:          attributeData.regex || attributeData.customRegex || '',
-                matchWeight:
-                    attributeData.matchWeight && attributeData.matchWeight !== '--'
-                        ? attributeData.matchWeight : '',
-                survivorshipStrategy: attributeData.survivorship || attributeData.survivorshipStrategy || '',
-            });
-        }
-    }, [attributeData]);
+useEffect(() => {
+    if (formData.dqDimension?.length > 0) {
+        fetchRules(formData.dqDimension);
+    }
+}, [formData.dqDimension]);
 
-    if (!isOpen) return null;
+useEffect(() => {
+    if (attributeData) {
+        const rawType   = attributeData.data_type || attributeData.dataType || '';
+        const rawLength = attributeData.length_precision || attributeData.lengthPrecision || '';
+        const resolvedDtValue = resolveDataTypeValue(rawType, rawLength);
 
-    const handleChange = (field, value) => setFormData(p => ({ ...p, [field]: value }));
+        const dqRules = attributeData.dq_rules || attributeData.dqRules || [];  // fix: was referencing undefined variable
+
+        const derivedDimensions = [...new Set(
+            dqRules.map(r => r.dq_dimension).filter(Boolean)
+        )];
+
+        setFormData({
+            attributeName:       attributeData.attribute_name || attributeData.attributeName || '',
+            displayName:         attributeData.display_name || attributeData.displayName || '',
+            sourceAttributeName: attributeData.staging_column || '',
+            sourceDisplayName:   attributeData.staging_display_name || '',
+            dataType:            resolvedDtValue,
+            lengthPrecision:     rawLength,
+            required:            attributeData.is_mandatory ? 'Yes' : 'No',
+            dqDimension:         derivedDimensions,
+            ruleIds:             dqRules.map(r => r.rule_id),
+        });
+    }
+}, [attributeData]);
+
+if (!isOpen) return null;
+
 
     const handleDataTypeChange = (val) => {
         setFormData(p => ({ ...p, dataType: val, lengthPrecision: '' }));
-    };
-
-    const toggleRule = (ruleId) => {
-        handleChange(
-            'ruleIds',
-            formData.ruleIds.includes(ruleId)
-                ? formData.ruleIds.filter(id => id !== ruleId)
-                : [...formData.ruleIds, ruleId]
-        );
-    };
-
-    const toggleAllRules = () => {
-        handleChange(
-            'ruleIds',
-            formData.ruleIds.length === allRules.length ? [] : allRules.map(r => r.rule_id)
-        );
     };
 
     const handleSubmit = async () => {
@@ -194,6 +180,11 @@ const EditAttributeModal = ({ isOpen, onClose, onComplete, attributeData, domain
             );
             return;
         }
+        // Check if DQ Dimension is selected but DQ Rule is not
+        if (formData.dqDimension?.length > 0 && (!formData.ruleIds || formData.ruleIds.length === 0)) {
+            toast.error('DQ Rule is required when DQ Dimension is selected.');
+            return;
+        }
 
         const result = await editAttribute({
             domain_id:  domainId,
@@ -202,13 +193,12 @@ const EditAttributeModal = ({ isOpen, onClose, onComplete, attributeData, domain
                 attribute_id:          attributeData.attribute_id,
                 attribute_name:        formData.attributeName || null,
                 display_name:          formData.displayName || null,
-                data_type:             getPayloadType(formData.dataType),   // "VARCHAR", "NUMERIC", etc.
+                source_attribute_name: formData.sourceAttributeName || null,  
+                source_display_name:   formData.sourceDisplayName || null,    
+                data_type:             getPayloadType(formData.dataType),
                 length_precision:      getLengthMode(formData.dataType) ? (formData.lengthPrecision || null) : null,
                 required:              formData.required || null,
                 rule:                  formData.ruleIds.length > 0 ? formData.ruleIds : [],
-                regex:                 formData.customRegex || null,
-                match_weight:          formData.matchWeight ? parseInt(formData.matchWeight, 10) : null,
-                survivorship_strategy: formData.survivorshipStrategy || null,
             }],
         });
 
@@ -226,6 +216,8 @@ const EditAttributeModal = ({ isOpen, onClose, onComplete, attributeData, domain
         formData.displayName.trim() &&
         formData.dataType &&
         isLengthValid(formData.dataType, formData.lengthPrecision) &&
+        // If DQ Dimension is selected, DQ Rule must be selected
+        !(formData.dqDimension?.length > 0 && (!formData.ruleIds || formData.ruleIds.length === 0)) &&
         !isSubmitting;
 
     const lengthMode = getLengthMode(formData.dataType);
@@ -257,80 +249,96 @@ const EditAttributeModal = ({ isOpen, onClose, onComplete, attributeData, domain
                     {/* Form body */}
                     <div className="px-6 py-2 flex flex-col gap-4 overflow-y-auto max-h-[70vh]">
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className={labelClass}>Attribute Name <span className="text-[#E05252]">*</span></label>
-                                <input type="text" placeholder="Enter Attribute Name" value={formData.attributeName}
-                                    onChange={e => handleChange('attributeName', e.target.value)} className={inputClass} />
-                            </div>
-                            <div>
-                                <label className={labelClass}>Display Name <span className="text-[#E05252]">*</span></label>
-                                <input type="text" placeholder="Enter Display Name" value={formData.displayName}
-                                    onChange={e => handleChange('displayName', e.target.value)} className={inputClass} />
-                            </div>
+                    {/* Row 1: Attribute Name | Display Name | Source Attribute Name | Source Display Name */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className={labelClass}>Golden Attribute Name <span className="text-[#E05252]">*</span></label>
+                            <input type="text" placeholder="Enter Golden Attribute Name" value={formData.attributeName}
+                                onChange={e => handleChange('attributeName', e.target.value)} className={inputClass} />
                         </div>
-
-                        <div className={`grid gap-4 ${lengthMode === 'precision_scale' ? 'grid-cols-3' : 'grid-cols-2'}`}>
-                            <div>
-                                <label className={labelClass}>Data Type <span className="text-[#E05252]">*</span></label>
-                                <SearchableDropdown
-                                    value={formData.dataType}
-                                    onChange={handleDataTypeChange}
-                                    options={DATA_TYPE_OPTIONS}
-                                    placeholder="Select Data Type"
-                                />
-                            </div>
+                        <div>
+                            <label className={labelClass}>Golden Attribute Display Name <span className="text-[#E05252]">*</span></label>
+                            <input type="text" placeholder="Enter Golden Attribute Display Name" value={formData.displayName}
+                                onChange={e => handleChange('displayName', e.target.value)} className={inputClass} />
+                        </div>
+                        <div>
+                            <label className={labelClass}>Source Attribute Name</label>
+                            <input type="text" placeholder="Enter Source Attribute Name" value={formData.sourceAttributeName}
+                                onChange={e => handleChange('sourceAttributeName', e.target.value)} className={inputClass} />
+                        </div>
+                        <div>
+                            <label className={labelClass}>Source Attribute Display Name</label>
+                            <input type="text" placeholder="Enter Source Attribute Display Name" value={formData.sourceDisplayName}
+                                onChange={e => handleChange('sourceDisplayName', e.target.value)} className={inputClass} />
+                        </div>
+                        <div>
+                            <label className={labelClass}>Data Type <span className="text-[#E05252]">*</span></label>
+                            <SearchableDropdown
+                                value={formData.dataType}
+                                onChange={handleDataTypeChange}
+                                options={DATA_TYPE_OPTIONS}
+                                placeholder="Select Data Type"
+                            />
+                        </div>
+                        <div>
+                            <label className={labelClass}>Required</label>
+                            <SearchableDropdown
+                                value={formData.required}
+                                onChange={val => handleChange('required', val)}
+                                options={REQUIRED_OPTIONS}
+                                placeholder="Select"
+                            />
+                        </div>
+                        {lengthMode && (
                             <LengthPrecisionInput
                                 dataType={formData.dataType}
                                 lengthPrecision={formData.lengthPrecision}
                                 onChange={handleChange}
                             />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className={labelClass}>Required</label>
-                                <SearchableDropdown
-                                    value={formData.required}
-                                    onChange={val => handleChange('required', val)}
-                                    options={REQUIRED_OPTIONS}
-                                    placeholder="Select"
-                                />
-                            </div>
-                            <div>
-                                <label className={labelClass}>DQ Rule</label>
-                                <MultiSelectDropdown
-                                    selectedIds={formData.ruleIds}
-                                    onToggle={toggleRule}
-                                    onSelectAll={toggleAllRules}
-                                    options={allRules}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className={labelClass}>Custom Regex (if applicable)</label>
-                                <input type="text" placeholder="Enter Custom Regex" value={formData.customRegex}
-                                    onChange={e => handleChange('customRegex', e.target.value)} className={inputClass} />
-                            </div>
-                            <div>
-                                <label className={labelClass}>Match Weight (%)</label>
-                                <input type="number" placeholder="Enter Match Weight" value={formData.matchWeight}
-                                    onChange={e => handleChange('matchWeight', e.target.value)} className={inputClass} min={0} max={100} />
-                            </div>
-                        </div>
-
+                        )}
                         <div>
-                            <label className={labelClass}>Survivorship Strategy</label>
-                            <SearchableDropdown
-                                value={formData.survivorshipStrategy}
-                                onChange={val => handleChange('survivorshipStrategy', val)}
-                                options={SURVIVORSHIP_OPTIONS}
-                                placeholder="Select Survivorship Strategy"
+                            <label className={labelClass}>DQ Dimension</label>
+                            <MultiSelectDropdown
+                                options={dimensions.map(d => ({ rule_id: d, rule_name: d }))}
+                                selectedIds={formData.dqDimension}
+                                onToggle={(id) => {
+                                    const next = formData.dqDimension.includes(id)
+                                        ? formData.dqDimension.filter(v => v !== id)
+                                        : [...formData.dqDimension, id];
+                                    handleChange('dqDimension', next);
+                                    handleChange('ruleIds', []);
+                                }}
+                                onSelectAll={(currentIds) => {
+                                    handleChange('dqDimension', currentIds.length === dimensions.length ? [] : [...dimensions]);
+                                    handleChange('ruleIds', []);
+                                }}
+                                placeholder={dimsLoading ? 'Loading...' : 'Select Dimension'}
                             />
                         </div>
+                        {formData.dqDimension?.length > 0 && (
+                            <div>
+                                <label className={labelClass}>DQ Rule <span className="text-[#E05252]">*</span></label>
+                                <MultiSelectDropdown
+                                    options={rules.map(r => ({ rule_id: r.rule_id, rule_name: r.rule_name }))}
+                                    selectedIds={formData.ruleIds}
+                                    onToggle={(id) => {
+                                        const next = formData.ruleIds.includes(id)
+                                            ? formData.ruleIds.filter(v => v !== id)
+                                            : [...formData.ruleIds, id];
+                                        handleChange('ruleIds', next);
+                                    }}
+                                    onSelectAll={(currentIds) => {
+                                        const allIds = rules.map(r => r.rule_id);
+                                        handleChange('ruleIds', currentIds.length === allIds.length ? [] : allIds);
+                                    }}
+                                    placeholder={rulesLoading ? 'Loading rules...' : 'Select Rules'}
+                                />
+                            </div>
+                        )}
                     </div>
+
+                </div>
+
 
                     {/* Footer */}
                     <div className="flex items-center justify-end gap-3 px-6 py-4 rounded-b-2xl shadow-[0px_-4px_9px_0px_rgba(0,0,0,0.08)] bg-white mt-2">

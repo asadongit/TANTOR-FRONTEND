@@ -69,6 +69,7 @@ function App() {
                         activeSection={activeSection}
                         isCollapsed={isSidebarCollapsed}
                         toggleSidebar={toggleSidebar}
+                        setIsSidebarCollapsed={setIsSidebarCollapsed}
                       />
                       <main
                         className={`flex-1 transition-all duration-300 overflow-y-auto h-full min-h-0 ${

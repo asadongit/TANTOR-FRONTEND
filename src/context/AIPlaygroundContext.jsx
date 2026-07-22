@@ -22,9 +22,12 @@ const defaultDatasetState = {
     tableName: '',
     ensembleId: '',
     columnNames: [],
+    tsColumnsName: [],
+    entityColumns: [],
     profileReportHtml: '',
     isEnsemble: false,
-    WorkflowCount: 1
+    WorkflowCount: 1,
+    ensembleType: ''
 };
 
 const defaultSchedulerState = {
@@ -63,7 +66,9 @@ const defaultSchedulerState = {
     },
     model_drift_threshold: {
         prediction_drift_threshold: 0,
-        performance_drift_threshold: -1
+        performance_drift_threshold: -1,
+        rmse_threshold: '',
+        smape_threshold: ''
     },
     data_drift_check: 0,
     model_drift_check: 0,
@@ -105,6 +110,10 @@ const defaultWorkflowState = {
             apiResponse: null
         },
         step7: {
+            config: null,
+            apiResponse: null
+        },
+        step8: {
             config: null,
             apiResponse: null
         }
@@ -242,11 +251,12 @@ export const AIPlaygroundProvider = ({ children }) => {
     };
 
     // Set ensemble mode with workflow count
-    const setEnsembleMode = (ensembleCount = 1) => {
+    const setEnsembleMode = (ensembleCount = 1, ensembleType = '') => {
         setDatasetState(prev => ({
             ...prev,
             isEnsemble: ensembleCount > 1,
-            WorkflowCount: ensembleCount
+            WorkflowCount: ensembleCount,
+            ensembleType
         }));
     };
 

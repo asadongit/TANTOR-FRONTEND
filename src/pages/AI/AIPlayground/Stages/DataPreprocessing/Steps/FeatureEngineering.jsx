@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { ChevronDown, ChevronUp, Info, X } from 'lucide-react';
 import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 import InfoButton from '../../../components/InfoButton';
+import { SearchableDropdown } from '../timeseries/components/Dropdowns';
+import MethodParameterField from '../timeseries/components/HandleMissingValues/MethodParameterField';
 
 const OUTLIER_OPTIONS_CONFIG = [
     {
@@ -34,8 +36,59 @@ const OUTLIER_OPTIONS_CONFIG = [
         label: 'Remove',
         description: 'Remove is an outlier handling approach that completely deletes records identified as outliers. This method is used when extreme values are invalid, erroneous, or likely to distort model performance.',
         availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' }
+    },
+    {
+        value: 'soft_impute',
+        label: 'Soft Impute',
+        description: 'Soft Impute replaces detected outliers with values estimated via low-rank matrix completion, leveraging correlations across series to reconstruct plausible values in their place.',
+        availability: { multivariate_multiseries: 'yes' }
+    },
+    {
+        value: 'knn_impute',
+        label: 'KNN Impute',
+        description: 'KNN Impute replaces outlier values using the average of the nearest neighboring observations across similar time steps and series, preserving local patterns in the data.',
+        availability: { multivariate_multiseries: 'yes' }
+    },
+    {
+        value: 'mahalanobis_clip',
+        label: 'Mahalanobis Clip',
+        description: 'Mahalanobis Clip pulls multivariate outliers detected via Mahalanobis distance back to the boundary of the normal data distribution, reducing their influence while keeping the observation.',
+        availability: { multivariate_multiseries: 'yes' }
+    },
+    {
+        value: 'pchip',
+        label: 'PCHIP',
+        description: 'PCHIP replaces outliers using Piecewise Cubic Hermite Interpolating Polynomial interpolation, producing a smooth, shape-preserving estimate based on neighboring values.',
+        availability: { multivariate_multiseries: 'yes' }
+    },
+    {
+        value: 'seasonal_median',
+        label: 'Seasonal Median',
+        description: 'Seasonal Median replaces outliers with the median value observed for the same seasonal period (e.g. the same day-of-week or month) across the series history.',
+        availability: { multivariate_multiseries: 'yes' }
+    },
+    {
+        value: 'stl_reconstruction',
+        label: 'STL Reconstruction',
+        description: 'STL Reconstruction rebuilds outlier points from the trend and seasonal components produced by STL decomposition, removing the anomalous residual while preserving the series pattern.',
+        availability: { multivariate_multiseries: 'yes' }
+    },
+    {
+        value: 'rolling_median',
+        label: 'Rolling Median',
+        description: 'Rolling Median replaces outliers with the median value computed over a rolling window of neighboring observations, smoothing local anomalies.',
+        availability: { multivariate_multiseries: 'yes' }
+    },
+    {
+        value: 'flag_magnitude',
+        label: 'Flag Magnitude',
+        description: 'Flag Magnitude leaves outlier values in place but flags them with their magnitude/severity, allowing downstream models to weight or account for them without discarding data.',
+        availability: { multivariate_multiseries: 'yes' }
     }
 ];
+
+const OUTLIER_SEASON_PERIOD_STRATEGIES = ['seasonal_median', 'stl_reconstruction'];
+const OUTLIER_ROLLING_WINDOW_STRATEGIES = ['rolling_median', 'flag_magnitude'];
 
 const ENCODING_OPTIONS_CONFIG = [
     {
@@ -142,6 +195,112 @@ const ENCODING_OPTIONS_CONFIG = [
     }
 ];
 
+const TIME_SERIES_TYPE_OPTIONS = [
+    { value: 'lag',  label: 'Lag',          paramType: 'period' },
+    { value: 'lead', label: 'Lead',         paramType: 'period' },
+    { value: 'mean', label: 'Rolling Mean', paramType: 'window' },
+    { value: 'std',  label: 'Rolling Std',  paramType: 'window' },
+    { value: 'min',  label: 'Rolling Min',  paramType: 'window' },
+    { value: 'max',  label: 'Rolling Max',  paramType: 'window' },
+    { value: 'sum',  label: 'Rolling Sum',  paramType: 'window' },
+];
+
+const createOperation = () => ({
+    id: crypto.randomUUID(),
+    col: '',
+    type: 'lag',
+    period: 1,
+    window: 5,
+});
+
+const computeNewCol = (op) => {
+    if (!op.col || !op.type) return '';
+    const paramType = TIME_SERIES_TYPE_OPTIONS.find(t => t.value === op.type)?.paramType || 'period';
+    const paramVal = paramType === 'period' ? op.period : op.window;
+    return `${op.col}_${op.type}_${paramVal}`;
+};
+
+const TYPE_LABELS = TIME_SERIES_TYPE_OPTIONS.map(t => t.label);
+
+const TimeSeriesOperationRow = ({ op, numericColumns, readonly, showErrors, onChange, onRemove, canRemove, isDuplicate }) => {
+    const selectedTypeOption = TIME_SERIES_TYPE_OPTIONS.find(t => t.value === op.type);
+    const paramType = selectedTypeOption?.paramType || 'period';
+    const currentTypeLabel = selectedTypeOption?.label || '';
+    const colError = showErrors && !op.col;
+    const paramError = showErrors && (paramType === 'period' ? !op.period : !op.window);
+
+    const inputClass = (hasError) =>
+        `w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${
+            hasError ? 'border-[#EF4D5F] bg-[#FFF7F8] focus:ring-red-300' : 'border-gray-300 focus:ring-[#8e78b7]'
+        } ${readonly ? 'opacity-50 cursor-not-allowed' : ''}`;
+
+    return (
+        <div className={`relative border rounded-lg p-3 space-y-2 ${isDuplicate ? 'border-red-400 bg-red-50' : 'bg-white border-gray-200'}`}>
+            {!readonly && canRemove && (
+                <button
+                    onClick={onRemove}
+                    className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                    <X size={14} />
+                </button>
+            )}
+            <div className="grid grid-cols-3 gap-3">
+                <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Column</label>
+                    <SearchableDropdown
+                        selectedColumn={op.col}
+                        onSelect={(val) => onChange('col', val)}
+                        availableOptions={numericColumns}
+                        placeholder="Select column"
+                        readonly={readonly}
+                        hasError={colError}
+                    />
+                    {colError && <p className="text-xs text-red-500 mt-1">Required</p>}
+                </div>
+                <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Type</label>
+                    <SearchableDropdown
+                        selectedColumn={currentTypeLabel}
+                        onSelect={(label) => {
+                            const val = TIME_SERIES_TYPE_OPTIONS.find(t => t.label === label)?.value || label;
+                            onChange('type', val);
+                        }}
+                        availableOptions={TYPE_LABELS}
+                        placeholder="Select type"
+                        readonly={readonly}
+                        hasError={false}
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                        {paramType === 'period' ? 'Period' : 'Window'}
+                    </label>
+                    <input
+                        type="number"
+                        min="1"
+                        value={paramType === 'period' ? op.period : op.window}
+                        onChange={e => !readonly && onChange(paramType, e.target.value)}
+                        disabled={readonly}
+                        className={inputClass(paramError)}
+                    />
+                    {paramError && <p className="text-xs text-red-500 mt-1">Required</p>}
+                </div>
+            </div>
+
+            {op.col && op.type && (
+                <p className="text-xs text-gray-400">
+                    Generated column: <span className="font-medium text-gray-600">{computeNewCol(op)}</span>
+                </p>
+            )}
+
+            {isDuplicate && (
+                <p className="text-xs text-red-500">This combination already exists. Choose a different column, type, or parameter value.</p>
+            )}
+
+        </div>
+    );
+};
+
 const ToggleSwitch = ({ checked, onChange, readonly }) => (
     <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
         <input
@@ -169,7 +328,8 @@ const FeatureSection = ({
 }) => {
     const sectionDescriptions = {
         outlierTreatment: "Outlier Treatment refers to techniques used to identify and handle extreme or abnormal data values that deviate significantly from the rest of the dataset. These methods help reduce noise, prevent model distortion, and improve overall model stability and performance.",
-        categoricalEncoding: "Encode categorical variables for machine learning."
+        categoricalEncoding: "Encode categorical variables for machine learning.",
+        timeSeries: "Time Series Features generate lag, lead, or rolling aggregation columns (mean, std, min, max, sum) from numeric columns. These features capture temporal patterns per entity group."
     };
 
     return (
@@ -222,28 +382,39 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
     const [toggles, setToggles] = useState({
         outlierTreatment: false,
         categoricalEncoding: false,
+        timeSeries: false,
     });
 
     const [expandedSections, setExpandedSections] = useState({
         outlierTreatment: false,
         categoricalEncoding: false,
+        timeSeries: false,
     });
 
+    const [timeSeriesOperations, setTimeSeriesOperations] = useState([createOperation()]);
+
     const [outlierStrategy, setOutlierStrategy] = useState('cap_95');
+    const [outlierSeasonPeriod, setOutlierSeasonPeriod] = useState('');
+    const [outlierRollingWindow, setOutlierRollingWindow] = useState('');
     const [encodingStrategy, setEncodingStrategy] = useState('onehot');
     const [hoveredOption, setHoveredOption] = useState(null);
+    const [showEntityOutlierBreakdown, setShowEntityOutlierBreakdown] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [showFieldErrors, setShowFieldErrors] = useState(false);
 
+    const numericColumns = workflowState?.dataPreprocessing?.step1?.apiResponse?.numerical_columns || [];
     const categoricalColumns = workflowState?.dataPreprocessing?.step2?.apiResponse?.categorical_columns || [];
     const hasCategoricalColumns = categoricalColumns.length > 0;
 
     const detectOutliersEnabled = workflowState?.dataPreprocessing?.step2?.config?.outlier_detection_active || false;
     const outlierCount = workflowState?.dataPreprocessing?.step2?.apiResponse?.outlier_count || 0;
+    const outlierCountByEntity = workflowState?.dataPreprocessing?.step2?.apiResponse?.outlier_count_by_entity || {};
+    const hasOutlierCountByEntity = Object.keys(outlierCountByEntity).length > 0;
     const hasOutliers = detectOutliersEnabled && outlierCount > 0;
 
     const modellingType = workflowState?.modelGenesis?.config?.modelling_type || 'binary';
     const isOutlierTreatmentDisabled = !hasOutliers;
+    const showTimeSeriesFeatures = !['binary', 'multiclass', 'regression'].includes(modellingType);
 
     const getAvailableOptions = (optionsConfig, modellingType) => {
     return optionsConfig.filter(option => option.availability[modellingType] === 'yes');
@@ -255,13 +426,28 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
             setToggles({
                 outlierTreatment: hasOutliers ? (step3Config.outlier_treatment || false) : false,
                 categoricalEncoding: hasCategoricalColumns ? true : (step3Config.categorical_encoding || false),
+                timeSeries: showTimeSeriesFeatures ? (step3Config.time_series_active || false) : false,
             });
             if (step3Config.outlier_treatment_strategy) setOutlierStrategy(step3Config.outlier_treatment_strategy);
+            if (step3Config.outlier_season_period !== undefined) setOutlierSeasonPeriod(String(step3Config.outlier_season_period));
+            if (step3Config.outlier_rolling_window !== undefined) setOutlierRollingWindow(String(step3Config.outlier_rolling_window));
             if (step3Config.categorical_encoding_method) setEncodingStrategy(step3Config.categorical_encoding_method);
+            if (step3Config.time_series_operations?.length) {
+                setTimeSeriesOperations(
+                    step3Config.time_series_operations.map(op => ({
+                        id: crypto.randomUUID(),
+                        col: op.col || '',
+                        type: op.type || op.agg || 'lag',
+                        period: op.period || 1,
+                        window: op.window || 5,
+                    }))
+                );
+            }
         } else {
             setToggles({
                 outlierTreatment: false,
                 categoricalEncoding: hasCategoricalColumns,
+                timeSeries: false,
             });
             if (hasCategoricalColumns) {
                 setExpandedSections(prev => ({ ...prev, categoricalEncoding: true }));
@@ -269,17 +455,63 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
         }
     }, [workflowState?.dataPreprocessing?.step3, mode, hasCategoricalColumns, hasOutliers]);
 
+    const getDuplicateKeys = () => {
+        const seen = new Set();
+        const dupes = new Set();
+        timeSeriesOperations.forEach(op => {
+            const key = computeNewCol(op);
+            if (key && seen.has(key)) dupes.add(key);
+            else if (key) seen.add(key);
+        });
+        return dupes;
+    };
+
+    const handleOutlierStrategyChange = (value) => {
+        setOutlierStrategy(value);
+        setOutlierSeasonPeriod('');
+        setOutlierRollingWindow('');
+    };
+
+    const getOutlierParamError = () => {
+        if (!toggles.outlierTreatment) return '';
+        if (OUTLIER_SEASON_PERIOD_STRATEGIES.includes(outlierStrategy)) {
+            const p = Number(outlierSeasonPeriod);
+            if (!outlierSeasonPeriod) return 'Season period is required for this strategy';
+            if (!Number.isFinite(p) || p < 7 || p > 365) return 'Season period must be between 7 and 365';
+        }
+        if (OUTLIER_ROLLING_WINDOW_STRATEGIES.includes(outlierStrategy)) {
+            const w = Number(outlierRollingWindow);
+            if (!outlierRollingWindow) return 'Rolling window is required for this strategy';
+            if (!Number.isFinite(w) || w < 3 || w > 365) return 'Rolling window must be between 3 and 365';
+        }
+        return '';
+    };
+
     // Auto-clear errors when user fixes them
     useEffect(() => {
         if (!showFieldErrors) return;
         const outlierError = toggles.outlierTreatment && !outlierStrategy;
+        const outlierParamErr = !!getOutlierParamError();
         const encodingError = toggles.categoricalEncoding && !encodingStrategy;
-        if (!outlierError && !encodingError) setShowFieldErrors(false);
-    }, [outlierStrategy, encodingStrategy, toggles, showFieldErrors]);
+        const tsFieldError = toggles.timeSeries && timeSeriesOperations.some(op => {
+            const paramType = TIME_SERIES_TYPE_OPTIONS.find(t => t.value === op.type)?.paramType || 'period';
+            return !op.col || (paramType === 'period' ? !op.period : !op.window);
+        });
+        const tsDupeError = toggles.timeSeries && getDuplicateKeys().size > 0;
+        if (!outlierError && !outlierParamErr && !encodingError && !tsFieldError && !tsDupeError) setShowFieldErrors(false);
+    }, [outlierStrategy, outlierSeasonPeriod, outlierRollingWindow, encodingStrategy, toggles, showFieldErrors, timeSeriesOperations]);
 
     // Derived error flags — only active after Next is clicked
     const outlierStrategyError = showFieldErrors && toggles.outlierTreatment && !outlierStrategy;
+    const outlierSeasonPeriodError = showFieldErrors && toggles.outlierTreatment && OUTLIER_SEASON_PERIOD_STRATEGIES.includes(outlierStrategy) ? getOutlierParamError() : '';
+    const outlierRollingWindowError = showFieldErrors && toggles.outlierTreatment && OUTLIER_ROLLING_WINDOW_STRATEGIES.includes(outlierStrategy) ? getOutlierParamError() : '';
     const encodingStrategyError = showFieldErrors && toggles.categoricalEncoding && !encodingStrategy;
+    const timeSeriesError = showFieldErrors && toggles.timeSeries && (
+        timeSeriesOperations.some(op => {
+            const paramType = TIME_SERIES_TYPE_OPTIONS.find(t => t.value === op.type)?.paramType || 'period';
+            return !op.col || (paramType === 'period' ? !op.period : !op.window);
+        }) || getDuplicateKeys().size > 0
+    );
 
     const handleApiCall = async () => {
         if (readonly) return true;
@@ -288,9 +520,23 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
             setShowFieldErrors(true);
             return false;
         }
+        if (toggles.outlierTreatment && getOutlierParamError()) {
+            setShowFieldErrors(true);
+            return false;
+        }
         if (toggles.categoricalEncoding && !encodingStrategy) {
             setShowFieldErrors(true);
             return false;
+        }
+        if (toggles.timeSeries) {
+            const opsInvalid = timeSeriesOperations.length === 0 || timeSeriesOperations.some(op => {
+                const paramType = TIME_SERIES_TYPE_OPTIONS.find(t => t.value === op.type)?.paramType || 'period';
+                return !op.col || (paramType === 'period' ? !op.period : !op.window);
+            });
+            if (opsInvalid || getDuplicateKeys().size > 0) {
+                setShowFieldErrors(true);
+                return false;
+            }
         }
 
         try {
@@ -303,14 +549,31 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
                 outlier_threshold: 3,
                 categorical_encoding: toggles.categoricalEncoding,
                 categorical_encoding_method: toggles.categoricalEncoding ? encodingStrategy : "",
-                categorical_encoding_base: 2
+                categorical_encoding_base: 2,
+                time_series_active: toggles.timeSeries,
+                time_series_operations: toggles.timeSeries
+                    ? timeSeriesOperations.map(op =>
+                        ['lag', 'lead'].includes(op.type)
+                            ? { col: op.col, type: op.type, period: Number(op.period), new_col: computeNewCol(op) }
+                            : { col: op.col, window: Number(op.window), agg: op.type, new_col: computeNewCol(op) }
+                    )
+                    : [],
+                time_series_entity_cols: ['brand', 'category'],
+                time_series_sort_col: 'date',
             };
+
+            if (toggles.outlierTreatment && OUTLIER_SEASON_PERIOD_STRATEGIES.includes(outlierStrategy) && outlierSeasonPeriod) {
+                requestBody.outlier_season_period = parseInt(outlierSeasonPeriod, 10);
+            }
+            if (toggles.outlierTreatment && OUTLIER_ROLLING_WINDOW_STRATEGIES.includes(outlierStrategy) && outlierRollingWindow) {
+                requestBody.outlier_rolling_window = parseInt(outlierRollingWindow, 10);
+            }
 
             if (!requestBody.ensemble_id || !requestBody.workflow_id) {
                 throw new Error('Missing required identifiers: ensemble_id or workflow_id');
             }
 
-            const response = await fetch(`${hostnameAI}/data/preprocess/feature_engineering`, {
+            const response = await fetch(`${hostnameAI}/data/preprocess_supervised/feature_engineering`, {
                 method: 'POST',
                 headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestBody)
@@ -323,8 +586,13 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
                 config: {
                     outlier_treatment: toggles.outlierTreatment,
                     outlier_treatment_strategy: outlierStrategy,
+                    outlier_threshold: requestBody.outlier_threshold,
+                    outlier_season_period: requestBody.outlier_season_period,
+                    outlier_rolling_window: requestBody.outlier_rolling_window,
                     categorical_encoding: toggles.categoricalEncoding,
-                    categorical_encoding_method: encodingStrategy
+                    categorical_encoding_method: encodingStrategy,
+                    time_series_active: toggles.timeSeries,
+                    time_series_operations: timeSeriesOperations,
                 },
                 apiResponse: data
             });
@@ -341,10 +609,21 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
 
     useEffect(() => {
         if (onApiCall) onApiCall(handleApiCall);
-    }, [toggles, outlierStrategy, encodingStrategy, datasetState?.ensembleId, currentWorkflowId]);
+    }, [toggles, outlierStrategy, outlierSeasonPeriod, outlierRollingWindow, encodingStrategy, timeSeriesOperations, datasetState?.ensembleId, currentWorkflowId]);
 
     const availableOutlierOptions = getAvailableOptions(OUTLIER_OPTIONS_CONFIG, modellingType);
-    const availableEncodingOptions = getAvailableOptions(ENCODING_OPTIONS_CONFIG, modellingType);
+    // Categorical encoding doesn't depend on the target's shape, so multiseries
+    // (continuous-target forecasting) reuses whichever methods are marked regression-compatible.
+    const isMultiseriesModellingType = modellingType === 'multivariate_multiseries' || modellingType === 'univariate_multiseries';
+    const encodingModellingType = isMultiseriesModellingType ? 'regression' : modellingType;
+    const availableEncodingOptions = getAvailableOptions(ENCODING_OPTIONS_CONFIG, encodingModellingType);
+
+    useEffect(() => {
+        if (workflowState?.dataPreprocessing?.step3?.config) return;
+        if (!availableOutlierOptions.some(o => o.value === outlierStrategy)) {
+            setOutlierStrategy(availableOutlierOptions[0]?.value || '');
+        }
+    }, [modellingType, workflowState?.dataPreprocessing?.step3?.config]);
 
     const optionDescriptions = {};
     [...OUTLIER_OPTIONS_CONFIG, ...ENCODING_OPTIONS_CONFIG].forEach(option => {
@@ -360,7 +639,7 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
         setToggles(prev => ({ ...prev, [key]: newToggleState }));
 
         if (newToggleState) {
-            setExpandedSections({ outlierTreatment: false, categoricalEncoding: false, [key]: true });
+            setExpandedSections({ outlierTreatment: false, categoricalEncoding: false, timeSeries: false, [key]: true });
         } else {
             setExpandedSections(prev => ({ ...prev, [key]: false }));
             setShowFieldErrors(false);
@@ -371,9 +650,17 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
         setExpandedSections({
             outlierTreatment: false,
             categoricalEncoding: false,
+            timeSeries: false,
             [section]: !expandedSections[section]
         });
     };
+
+    const addOperation = () => setTimeSeriesOperations(prev => [...prev, createOperation()]);
+    const removeOperation = (id) => setTimeSeriesOperations(prev => prev.filter(op => op.id !== id));
+    const updateOperation = (id, field, value) =>
+        setTimeSeriesOperations(prev =>
+            prev.map(op => op.id === id ? { ...op, [field]: value } : op)
+        );
 
     const getOutlierInfoMessage = () => {
         if (!detectOutliersEnabled || outlierCount === 0) return "No outliers were detected in your dataset";
@@ -398,7 +685,26 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
                     <>
                         <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-md">
                             <div className="flex items-center gap-2">
-                                <Info size={16} className="text-orange-500 flex-shrink-0" />
+                                <div
+                                    className="relative flex items-center"
+                                    onMouseEnter={() => hasOutlierCountByEntity && setShowEntityOutlierBreakdown(true)}
+                                    onMouseLeave={() => setShowEntityOutlierBreakdown(false)}
+                                >
+                                    <Info size={16} className={`text-orange-500 flex-shrink-0 ${hasOutlierCountByEntity ? 'cursor-pointer' : ''}`} />
+                                    {showEntityOutlierBreakdown && hasOutlierCountByEntity && (
+                                        <div className="absolute left-0 top-full mt-2 z-50 w-64 max-h-64 overflow-y-auto p-3 bg-[#332849] text-white text-xs rounded-lg shadow-lg">
+                                            <p className="font-semibold mb-2">Outliers by entity</p>
+                                            <div className="space-y-1">
+                                                {Object.entries(outlierCountByEntity).map(([entity, count]) => (
+                                                    <div key={entity} className="flex items-center justify-between gap-3">
+                                                        <span className="truncate">{entity}</span>
+                                                        <span className="font-medium">{count}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                                 <p className="text-sm text-orange-700">
                                     <span className="font-medium">{outlierCount}</span> outlier{outlierCount !== 1 ? 's' : ''} detected
                                 </p>
@@ -427,7 +733,7 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
                                             name="outlierStrategy"
                                             value={option.value}
                                             checked={outlierStrategy === option.value}
-                                            onChange={(e) => !readonly && setOutlierStrategy(e.target.value)}
+                                            onChange={(e) => !readonly && handleOutlierStrategyChange(e.target.value)}
                                             disabled={readonly}
                                             className="w-4 h-4 accent-[#8e78b7]"
                                         />
@@ -440,6 +746,36 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
                                         <div className="absolute left-0 top-full mt-2 z-50 w-80 p-3 bg-[#332849] text-white text-xs rounded-lg shadow-lg">
                                             <div className="absolute -top-1 left-4 w-2 h-2 bg-[#332849] transform rotate-45"></div>
                                             <p className="leading-relaxed">{optionDescriptions[option.value]}</p>
+                                        </div>
+                                    )}
+
+                                    {outlierStrategy === option.value && OUTLIER_SEASON_PERIOD_STRATEGIES.includes(option.value) && (
+                                        <div className="mt-2">
+                                            <MethodParameterField
+                                                label="Season Period"
+                                                value={outlierSeasonPeriod}
+                                                min={7}
+                                                max={365}
+                                                hasError={!!outlierSeasonPeriodError}
+                                                errorMessage={outlierSeasonPeriodError}
+                                                disabled={readonly}
+                                                onChange={(value) => setOutlierSeasonPeriod(value)}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {outlierStrategy === option.value && OUTLIER_ROLLING_WINDOW_STRATEGIES.includes(option.value) && (
+                                        <div className="mt-2">
+                                            <MethodParameterField
+                                                label="Rolling Window"
+                                                value={outlierRollingWindow}
+                                                min={3}
+                                                max={365}
+                                                hasError={!!outlierRollingWindowError}
+                                                errorMessage={outlierRollingWindowError}
+                                                disabled={readonly}
+                                                onChange={(value) => setOutlierRollingWindow(value)}
+                                            />
                                         </div>
                                     )}
                                 </div>
@@ -527,6 +863,49 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
 
                         {encodingStrategyError && (
                             <p className="text-xs text-red-500 mt-2 pl-0.5">Please select an encoding method</p>
+                        )}
+                    </div>
+                </FeatureSection>
+            )}
+            {/* ── Time Series Features ── */}
+            {showTimeSeriesFeatures && (
+                <FeatureSection
+                    title="Time Series Features"
+                    isToggled={toggles.timeSeries}
+                    isExpanded={expandedSections.timeSeries}
+                    onToggle={() => toggleSwitch('timeSeries')}
+                    onExpand={() => toggleSection('timeSeries')}
+                    readonly={readonly}
+                    sectionKey="timeSeries"
+                    hasError={timeSeriesError}
+                >
+                    <div className="space-y-3">
+                        {(() => {
+                            const duplicateKeys = getDuplicateKeys();
+                            return timeSeriesOperations.map(op => (
+                                <TimeSeriesOperationRow
+                                    key={op.id}
+                                    op={op}
+                                    numericColumns={numericColumns}
+                                    readonly={readonly}
+                                    showErrors={showFieldErrors}
+                                    onChange={(field, value) => updateOperation(op.id, field, value)}
+                                    onRemove={() => removeOperation(op.id)}
+                                    canRemove={timeSeriesOperations.length > 1}
+                                    isDuplicate={!!op.col && duplicateKeys.has(computeNewCol(op))}
+                                />
+                            ));
+                        })()}
+                        {!readonly && (
+                            <button
+                                onClick={addOperation}
+                                className="text-sm text-[#8e78b7] hover:underline font-medium"
+                            >
+                                + Add Operation
+                            </button>
+                        )}
+                        {timeSeriesError && (
+                            <p className="text-xs text-red-500 mt-1">Please complete all operation fields</p>
                         )}
                     </div>
                 </FeatureSection>

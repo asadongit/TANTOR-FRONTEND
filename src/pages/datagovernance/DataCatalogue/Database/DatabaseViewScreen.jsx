@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "../../../../context/AuthContext";
 import toast from "react-hot-toast";
 import { fetchConnectionDetails, secureQuery } from '../Components/function.js';
+import { usePersonaStatuses } from '../../../../hooks/dataGovernance/Users/auth';
 
 const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPerPage }) => {
   if (!totalItems || totalPages <= 1) {
@@ -47,6 +48,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPe
 const DatabaseViewScreen = () => {
   const navigate = useNavigate();
   const { token, decodedToken } = useAuth();
+  const { personaStatuses } = usePersonaStatuses();
   const location = useLocation();
   const connection = location.state?.connectionData;
   const schema = location.state?.schema;
@@ -85,9 +87,14 @@ const DatabaseViewScreen = () => {
   const [accessItemsPerPage] = useState(5);
 
 
-  const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(
-    (role) => ["persona:data steward", "persona:data owner"].includes(role.toLowerCase())
-  );
+  const hasRoleInToken = (roleKey) =>
+    decodedToken?.resource_access?.darch?.roles?.some(
+        role => role.toLowerCase() === roleKey
+    );
+
+  const isUserAuthorized = 
+      (hasRoleInToken('persona:data steward') && personaStatuses['persona:data steward'] === true) ||
+      (hasRoleInToken('persona:data owner')   && personaStatuses['persona:data owner']   === true);
 
   const fetchAllData = async () => {
     try {

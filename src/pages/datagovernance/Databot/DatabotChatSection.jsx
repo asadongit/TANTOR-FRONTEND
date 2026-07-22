@@ -5,6 +5,23 @@ import TantorlOGO from "../../../assets/tantor_favicon.png"
 import { useDatabotContext } from './context/DatabotContext';
 import { useAuth } from '../../../context/AuthContext';
 
+const escapeHtml = (text) => {
+  if (!text) return "";
+  return text
+    .toString()
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+};
+
+const formatChatAnswer = (text) => {
+  if (!text) return "";
+  const escaped = escapeHtml(text);
+  return escaped.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+};
+
 const DatabotChatSection = ({setIsResultScreen, setQuery}) => {
   const { databot, triggerNewQuestion, resetChat, 
     handleSelectedConnectionGlobal, 
@@ -139,10 +156,7 @@ const DatabotChatSection = ({setIsResultScreen, setQuery}) => {
                     q?.a ? (
                       <span
                         dangerouslySetInnerHTML={{
-                          __html: q?.a?.replace(
-                            /\*\*(.*?)\*\*/g,
-                            "<strong>$1</strong>"
-                          )
+                          __html: formatChatAnswer(q?.a)
                         }}
                       />
                     ) : (isLoading && i === (databot.queries.length - 1)) ? (
@@ -271,10 +285,7 @@ const DatabotChatSection = ({setIsResultScreen, setQuery}) => {
                       q?.a ? (
                         <span
                           dangerouslySetInnerHTML={{
-                            __html: q?.a?.replace(
-                              /\*\*(.*?)\*\*/g,
-                              "<strong>$1</strong>"
-                            )
+                            __html: formatChatAnswer(q?.a)
                           }}
                         />
                       ) : isLoading ? (

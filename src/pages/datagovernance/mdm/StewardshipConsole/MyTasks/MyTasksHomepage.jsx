@@ -24,15 +24,23 @@ const STATUS_OPTIONS = [
 const TYPE_OPTIONS = [
     { value: 'All Types',      label: 'All Types' },
     { value: 'Match Review',   label: 'Match Review' },
-    { value: 'Data Quality',   label: 'Data Quality' },
-    { value: 'Merge Approval', label: 'Merge Approval' },
+    // { value: 'Data Quality',   label: 'Data Quality' },
+    // { value: 'Merge Approval', label: 'Merge Approval' },
 ];
 
 const PRIORITY_STYLES = {
-    Critical: { color: '#EF4D5F', bg: 'rgba(242, 118, 167, 0.30)' },
-    High:     { color: '#EF4D5F', bg: 'rgba(242, 118, 167, 0.30)' },
-    Medium:   { color: '#E08E40', bg: 'rgba(255, 201, 63, 0.25)' },
-    Low:      { color: '#069B68', bg: 'rgba(42, 199, 146, 0.25)' },
+    CRITICAL: { color: '#EF4D5F', bg: 'rgba(242, 118, 167, 0.30)' },
+    HIGH:     { color: '#EF4D5F', bg: 'rgba(242, 118, 167, 0.30)' },
+    MEDIUM:   { color: '#E08E40', bg: 'rgba(255, 201, 63, 0.25)' },
+    LOW:      { color: '#069B68', bg: 'rgba(42, 199, 146, 0.25)' },
+};
+
+
+const PRIORITY_LABELS = {
+    CRITICAL: 'Critical',
+    HIGH: 'High',
+    MEDIUM: 'Medium',
+    LOW: 'Low',
 };
 
 const STATUS_STYLES = {
@@ -48,7 +56,21 @@ const STATUS_LABELS = {
     'IN PROGRESS': 'In Progress',
     OVERDUE:       'Overdue',
 };
+const SLA_STYLES = {
+    'ON TRACK': { color: '#069B68', bg: 'rgba(42, 199, 146, 0.25)' },
+    'AT RISK': { color: '#E08E40', bg: 'rgba(255, 201, 63, 0.25)' },
+    'BREACHED': { color: '#EF4D5F', bg: 'rgba(242, 118, 167, 0.3)' },
+    'COMPLETED OVERDUE': { color: '#069B68', bg: 'rgba(42, 199, 146, 0.25)' },
+    'COMPLETED ON TIME': { color: '#069B68', bg: 'rgba(42, 199, 146, 0.25)' },
+};
 
+const SLA_LABELS = {
+    'ON TRACK': 'On Track',
+    'AT RISK': 'At Risk',
+    'BREACHED': 'Breached',
+    'COMPLETED OVERDUE':'Completed Overdue',
+    'COMPLETED ON TIME':'Completed On Time',
+};
 //  Shared filter text style 
 const filterTextStyle = {
     fontFamily: 'Satoshi, sans-serif',
@@ -75,17 +97,23 @@ const formatDisplay = (isoVal) =>
 
 //  Badges ─
 const PriorityBadge = ({ priority }) => {
-    const style = PRIORITY_STYLES[priority] || { color: '#6B7280', bg: '#F3F4F6' };
+    const normalizedPriority = String(priority ?? '').toUpperCase();
+    const style =
+        PRIORITY_STYLES[normalizedPriority] ||
+        { color: '#6B7280', bg: '#F3F4F6' };
+
     return (
         <span
             className="inline-block rounded-md px-2.5 py-1 text-xs font-normal whitespace-nowrap"
-            style={{ color: style.color, backgroundColor: style.bg }}
+            style={{
+                color: style.color,
+                backgroundColor: style.bg,
+            }}
         >
-            {priority}
+            {PRIORITY_LABELS[normalizedPriority] || priority}
         </span>
     );
 };
-
 const StatusBadge = ({ status }) => {
     const style = STATUS_STYLES[status] || { color: '#6B7280', bg: '#F3F4F6' };
     return (
@@ -94,6 +122,18 @@ const StatusBadge = ({ status }) => {
             style={{ color: style.color, backgroundColor: style.bg }}
         >
             {STATUS_LABELS[status] || status}
+        </span>
+    );
+};
+const SLABadge = ({ slaStatus }) => {
+    const normalized = String(slaStatus ?? '').toUpperCase();
+    const style = SLA_STYLES[normalized] || { color: '#6B7280', bg: '#F3F4F6' };
+    return (
+        <span
+            className="inline-block rounded-md px-2.5 py-1 text-xs font-normal whitespace-nowrap"
+            style={{ color: style.color, backgroundColor: style.bg }}
+        >
+            {SLA_LABELS[normalized] || slaStatus}
         </span>
     );
 };
@@ -235,18 +275,29 @@ const MyTasksHomepage = () => {
             render: (row) => row.status ? <StatusBadge status={row.status} /> : <span className="text-[#ccc]">—</span>,
         },
         {
+            key: 'sla_status',
+            label: 'SLA Status',
+            render: (row) => row.sla_status ? <SLABadge slaStatus={row.sla_status} /> : <span className="text-[#ccc]">—</span>,
+        },
+        {
             key: 'review',
             label: '',
             sortable: false,
             render: (row) => {
-                if (row.type !== 'Match Review') return null;
+                // Only show for Match Review tasks that are not completed
+                if (row.type !== 'Match Review' || row.status === 'COMPLETED') {
+                    return null;
+                }
                 return (
                     <button
-                        onClick={() => setCompareRow({
-                            pairId:  row.pair_id,
-                            record1: row.entity_id,
-                            score:   row.match_score ?? '—',
-                        })}
+                        onClick={() => {
+                            setCompareRow({
+                                pairId:  row.pair_id,
+                                record1: row.entity_id,
+                                score:   row.match_score ?? '—',
+                                taskId:  row.actual_task_id,
+                            });
+                        }}
                         className="flex justify-center items-center mx-auto w-[55px] h-[28px] bg-white border border-[#8E77BB] rounded-[6px] font-[Satoshi] font-medium text-xs text-[#8E77BB] whitespace-nowrap"
                     >
                         Review

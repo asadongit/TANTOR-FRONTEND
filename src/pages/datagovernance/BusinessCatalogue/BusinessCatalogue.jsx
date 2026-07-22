@@ -5,6 +5,7 @@ import Breadcrumb from '../../../components/Breadcrumb.jsx';
 import AddCatalogueModal from './AddCatalogueModal.jsx';
 import { useAuth } from '../../../context/AuthContext.jsx';
 import { toast } from 'react-hot-toast';
+import { usePersonaStatuses } from '../../../hooks/dataGovernance/Users/auth'; 
 
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, isConfirming }) => {
     if (!isOpen) return null;
@@ -211,9 +212,15 @@ const BusinessCatalogue = () => {
     const rowsPerPage = 10;
 
     const { token, decodedToken } = useAuth();
-    const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
-        ['persona:data steward', 'persona:data owner'].includes(role?.toLowerCase())
-    );
+    const { personaStatuses } = usePersonaStatuses();
+    const hasRoleInToken = (roleKey) =>
+        decodedToken?.resource_access?.darch?.roles?.some(
+            role => role.toLowerCase() === roleKey
+        );
+
+    const isUserAuthorized = 
+        (hasRoleInToken('persona:data steward') && personaStatuses['persona:data steward'] === true) ||
+        (hasRoleInToken('persona:data owner')   && personaStatuses['persona:data owner']   === true);
 
 
     const fetchCatalogueData = useCallback(async (isRefresh = false) => {

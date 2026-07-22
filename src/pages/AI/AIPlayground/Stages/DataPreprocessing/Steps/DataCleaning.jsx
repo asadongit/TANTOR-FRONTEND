@@ -3,286 +3,11 @@ import { ChevronDown, ChevronUp, Plus, Search, X } from 'lucide-react';
 import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 import InfoButton from '../../../components/InfoButton';
+import { SearchableDropdown, MultiSelectDropdown, SelectedColumnsList } from '../timeseries/components/Dropdowns';
 
-const SearchableDropdown = ({
-  selectedColumn,
-  onSelect,
-  availableOptions,
-  placeholder = "Select column",
-  readonly,
-  dropDirection = "down",
-  hasError = false
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const dropdownRef = useRef(null);
-  const searchInputRef = useRef(null);
-
-  const filteredOptions = availableOptions.filter(option =>
-    option.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-        setSearchTerm('');
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    if (isOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [isOpen]);
-
-  const handleSelect = (option) => {
-    if (!readonly) {
-      onSelect(option);
-      setIsOpen(false);
-      setSearchTerm('');
-    }
-  };
-
-  return (
-    <div className="relative w-full" ref={dropdownRef}>
-      <button
-        type="button"
-        disabled={readonly}
-        onClick={() => !readonly && setIsOpen(!isOpen)}
-        className={`w-full px-3 py-2 border rounded-lg text-sm text-left focus:outline-none focus:ring-2 focus:border-transparent bg-white flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
-          hasError
-            ? 'border-[#EF4D5F] bg-[#FFF7F8] focus:ring-red-300'
-            : 'border-gray-300 focus:ring-[#8e78b7]'
-        }`}
-      >
-        <span className={selectedColumn ? "text-gray-700" : hasError ? "text-[#EF4D5F]" : "text-gray-400"}>
-          {selectedColumn || placeholder}
-        </span>
-        <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-
-      {isOpen && !readonly && (
-        <div className={`absolute z-50 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden ${dropDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
-          <div className="p-2 border-b border-gray-200">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search..."
-                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
-              />
-            </div>
-          </div>
-          <div className="overflow-y-auto max-h-48">
-            {filteredOptions.length > 0 ? (
-              filteredOptions.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => handleSelect(option)}
-                  className="w-full px-3 py-2 text-sm text-left hover:bg-gray-100 transition-colors text-gray-700"
-                >
-                  {option}
-                </button>
-              ))
-            ) : (
-              <div className="px-3 py-2 text-sm text-gray-500 text-center">No results found</div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-const MultiSelectDropdown = ({
-  selectedColumns = [],
-  onSelectionChange,
-  availableOptions,
-  placeholder = "Search and select column...",
-  readonly,
-  dropDirection = "down",
-  hasError = false
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const dropdownRef = useRef(null);
-  const searchInputRef = useRef(null);
-
-  const filteredOptions = availableOptions.filter(option =>
-    option.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const allFilteredSelected = filteredOptions.length > 0 && filteredOptions.every(o => selectedColumns.includes(o));
-  const someFilteredSelected = filteredOptions.some(o => selectedColumns.includes(o));
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-        setSearchTerm('');
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    if (isOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [isOpen]);
-
-  const toggleOption = (option) => {
-    if (readonly) return;
-    if (selectedColumns.includes(option)) {
-      onSelectionChange(selectedColumns.filter(c => c !== option));
-    } else {
-      onSelectionChange([...selectedColumns, option]);
-    }
-  };
-
-  const toggleSelectAll = () => {
-    if (readonly) return;
-    if (allFilteredSelected) {
-      onSelectionChange(selectedColumns.filter(c => !filteredOptions.includes(c)));
-    } else {
-      const merged = [...new Set([...selectedColumns, ...filteredOptions])];
-      onSelectionChange(merged);
-    }
-  };
-
-  const triggerLabel = selectedColumns.length === 0
-    ? placeholder
-    : selectedColumns.length === 1
-      ? selectedColumns[0]
-      : `${selectedColumns.length} columns selected`;
-
-  return (
-    <div className="relative w-full" ref={dropdownRef}>
-      <button
-        type="button"
-        disabled={readonly}
-        onClick={() => !readonly && setIsOpen(!isOpen)}
-        className={`w-full px-3 py-2 border rounded-lg text-sm text-left focus:outline-none focus:ring-2 focus:border-transparent bg-white flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
-          hasError
-            ? 'border-[#EF4D5F] bg-[#FFF7F8] focus:ring-red-300'
-            : 'border-gray-300 focus:ring-[#8e78b7]'
-        }`}
-      >
-        <span className={selectedColumns.length > 0 ? 'text-gray-700' : hasError ? 'text-[#EF4D5F]' : 'text-gray-400'}>
-          {triggerLabel}
-        </span>
-        <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-
-      {isOpen && !readonly && (
-        <div className={`absolute z-50 w-full bg-white border border-gray-300 rounded-md shadow-lg overflow-hidden ${dropDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
-          <div className="p-2 border-b border-gray-200">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search..."
-                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          {filteredOptions.length > 0 && (
-            <div className="border-b border-gray-100">
-              <button
-                type="button"
-                onClick={toggleSelectAll}
-                className="w-full px-3 py-2 text-sm text-left flex items-center gap-2 hover:bg-gray-50 transition-colors"
-              >
-                <span className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${
-                  allFilteredSelected || someFilteredSelected ? 'bg-[#8e78b7] border-[#8e78b7]' : 'border-gray-300 bg-white'
-                }`}>
-                  {allFilteredSelected ? (
-                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : someFilteredSelected ? (
-                    <span className="w-2 h-0.5 bg-white rounded" />
-                  ) : null}
-                </span>
-                <span className="font-medium text-gray-700">Select All</span>
-                <span className="ml-auto text-xs text-gray-400">
-                  {selectedColumns.length}/{availableOptions.length + selectedColumns.length}
-                </span>
-              </button>
-            </div>
-          )}
-
-          <div className="overflow-y-auto max-h-44">
-            {filteredOptions.length > 0 ? (
-              filteredOptions.map((option) => {
-                const isSelected = selectedColumns.includes(option);
-                return (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => toggleOption(option)}
-                    className="w-full px-3 py-2 text-sm text-left flex items-center gap-2 hover:bg-gray-50 transition-colors"
-                  >
-                    <span className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${isSelected ? 'bg-[#8e78b7] border-[#8e78b7]' : 'border-gray-300 bg-white'}`}>
-                      {isSelected && (
-                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </span>
-                    <span className="text-gray-700">{option}</span>
-                  </button>
-                );
-              })
-            ) : (
-              <div className="px-3 py-2 text-sm text-gray-500 text-center">No results found</div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-const SelectedColumnsList = ({ columns, onRemove, readonly }) => {
-  if (columns.length === 0) return null;
-  return (
-    <div className="flex flex-wrap gap-2">
-      {columns.map(column => (
-        <span
-          key={column}
-          className="inline-flex items-center gap-1 px-3 py-1 bg-white border border-gray-300 text-gray-700 text-sm rounded-md"
-        >
-          {column}
-          {!readonly && (
-            <button type="button" onClick={() => onRemove(column)} className="ml-1 text-gray-500 hover:text-gray-700">
-              <X className="w-3 h-3" />
-            </button>
-          )}
-        </span>
-      ))}
-    </div>
-  );
-};
-
-function DataCleaning({ readonly: readonlyProp, onValidationChange, onApiCall }) {
+function DataCleaning({ readonly: readonlyProp, onValidationChange, onApiCall, predictionType }) {
+  const isMultivariateMultiseries = predictionType === 'multivariate_multiseries';
+  const isMultiseries = predictionType === 'multivariate_multiseries' || predictionType === 'univariate_multiseries';
   const hostnameAI = window._env_?.VITE_AI_API;
   const { workflowsState, activeWorkflowId, datasetState, updatePreprocessingStep, mode } = useAIPlayground();
   const readonly = readonlyProp || mode === 'view';
@@ -368,7 +93,7 @@ function DataCleaning({ readonly: readonlyProp, onValidationChange, onApiCall })
         dataTypeColumns.some(col => (col.columnName && !col.newDataType) || (!col.columnName && col.newDataType))
       );
     const missingValueHasError =
-      toggles.missingValue && !missingValueColumns.some(col => col.columnName);
+      !isMultiseries && toggles.missingValue && !missingValueColumns.some(col => col.columnName);
 
     if (!changeDataTypeHasError && !missingValueHasError) {
       setShowFieldErrors(false);
@@ -383,7 +108,7 @@ function DataCleaning({ readonly: readonlyProp, onValidationChange, onApiCall })
       );
       if (!hasAnyValidEntry || hasIncomplete) return false;
     }
-    if (toggles.missingValue) {
+    if (!isMultiseries && toggles.missingValue) {
       if (!missingValueColumns.some(col => col.columnName)) return false;
     }
     return true;
@@ -393,10 +118,10 @@ function DataCleaning({ readonly: readonlyProp, onValidationChange, onApiCall })
     const payload = {
       ensemble_id: datasetState?.ensembleId,
       workflow_id: currentWorkflowId,
-      modify_data_types: toggles.changeDataType,
+      modify_data_types: isMultivariateMultiseries ? false : toggles.changeDataType,
       modify_data_types_map: {},
       drop_duplicates_rows: toggles.dropDuplicates,
-      missing_value_indicator: toggles.missingValue,
+      missing_value_indicator: isMultiseries ? false : toggles.missingValue,
       missing_value_indicator_cols: [],
       uniqueness_filter_active: toggles.uniquenessRatio,
       uniqueness_lower_threshold: 0.02,
@@ -409,7 +134,7 @@ function DataCleaning({ readonly: readonlyProp, onValidationChange, onApiCall })
         }
       });
     }
-    if (toggles.missingValue) {
+    if (!isMultiseries && toggles.missingValue) {
       payload.missing_value_indicator_cols = missingValueColumns
         .filter(col => col.columnName)
         .map(col => col.columnName);
@@ -428,7 +153,7 @@ function DataCleaning({ readonly: readonlyProp, onValidationChange, onApiCall })
         !dataTypeColumns.some(col => col.columnName && col.newDataType) ||
         dataTypeColumns.some(col => (col.columnName && !col.newDataType) || (!col.columnName && col.newDataType))
       );
-      const missingValueHasError = toggles.missingValue && !missingValueColumns.some(col => col.columnName);
+      const missingValueHasError = !isMultiseries && toggles.missingValue && !missingValueColumns.some(col => col.columnName);
 
       setExpandedSections(prev => ({
         ...prev,
@@ -452,7 +177,7 @@ function DataCleaning({ readonly: readonlyProp, onValidationChange, onApiCall })
       if (!payload.ensemble_id || !payload.workflow_id) {
         throw new Error('Missing required identifiers: ensemble_id or workflow_id');
       }
-      const response = await fetch(`${hostnameAI}/data/preprocess/initial_clean`, {
+      const response = await fetch(`${hostnameAI}/data/preprocess_supervised/initial_clean`, {
         method: 'POST',
         headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -549,13 +274,14 @@ function DataCleaning({ readonly: readonlyProp, onValidationChange, onApiCall })
     !dataTypeColumns.some(col => col.columnName && col.newDataType) ||
     dataTypeColumns.some(col => (col.columnName && !col.newDataType) || (!col.columnName && col.newDataType))
   );
-  const missingValueSectionError = showFieldErrors && toggles.missingValue &&
+  const missingValueSectionError = !isMultiseries && showFieldErrors && toggles.missingValue &&
     !missingValueColumns.some(col => col.columnName);
 
   return (
     <div className="space-y-4 max-w-full">
 
       {/* ── Change Data Type ── */}
+      {!isMultivariateMultiseries && (
       <div ref={changeDataTypeSectionRef} className="rounded-lg transition-all bg-[#FAFAFA]">
         <div className="p-4 flex items-center justify-between">
           <div className="flex-1">
@@ -675,6 +401,7 @@ function DataCleaning({ readonly: readonlyProp, onValidationChange, onApiCall })
           </div>
         )}
       </div>
+      )}
 
       {/* ── Drop Duplicate Rows ── */}
       <div className="bg-[#FAFAFA] rounded-lg">
@@ -705,6 +432,7 @@ function DataCleaning({ readonly: readonlyProp, onValidationChange, onApiCall })
       </div>
 
       {/* ── Missing Value Indicator ── */}
+      {!isMultiseries && (
       <div ref={missingValueSectionRef} className="rounded-lg transition-all bg-[#FAFAFA]">
         <div className="p-4 flex items-center justify-between">
           <div className="flex-1 flex items-center gap-2">
@@ -774,6 +502,7 @@ function DataCleaning({ readonly: readonlyProp, onValidationChange, onApiCall })
           </div>
         )}
       </div>
+      )}
 
     </div>
   );

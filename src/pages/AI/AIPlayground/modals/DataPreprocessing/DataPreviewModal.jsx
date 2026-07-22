@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, Download, Eye } from 'lucide-react';
 import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 
-const DataPreviewModal = ({ isOpen, onClose, currentStep }) => {
+const DataPreviewModal = ({ isOpen, onClose, currentStep, predictionType }) => {
     const { datasetState, activeWorkflowId } = useAIPlayground();
     const [previewData, setPreviewData] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -12,19 +12,56 @@ const DataPreviewModal = ({ isOpen, onClose, currentStep }) => {
     const hostnameAI = window._env_?.VITE_AI_API;
 
     const getPrefix = (step) => {
-        const prefixMap = {
-            2: 'initial_clean',
-            3: 'feature_selection',
-            4: 'feature_engineering',
-            5: 'advanced_transformation',
-            6: 'statistical_analysis',
-            7: 'feature_importance'
-        };
-        return prefixMap[step] || null;
+    const isUnivariate =
+        predictionType === 'univariate_timeseries';
+
+    const isMultiTimeSeries =
+        predictionType === 'multivariate_timeseries' ||
+        predictionType === 'multiseries_timeseries';
+
+    const supervisedPrefixMap = {
+        1: 'genesis',
+        2: 'initial_clean',
+        3: 'feature_selection',
+        4: 'feature_engineering',
+        5: 'advanced_transformation',
+        6: 'statistical_analysis',
+        7: 'feature_importance'
     };
 
+    const univariatePrefixMap = {
+        1: 'initial_clean',
+        2: 'handle_missing_values',
+        3: 'feature_integrity_validation',
+        4: 'data_stabalization',
+        5: 'data_seasonalization',
+        6: 'data_stationarity_treatment'
+    };
+
+    const multivariatePrefixMap = {
+        1: 'initial_clean',
+        2: 'handle_missing_values',
+        3: 'feature_integrity_validation',
+        4: 'data_stabalization',
+        5: 'data_seasonalization',
+        6: 'data_stationarity_treatment',
+        7: 'feature_dependency_analysis'
+    };
+
+    if (isUnivariate) {
+        return univariatePrefixMap[step] || null;
+    }
+
+    if (isMultiTimeSeries) {
+        return multivariatePrefixMap[step] || null;
+    }
+
+    return supervisedPrefixMap[step] || null;
+};
+        
+
     useEffect(() => {
-        if (isOpen && currentStep > 1) {
+        if (isOpen && currentStep >= 1) {
             fetchPreviewData();
         }
     }, [isOpen, currentStep]);

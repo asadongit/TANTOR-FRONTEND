@@ -77,7 +77,10 @@ const AssignTaskModal = ({
         }
     };
 
-    const isValid = formData.assign_to && formData.assignment_method;
+    const isValid =
+        formData.assign_to &&
+        formData.assignment_method &&
+        formData.priority;
     const bulkCount = selectedRows.size;
 
     if (!isOpen) return null;
@@ -85,7 +88,6 @@ const AssignTaskModal = ({
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-            onClick={handleClose}
         >
             <div
                 className="w-[690px] bg-white rounded-2xl border border-[#CCCCCC] mx-4"
@@ -149,7 +151,9 @@ const AssignTaskModal = ({
 
                     {/* Priority */}
                     <div className="flex flex-col gap-1.5">
-                        <label className={labelClass}>Priority</label>
+                        <label className={labelClass}>
+                            Priority <span className="text-[#E05252]">*</span>
+                        </label>
                         <SearchableDropdown
                             value={formData.priority}
                             onChange={(v) => setFormData((p) => ({ ...p, priority: v }))}
@@ -159,7 +163,7 @@ const AssignTaskModal = ({
                     </div>
 
                     {/* Due Date */}
-                    <div className={`flex flex-col gap-1.5 ${isBulk ? '' : 'col-span-2'}`}>
+                    {/* <div className={`flex flex-col gap-1.5 ${isBulk ? '' : 'col-span-2'}`}>
                         <label className={labelClass}>Due Date</label>
                         <input
                             type="date"
@@ -167,7 +171,7 @@ const AssignTaskModal = ({
                             onChange={(e) => setFormData((p) => ({ ...p, due_date: e.target.value }))}
                             className={`${inputClass} pr-10 h-10`}
                         />
-                    </div>
+                    </div> */}
 
                     {/* Notes */}
                     <div className="flex flex-col gap-1.5 col-span-2">

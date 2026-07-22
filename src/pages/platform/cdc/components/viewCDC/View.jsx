@@ -228,7 +228,10 @@ export default function CDCJobView() {
         `${hostnameV2}/cdc/debezium-metrics`,
         {
           params: { connector_name: selectedConnectorName },
-          headers: { accept: "application/json" },
+          headers: { 
+            accept: "application/json",
+            Authorization: `Bearer ${token}`
+          },
         }
       );
       setMetrics(metricsResponse.data);
@@ -255,7 +258,10 @@ export default function CDCJobView() {
      const fetchData = async () => {
       try {
         const configsResponse = await axios.get(
-          `${hostnameV2}/cdc/${cdcId}/connector-configs`
+          `${hostnameV2}/cdc/${cdcId}/connector-configs`,
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
         );
         const { source: sourceConfigs, target: targetConfigs } =
           configsResponse.data;
@@ -318,7 +324,10 @@ export default function CDCJobView() {
     const fetchConnectorStatus = async (connectorName) => {
       try {
         const response = await axios.get(
-          `${hostnameV2}/cdc/connector-status/${connectorName}`
+          `${hostnameV2}/cdc/connector-status/${connectorName}`,
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
         );
         return response.data;
       } catch (error) {
@@ -336,6 +345,7 @@ export default function CDCJobView() {
           params: {
             connector_name: connectorName,
           },
+          headers: { Authorization: `Bearer ${token}` }
         });
 
         if (
@@ -432,7 +442,8 @@ export default function CDCJobView() {
           params: {
             connector_name: connectorName,
             task_id: taskId
-          }
+          },
+          headers: { Authorization: `Bearer ${token}` }
         });
 
         toast.success("Task restarted successfully", { id: 'restart-task' });
@@ -495,7 +506,9 @@ export default function CDCJobView() {
   // };
   const handleActivateConfig = async (payload) => {
     try {
-      await axios.patch(`${hostnameV2}/cdc/${cdcId}`, payload);
+      await axios.patch(`${hostnameV2}/cdc/${cdcId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       toast.success("Configuration activated successfully!");
       refetch();
     } catch (error) {
@@ -507,7 +520,10 @@ export default function CDCJobView() {
   const fetchUpdatedConnectorStatus = async (connectorName) => {
     try {
       const response = await axios.get(
-        `${hostnameV2}/cdc/connector-status/${connectorName}`
+        `${hostnameV2}/cdc/connector-status/${connectorName}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
       );
 
       if (jobData) {
@@ -622,7 +638,8 @@ export default function CDCJobView() {
           params: {
             connector_name: connectorName,
             action: action
-          }
+          },
+          headers: { Authorization: `Bearer ${token}` }
         });
 
         toast.success(`Connector ${action}ed successfully`, { id: 'connector-action' });

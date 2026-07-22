@@ -146,15 +146,25 @@ export const useDomainDetails = () => {
             setDomainId(data.domain_id);
             setAttrData(
                 (data.attributes || []).map((attr) => ({
-                    attribute_id: attr.attribute_id,
+                    attribute_id:          attr.attribute_id,
+                    attribute_name:        attr.attribute_name,
+                    display_name:          attr.display_name,
+                    staging_column:        attr.staging_column,
+                    staging_display_name:  attr.staging_display_name,
+                    data_type:             attr.data_type,
+                    length_precision:      attr.length_precision,
+                    is_mandatory:          attr.is_mandatory,
+                    survivorship_strategy: attr.survivorship_strategy,
+                    dq_rules:              attr.dq_rules || [],
+                    // table display keys
                     attributeName: attr.attribute_name,
-                    display_name: attr.display_name,
-                    dataType: attr.data_type,
-                    required: attr.is_mandatory ? 'Yes' : 'No',
-                    dqRule: (attr.dq_rules || []).map((r) => r.rule_name).join(', ') || '--',
-                    dqRules: attr.dq_rules || [],
-                    matchWeight: attr.match_weight ?? '--',
-                    survivorship: attr.survivorship_strategy || '--',
+                    dataType:      attr.data_type,
+                    required:      attr.is_mandatory ? 'Yes' : 'No',
+                    criticality: attr.criticality || '--',
+                    dqRule:        (attr.dq_rules || []).map((r) => r.rule_name).join(', ') || '--',
+                    dqRules:       attr.dq_rules || [],
+                    matchWeight:   attr.match_weight ?? '--',
+                    survivorship:  attr.survivorship_strategy || '--',
                 }))
             );
             return { ok: true };
@@ -443,4 +453,18 @@ export const useRulesByDimensions = () => {
     }, []);
 
     return { rules, isLoading, fetchRules };
+};
+
+
+export const useExpressionExample = (validationType) => {
+    const [example, setExample] = useState('');
+
+    useEffect(() => {
+        if (!validationType) { setExample(''); return; }
+        api.get(`/get_expression/${validationType}`)
+            .then(res => setExample(res.data ?? ''))
+            .catch(() => setExample(''));
+    }, [validationType]);
+
+    return { example };
 };

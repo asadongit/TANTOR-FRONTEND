@@ -8,6 +8,7 @@ import DeleteIcon from '../../../../../assets/mdm/delete.svg';
 import { useDomainRules, useDeleteRule } from '../../../../../hooks/mdm/domainManagement.jsx';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal.jsx';
 import { createPortal } from 'react-dom';
+
 /* ─────────────────────────────────────────────
    Badges
 ───────────────────────────────────────────── */
@@ -29,6 +30,12 @@ const SeverityBadge = ({ severity }) => {
         </span>
     );
 };
+
+const SupportPartialBadge = ({ value }) => (
+    <span className={`${value ? 'text-[#069B68] bg-[#DCFCE7]' : 'text-[#EF4D5F] bg-[#FEE7EA]'} px-2 py-0.5 rounded-md text-xs font-medium`}>
+        {value ? 'Yes' : 'No'}
+    </span>
+);
 
 const StatusBadge = ({ status }) => (
     <span
@@ -116,6 +123,8 @@ const DomainRulesModal = ({ isOpen, onClose, domainId, domainName }) => {
         if (result.ok) setDeleteTarget(null);
     }, [deleteTarget, deleteRule]);
 
+    const [hoveredAttribute, setHoveredAttribute] = useState(null);
+
     const columns = [
         {
             key: 'rule_name',
@@ -124,13 +133,29 @@ const DomainRulesModal = ({ isOpen, onClose, domainId, domainName }) => {
                 <span className="text-[#8E77BB] text-sm font-normal">{row.rule_name}</span>
             ),
         },
-        { key: 'attribute_name', label: 'Domain' },
+        {
+            key: 'attributes',
+            label: 'Attribute',
+            render: (row) => {
+                const names = row.attributes?.map(a => a.attribute_name) || [];
+                return (
+                    <span title={names.join(', ')}>
+                        {names.join(', ') || '-'}
+                    </span>
+                );
+            },
+        },
         {
             key: 'validation_type',
-            label: 'Data Type',
+            label: 'Validation Type',
             render: (row) => <RuleTypeBadge type={row.validation_type} />,
         },
         { key: 'expression', label: 'Expression', wrap: true },
+        {
+            key: 'support_partial',
+            label: 'Supports Partial',
+            render: (row) => <SupportPartialBadge value={row.support_partial} />,
+        },
         {
             key: 'severity',
             label: 'Severity',
@@ -171,8 +196,8 @@ const DomainRulesModal = ({ isOpen, onClose, domainId, domainName }) => {
                 </div>
 
                 {/* Sub-header */}
-                <div className="flex items-center justify-between px-6 py-3.5 shrink-0">
-                    <span className="text-sm font-medium text-[#332849]">Job Information</span>
+                <div className="flex items-center justify-between px-6 py-2 shrink-0">
+                    <span className="text-lg font-medium text-[#332849] font-[Satoshi,sans-serif]">Job Information</span>
                     <button
                         onClick={() => setAddRuleOpen(true)}
                         className="flex items-center gap-1.5 px-4 py-2 bg-[#8E77BB] hover:bg-[#7a67a0] text-white border-none rounded-lg text-sm font-medium cursor-pointer transition-colors"
@@ -183,7 +208,7 @@ const DomainRulesModal = ({ isOpen, onClose, domainId, domainName }) => {
                 </div>
 
                 {/* Table */}
-                <div className="flex-1 min-h-0 px-6 pb-6">
+                <div className="flex-1 min-h-0 px-6 pb-6 -mt-2">
                     <DataTable
                         columns={columns}
                         data={rules}

@@ -4,6 +4,94 @@ import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 import InfoButton from '../../../components/InfoButton';
 
+/**
+ * Data table component for displaying preview data
+ */
+const CleanDataTable = ({ title, data }) => {
+    const normalizedRows = Array.isArray(data)
+        ? data.filter((row) => row && typeof row === 'object' && !Array.isArray(row))
+        : (data && typeof data === 'object')
+            ? Object.values(data).filter((row) => row && typeof row === 'object' && !Array.isArray(row))
+            : [];
+
+    if (normalizedRows.length === 0) return null;
+
+    const rowCount = normalizedRows.length;
+    const firstRow = normalizedRows[0] || {};
+    const columnCount = Object.keys(firstRow).length;
+
+    return (
+        <div className="flex flex-col bg-white border border-gray-200 rounded-lg">
+            {title && (
+                <div className="px-4 py-3 border-b border-gray-200 shrink-0">
+                    <h3 className="text-base font-medium text-gray-900">{title}</h3>
+                </div>
+            )}
+
+            <div className="">
+                <div className="overflow-auto">
+                    <table className="min-w-full border-collapse">
+                        <thead className="sticky top-0 z-20 bg-[#F9F9F9]">
+                            <tr className="border-b border-gray-200">
+                                <th className="px-5 py-3 text-left text-sm font-medium text-gray-800 sticky left-0 bg-[#F9F9F9] z-30">
+                                    #
+                                </th>
+                                {Object.keys(firstRow).map(key => (
+                                    <th
+                                        key={key}
+                                        className="px-5 py-3 text-left text-sm font-medium text-gray-800 whitespace-nowrap"
+                                    >
+                                        {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+
+                        <tbody className="divide-y divide-gray-100">
+                            {normalizedRows.map((row, index) => (
+                                <tr key={index} className="hover:bg-gray-50">
+                                    <td className="px-5 py-3 text-sm text-gray-500 sticky left-0 bg-white">
+                                        {index + 1}
+                                    </td>
+                                    {Object.entries(row).map(([key, value]) => (
+                                        <td key={key} className="px-5 py-3 text-sm text-gray-600 whitespace-nowrap">
+                                            {typeof value === 'number' ? value.toFixed(4) : value}
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div className="px-4 py-3 border-t border-gray-200 text-sm text-gray-600 shrink-0">
+                Showing 1 to {rowCount} of {rowCount} results • {columnCount} columns
+            </div>
+        </div>
+    );
+};
+
+/**
+ * Variant data table component
+ */
+const VariantDataTable = ({ variantKey, displayData }) => {
+    const normalizedRows = Array.isArray(displayData)
+        ? displayData
+        : (displayData && typeof displayData === 'object')
+            ? Object.values(displayData)
+            : [];
+
+    if (normalizedRows.length === 0) return null;
+
+    return (
+        <CleanDataTable
+            title={`${variantKey.toUpperCase()} -  Data Preview`}
+            data={normalizedRows}
+        />
+    );
+};
+
 const ToggleSwitch = ({ checked, onChange, readonly }) => (
     <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
         <input
@@ -62,61 +150,63 @@ const FeatureSection = ({
     );
 };
 
+const FEATURE_IMPORTANCE_AVAILABILITY = { binary: 'yes', multiclass: 'yes', regression: 'yes' };
+
 const FEATURE_IMPORTANCE_OPTIONS_CONFIG = {
     methods: [
         {
             value: 'random',
             label: 'Random Forest',
             description: 'Random Forest feature importance assigns importance scores without using data relationships or model learning. It is mainly used as a baseline to compare against meaningful feature selection methods.',
-            availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' },
+            availability: FEATURE_IMPORTANCE_AVAILABILITY,
             subMethods: []
         },
         {
             value: 'filter',
             label: 'Filter',
             description: 'Filter methods evaluate feature importance using statistical measures independent of any machine learning model. They are fast, scalable, and help remove irrelevant features before model training.',
-            availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' },
+            availability: FEATURE_IMPORTANCE_AVAILABILITY,
             subMethods: [
-                { value: 'mutual_info', label: 'Mutual Information', description: 'Measures how much information a feature provides about the target variable. Higher values indicate a stronger dependency, even when the relationship is non-linear.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } },
-                { value: 'relief', label: 'Relief', description: 'Estimates feature relevance by distinguishing between nearby instances of different classes. Features that help distinguish similar records with different outcomes are ranked higher.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } },
-                { value: 'variance', label: 'Variance', description: 'Variance measures how much a feature\'s values spread across records. Features with very low variance provide little information and can be removed.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } },
-                { value: 'pca_loading', label: 'PCA Loading', description: 'PCA Loading represents how much each original feature contributes to a principal component. Features with higher loadings are considered more influential in explaining data variation.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } },
-                { value: 'correlation', label: 'Correlation', description: 'Measures the strength and direction of relationship between a feature and target. Strongly correlated features are considered more important.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } },
-                { value: 'selectkbest_f', label: 'SelectKBest F (F-test)', description: 'Measures linear dependency between feature and target using variance ratio. This method selects the top K features based on the F-statistic.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } }
+                { value: 'mutual_info', label: 'Mutual Information', description: 'Measures how much information a feature provides about the target variable. Higher values indicate a stronger dependency, even when the relationship is non-linear.', availability: FEATURE_IMPORTANCE_AVAILABILITY },
+                { value: 'relief', label: 'Relief', description: 'Estimates feature relevance by distinguishing between nearby instances of different classes. Features that help distinguish similar records with different outcomes are ranked higher.', availability: FEATURE_IMPORTANCE_AVAILABILITY },
+                { value: 'variance', label: 'Variance', description: 'Variance measures how much a feature\'s values spread across records. Features with very low variance provide little information and can be removed.', availability: FEATURE_IMPORTANCE_AVAILABILITY },
+                { value: 'pca_loading', label: 'PCA Loading', description: 'PCA Loading represents how much each original feature contributes to a principal component. Features with higher loadings are considered more influential in explaining data variation.', availability: FEATURE_IMPORTANCE_AVAILABILITY },
+                { value: 'correlation', label: 'Correlation', description: 'Measures the strength and direction of relationship between a feature and target. Strongly correlated features are considered more important.', availability: FEATURE_IMPORTANCE_AVAILABILITY },
+                { value: 'selectkbest_f', label: 'SelectKBest F (F-test)', description: 'Measures linear dependency between feature and target using variance ratio. This method selects the top K features based on the F-statistic.', availability: FEATURE_IMPORTANCE_AVAILABILITY }
             ]
         },
         {
             value: 'embedded',
             label: 'Embedded',
             description: 'Embedded methods determine feature importance during model training. The model automatically learns which features contribute most to predictions.',
-            availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' },
+            availability: FEATURE_IMPORTANCE_AVAILABILITY,
             subMethods: [
-                { value: 'tree', label: 'Tree-Based', description: 'Tree-based models compute feature importance based on impurity reduction or information gain during splits.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } },
-                { value: 'permutation', label: 'Permutation', description: 'Permutation importance measures feature importance by randomly shuffling a feature and observing the drop in model performance.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } },
-                { value: 'selectfrommodel', label: 'Select From Model', description: 'SelectFromModel selects features based on importance or coefficients from a pre-trained model.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } },
-                { value: 'boruta', label: 'Boruta', description: 'Boruta is an all-relevant feature selection algorithm built on top of Random Forest. Ensures no important feature is missed.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } }
+                { value: 'tree', label: 'Tree-Based', description: 'Tree-based models compute feature importance based on impurity reduction or information gain during splits.', availability: FEATURE_IMPORTANCE_AVAILABILITY },
+                { value: 'permutation', label: 'Permutation', description: 'Permutation importance measures feature importance by randomly shuffling a feature and observing the drop in model performance.', availability: FEATURE_IMPORTANCE_AVAILABILITY },
+                { value: 'selectfrommodel', label: 'Select From Model', description: 'SelectFromModel selects features based on importance or coefficients from a pre-trained model.', availability: FEATURE_IMPORTANCE_AVAILABILITY },
+                { value: 'boruta', label: 'Boruta', description: 'Boruta is an all-relevant feature selection algorithm built on top of Random Forest. Ensures no important feature is missed.', availability: FEATURE_IMPORTANCE_AVAILABILITY }
             ]
         },
         {
             value: 'wrapper',
             label: 'Wrapper',
             description: 'Wrapper methods evaluate feature importance by training models on different feature subsets. They provide high accuracy but are computationally expensive.',
-            availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' },
+            availability: FEATURE_IMPORTANCE_AVAILABILITY,
             subMethods: [
-                { value: 'rfe', label: 'RFE (Recursive Feature Elimination)', description: 'RFE is a wrapper feature selection method that recursively removes the least important features based on a model\'s feature importance or coefficients.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } },
-                { value: 'sfs', label: 'SFS (Sequential Feature Selection)', description: 'SFS is a wrapper method that iteratively adds or removes features based on model performance.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } },
-                { value: 'rfecv', label: 'RFECV (RFE with Cross-Validation)', description: 'RFECV extends RFE by using cross-validation to automatically determine the optimal number of features.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } }
+                { value: 'rfe', label: 'RFE (Recursive Feature Elimination)', description: 'RFE is a wrapper feature selection method that recursively removes the least important features based on a model\'s feature importance or coefficients.', availability: FEATURE_IMPORTANCE_AVAILABILITY },
+                { value: 'sfs', label: 'SFS (Sequential Feature Selection)', description: 'SFS is a wrapper method that iteratively adds or removes features based on model performance.', availability: FEATURE_IMPORTANCE_AVAILABILITY },
+                { value: 'rfecv', label: 'RFECV (RFE with Cross-Validation)', description: 'RFECV extends RFE by using cross-validation to automatically determine the optimal number of features.', availability: FEATURE_IMPORTANCE_AVAILABILITY }
             ]
         },
         {
             value: 'unsupervised',
             label: 'Unsupervised',
             description: 'Unsupervised feature importance identifies important features without using a target variable. It relies on data structure, variance, or clustering patterns.',
-            availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' },
+            availability: FEATURE_IMPORTANCE_AVAILABILITY,
             subMethods: [
-                { value: 'variance', label: 'Variance', description: 'Variance Threshold removes features whose variance falls below a specified threshold.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } },
-                { value: 'pca_loading', label: 'PCA Loading', description: 'PCA loadings represent the contribution of each original feature to the principal components.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } },
-                { value: 'cluster_mi', label: 'Cluster MI (Mutual Information)', description: 'Cluster Mutual Information measures how much information a feature shares with cluster assignments instead of target labels.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } }
+                { value: 'variance', label: 'Variance', description: 'Variance Threshold removes features whose variance falls below a specified threshold.', availability: FEATURE_IMPORTANCE_AVAILABILITY },
+                { value: 'pca_loading', label: 'PCA Loading', description: 'PCA loadings represent the contribution of each original feature to the principal components.', availability: FEATURE_IMPORTANCE_AVAILABILITY },
+                { value: 'cluster_mi', label: 'Cluster MI (Mutual Information)', description: 'Cluster Mutual Information measures how much information a feature shares with cluster assignments instead of target labels.', availability: FEATURE_IMPORTANCE_AVAILABILITY }
             ]
         }
     ]
@@ -249,19 +339,29 @@ const SearchableDropdown = ({
     );
 };
 
+const isMultiseriesModellingType = (modellingType) =>
+    modellingType === 'multivariate_multiseries' || modellingType === 'univariate_multiseries';
+
+// Multiseries forecasting targets a continuous value, so it reuses whichever
+// feature importance methods are marked compatible with regression.
+const getEffectiveModellingType = (modellingType) =>
+    isMultiseriesModellingType(modellingType) ? 'regression' : modellingType;
+
 const getAvailableFeatureImportanceMethods = (modellingType) => {
+    const effectiveType = getEffectiveModellingType(modellingType);
     return FEATURE_IMPORTANCE_OPTIONS_CONFIG.methods
-        .filter(method => method.availability[modellingType] === 'yes')
+        .filter(method => method.availability[effectiveType] === 'yes')
         .map(method => ({
             ...method,
-            subMethods: method.subMethods.filter(sm => sm.availability[modellingType] === 'yes')
+            subMethods: method.subMethods.filter(sm => sm.availability[effectiveType] === 'yes')
         }));
 };
 
 const getAvailableSubMethods = (methodValue, modellingType) => {
+    const effectiveType = getEffectiveModellingType(modellingType);
     const method = FEATURE_IMPORTANCE_OPTIONS_CONFIG.methods.find(m => m.value === methodValue);
     if (!method || !method.subMethods) return [];
-    return method.subMethods.filter(sm => sm.availability[modellingType] === 'yes');
+    return method.subMethods.filter(sm => sm.availability[effectiveType] === 'yes');
 };
 
 // MethodOption — selected = purple bg + border, unselected = white + gray border
@@ -296,7 +396,7 @@ const MethodOption = ({ option, name, checked, onChange, readonly }) => (
     </label>
 );
 
-function FeatureImportance({ readonly: readonlyProp, onApiCall }) {
+function FeatureImportance({ readonly: readonlyProp, onApiCall, showPreview, isDataPreprocessingAuto }) {
     const hostnameAI = window._env_?.VITE_AI_API;
     const { workflowsState, activeWorkflowId, datasetState, updatePreprocessingStep, mode } = useAIPlayground();
     const workflowState = activeWorkflowId
@@ -382,7 +482,7 @@ function FeatureImportance({ readonly: readonlyProp, onApiCall }) {
                 throw new Error('Missing required identifiers: ensemble_id or workflow_id');
             }
 
-            const response = await fetch(`${hostnameAI}/data/preprocess/feature_importance`, {
+            const response = await fetch(`${hostnameAI}/data/preprocess_supervised/feature_importance`, {
                 method: 'POST',
                 headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestBody),
@@ -433,6 +533,64 @@ function FeatureImportance({ readonly: readonlyProp, onApiCall }) {
             return { ...prev, [key]: newState };
         });
     };
+
+    // ── Preview mode (multivariate_multiseries — this is its last step, no dedicated Imbalance Handling page) ──
+    if (showPreview) {
+        let cleanedDfData = workflowState?.dataPreprocessing?.step7?.apiResponse?.cleaned_df_preview
+            || workflowState?.dataPreprocessing?.step7?.apiResponse?.cleaned_df;
+
+        if (!cleanedDfData && isDataPreprocessingAuto && workflowState?.modelGenesis?.apiResponse) {
+            const genesisResponse = workflowState.modelGenesis.apiResponse;
+            cleanedDfData = genesisResponse?.cleaned_df_preview || genesisResponse?.cleaned_df;
+        }
+
+        if (!cleanedDfData) {
+            return (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <h3 className="text-sm font-medium text-yellow-800">No Data Available</h3>
+                    <p className="text-xs text-yellow-600 mt-1">No cleaned data preview is available. Please complete Feature Importance first.</p>
+                </div>
+            );
+        }
+
+        if (Array.isArray(cleanedDfData) && cleanedDfData.length > 0) {
+            return (
+                <div className="space-y-4 -mx-6">
+                    <CleanDataTable title="Cleaned Data Preview" data={cleanedDfData} />
+                </div>
+            );
+        }
+
+        if (typeof cleanedDfData === 'object' && !Array.isArray(cleanedDfData)) {
+            const variantKeys = Object.keys(cleanedDfData);
+            const isMultiVariant = variantKeys.length > 0 &&
+                variantKeys.some(key => key.match(/^p\d+$/)) &&
+                Array.isArray(cleanedDfData[variantKeys[0]]);
+
+            if (isMultiVariant) {
+                const validVariants = variantKeys.filter(key =>
+                    key.match(/^p\d+$/) && Array.isArray(cleanedDfData[key]) && cleanedDfData[key].length > 0
+                );
+
+                if (validVariants.length > 0) {
+                    return (
+                        <div className="space-y-4 -mx-6">
+                            {validVariants.map(variantKey => (
+                                <VariantDataTable key={variantKey} variantKey={variantKey} displayData={cleanedDfData[variantKey]} />
+                            ))}
+                        </div>
+                    );
+                }
+            }
+        }
+
+        return (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h3 className="text-sm font-medium text-yellow-800">No Valid Data</h3>
+                <p className="text-xs text-yellow-600 mt-1">No valid preview data structure found.</p>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-4">

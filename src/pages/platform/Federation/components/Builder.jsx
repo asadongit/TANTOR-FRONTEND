@@ -1,17 +1,13 @@
 import CircularProgress from "@mui/material/CircularProgress";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import Switch from "@mui/material/Switch";
-import {
-    Typography
-} from "@mui/material";
-import Accordion from '@mui/material/Accordion';
-import AccordionSummary from '@mui/material/AccordionSummary';
-import AccordionDetails from '@mui/material/AccordionDetails';
-import { ChevronDown, X, Download, ArrowUpDown, GripVertical } from 'lucide-react';
-import { Icon } from "@iconify/react";
+import { ChevronDown, X, Download, ArrowUpDown, GripVertical, Play, Info, RefreshCw } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "../../../../context/AuthContext";
+import { QueryDetailsModal, EditorToast } from "./EditorModals";
+import { useFederationBaseViewsV2, useFederationPolicyIds } from "../../../../hooks/platform/federation";
 
-function CustomSelect({ options, value, onChange, placeholder = "Select View" }) {
+function CustomSelect({ options, value, onChange, placeholder = "Select View", isLoading = false }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const ref = useRef(null);
@@ -24,44 +20,50 @@ function CustomSelect({ options, value, onChange, placeholder = "Select View" })
         return () => document.removeEventListener("mousedown", handler);
     }, []);
 
-    const filtered = options.filter((o) =>
-        o.toLowerCase().includes(search.toLowerCase())
-    );
+    const filtered = options
+        .filter((o) => typeof o === "string" || typeof o === "number")
+        .filter((o) => String(o).toLowerCase().includes(search.toLowerCase()));
 
     const handleSelect = (val) => {
-        onChange(null, val);
+        onChange(val);
         setOpen(false);
         setSearch("");
     };
 
     return (
-        <div ref={ref} className="relative w-52">
+        <div ref={ref} className="relative w-56">
             {/* Trigger */}
             <div
-                onClick={() => setOpen((p) => !p)}
+                onClick={() => !isLoading && setOpen((p) => !p)}
                 title={value || ""}
-                className="flex items-center justify-between px-4 py-2.5 bg-white border border-gray-300 rounded-lg cursor-pointer select-none text-sm hover:border-gray-400 transition-colors min-h-[42px]"
+                className={`flex items-center justify-between px-3 py-1.5 bg-white border border-gray-200 rounded-md cursor-pointer select-none text-[13px] hover:border-[#8e78b7] transition-colors ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-                <span className={`truncate max-w-[160px] ${value ? "text-gray-800" : "text-gray-400"}`}>
+                <span className={`truncate max-w-[170px] ${value ? "text-gray-700" : "text-gray-400"}`}>
                     {value || placeholder}
                 </span>
-                <svg
-                    width="16" height="16" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" strokeWidth="2"
-                    className={`flex-shrink-0 text-gray-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-                >
-                    <polyline points="6 9 12 15 18 9" />
-                </svg>
+                {isLoading ? (
+                    <svg className="animate-spin h-3.5 w-3.5 text-gray-400 flex-shrink-0" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                ) : (
+                    <svg
+                        width="14" height="14" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" strokeWidth="2"
+                        className={`flex-shrink-0 text-gray-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+                    >
+                        <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                )}
             </div>
 
             {/* Dropdown */}
             {open && (
-                <div className="absolute top-[calc(100%+2px)] left-0 w-full bg-white border border-gray-200 rounded-lg shadow-xl z-[9999] overflow-hidden">
-
+                <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-white border border-gray-200 rounded-lg shadow-xl z-[9999] overflow-hidden">
                     {/* Search */}
-                    <div className="flex items-center gap-2 px-3 py-2.5 border-b border-gray-100">
+                    <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100">
                         <svg
-                            width="15" height="15" viewBox="0 0 24 24"
+                            width="13" height="13" viewBox="0 0 24 24"
                             fill="none" stroke="currentColor" strokeWidth="2"
                             className="flex-shrink-0 text-gray-400"
                         >
@@ -75,14 +77,14 @@ function CustomSelect({ options, value, onChange, placeholder = "Select View" })
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             onClick={(e) => e.stopPropagation()}
-                            className="w-full text-sm text-gray-600 placeholder-gray-400 outline-none bg-transparent"
+                            className="w-full text-[13px] text-gray-600 placeholder-gray-400 outline-none bg-transparent"
                         />
                     </div>
 
                     {/* Options */}
                     <div className="max-h-52 overflow-y-auto">
                         {filtered.length === 0 ? (
-                            <div className="px-4 py-3 text-sm text-gray-400 text-center">
+                            <div className="px-4 py-3 text-[13px] text-gray-400 text-center">
                                 No results found
                             </div>
                         ) : (
@@ -91,11 +93,11 @@ function CustomSelect({ options, value, onChange, placeholder = "Select View" })
                                     key={opt}
                                     title={opt}
                                     onClick={() => handleSelect(opt)}
-                                    className={`px-4 py-3 text-sm cursor-pointer truncate transition-colors
-                    ${opt === value
-                                            ? "text-[#8e78b7] font-medium bg-purple-50"
-                                            : "text-gray-700 hover:bg-gray-50"
-                                        }`}
+                                    className={`px-4 py-2.5 text-[13px] cursor-pointer truncate transition-colors ${
+                                        opt === value
+                                            ? "text-[#79669c] font-medium bg-[#ede9f6]"
+                                            : "text-gray-700 hover:bg-[#f0edf8]"
+                                    }`}
                                 >
                                     {opt}
                                 </div>
@@ -108,15 +110,155 @@ function CustomSelect({ options, value, onChange, placeholder = "Select View" })
     );
 }
 
+const ResultsTable = ({
+    orderedCols,
+    sortedData,
+    dragOverCol,
+    sortConfig,
+    handleColDragStart,
+    handleColDragOver,
+    handleColDrop,
+    handleColDragEnd,
+    handleSort,
+    loadingMore,
+    hasMore,
+    handleResultsScroll,
+    toTitleCase
+}) => {
+    const tableContainerRef = useRef(null);
+
+    const rowVirtualizer = useVirtualizer({
+        count: sortedData.length,
+        getScrollElement: () => tableContainerRef.current,
+        estimateSize: () => 37,
+        overscan: 10,
+    });
+
+    const virtualRows = rowVirtualizer.getVirtualItems();
+    const totalSize = rowVirtualizer.getTotalSize();
+    const paddingTop = virtualRows.length > 0 ? virtualRows[0].start : 0;
+    const paddingBottom = virtualRows.length > 0 ? totalSize - virtualRows[virtualRows.length - 1].end : 0;
+
+    return (
+        <div className="h-full overflow-auto qe-scroll" onScroll={handleResultsScroll} ref={tableContainerRef}>
+            <table className="w-full border-collapse bg-white">
+                <thead>
+                    <tr>
+                        {orderedCols.map((col, vi) => (
+                            <th
+                                key={col}
+                                draggable
+                                onDragStart={(e) => handleColDragStart(e, vi)}
+                                onDragOver={(e) => handleColDragOver(e, vi)}
+                                onDrop={(e) => handleColDrop(e, vi)}
+                                onDragEnd={handleColDragEnd}
+                                title={toTitleCase(col)}
+                                onClick={() => handleSort(col)}
+                                className={`text-left px-3.5 py-2.5 text-[12px] font-semibold text-gray-600 bg-gray-50 border-b border-gray-200 whitespace-nowrap cursor-grab select-none sticky top-0 z-10 ${dragOverCol === vi ? "border-l-2 border-l-[#8e78b7]" : ""}`}
+                            >
+                                <div className="flex items-center gap-1">
+                                    <GripVertical size={11} className="opacity-40 flex-shrink-0" />
+                                    <span className="overflow-hidden text-ellipsis whitespace-nowrap">{toTitleCase(col)}</span>
+                                    <ArrowUpDown size={11} className={`flex-shrink-0 ${sortConfig.key === col ? "opacity-100" : "opacity-30"}`} />
+                                </div>
+                            </th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {paddingTop > 0 && (
+                        <tr>
+                            <td style={{ height: `${paddingTop}px` }} colSpan={orderedCols.length} />
+                        </tr>
+                    )}
+                    {virtualRows.map((virtualRow) => {
+                        const row = sortedData[virtualRow.index];
+                        return (
+                            <tr 
+                                key={virtualRow.index} 
+                                data-index={virtualRow.index}
+                                ref={rowVirtualizer.measureElement}
+                                className="qe-tr border-b border-gray-100"
+                            >
+                                {orderedCols.map((col, ci) => {
+                                    const val = row[col];
+                                    const isLink = typeof val === "string" && val.startsWith("http");
+                                    return (
+                                        <td
+                                            key={ci}
+                                            title={String(val ?? "")}
+                                            className="px-3.5 py-2 text-[13px] text-gray-700 whitespace-nowrap max-w-[260px] overflow-hidden text-ellipsis align-middle"
+                                        >
+                                            {isLink ? (
+                                                <a href={val} target="_blank" rel="noopener noreferrer" className="text-[#8e78b7] underline">
+                                                    {val}
+                                                </a>
+                                            ) : (val === 0 ? 0 : val ?? "–")}
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        );
+                    })}
+                    {paddingBottom > 0 && (
+                        <tr>
+                            <td style={{ height: `${paddingBottom}px` }} colSpan={orderedCols.length} />
+                        </tr>
+                    )}
+                </tbody>
+            </table>
+
+            {loadingMore && (
+                <div className="flex justify-center py-3">
+                    <CircularProgress size={20} sx={{ color: "#8e78b7" }} />
+                </div>
+            )}
+            {!hasMore && !loadingMore && (
+                <div className="text-center text-[11px] text-gray-400 py-3 select-none">
+                    No more rows
+                </div>
+            )}
+        </div>
+    );
+};
+
+/* ─────────────────────────────────────────────
+   Builder
+──────────────────────────────────────────────── */
 export default function Builder({ handleSwitch, checked }) {
-    const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
+    const { token, project, decodedToken, hostnameV1 } = useAuth();
+    
+    const paramsStr = new URLSearchParams({
+        project: (project === "default" || project === "none") ? "default" : project,
+        created_by: decodedToken?.preferred_username,
+    }).toString();
+
+    const { data: policyIds, isFetching: isFetchingPolicies, refetch: refetchPolicyIds } = useFederationPolicyIds();
+    const { data: apiViewsRaw, isFetching: isLoadingViews, refetch: refetchViews } = useFederationBaseViewsV2(paramsStr);
+
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const handleRefresh = async (e) => {
+        if (e) e.stopPropagation();
+        setIsRefreshing(true);
+        try {
+            await refetchPolicyIds();
+            await refetchViews();
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
+
+    const views = (apiViewsRaw && apiViewsRaw.result) 
+        ? apiViewsRaw.result.map(v => typeof v === 'string' ? v : (v.view_name || v)).sort((a,b) => a.localeCompare(b)) 
+        : [];
+
     const [loading, setLoading] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [data, setData] = useState([]);
     const [columnDefs, setColumnDefs] = useState([]);
-    const [curl, setCurl] = useState("pervious curl is");
     const [selectedView, setSelectedView] = useState("");
-    const [shownViews, setShownViews] = useState([]);
-    const [toast, setToast] = useState({ show: false, message: '', type: '' });
+    const [showResults, setShowResults] = useState(false);
+    const [toast, setToast] = useState({ show: false, message: "", type: "" });
 
     const [pageSize, setPageSize] = useState(100);
     const [pageNo, setPageNo] = useState(1);
@@ -129,13 +271,19 @@ export default function Builder({ handleSwitch, checked }) {
     const [queryLoading, setQueryLoading] = useState(false);
     const [isQueryModalOpen, setIsQueryModalOpen] = useState(false);
     const [viewsDetails, setViewsDetails] = useState(null);
+    const ExternalAPI= window._env_?.VITE_EXTERNAL_API;
 
     const [colOrder, setColOrder] = useState([]);
     const [dragOverCol, setDragOverCol] = useState(null);
     const dragSrcCol = useRef(null);
     const [sortConfig, setSortConfig] = useState({ key: "", direction: "asc" });
-    useEffect(() => { setColOrder(columnDefs.map((_, i) => i)); setSortConfig({ key: "", direction: "asc" }); }, [columnDefs]);
-    const orderedCols = colOrder.map(i => columnDefs[i]);
+
+    useEffect(() => {
+        setColOrder(columnDefs.map((_, i) => i));
+        setSortConfig({ key: "", direction: "asc" });
+    }, [columnDefs]);
+
+    const orderedCols = colOrder.map((i) => columnDefs[i]);
     const handleColDragStart = (e, vi) => { dragSrcCol.current = vi; e.dataTransfer.effectAllowed = "move"; };
     const handleColDragOver = (e, vi) => { e.preventDefault(); setDragOverCol(vi); };
     const handleColDrop = (e, vi) => {
@@ -150,36 +298,26 @@ export default function Builder({ handleSwitch, checked }) {
         dragSrcCol.current = null;
     };
     const handleColDragEnd = () => { setDragOverCol(null); dragSrcCol.current = null; };
-    const handleSort = (key) => setSortConfig(prev => ({ key, direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc" }));
+    const handleSort = (key) =>
+        setSortConfig((prev) => ({ key, direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc" }));
     const sortedData = [...data].sort((a, b) => {
         if (!sortConfig.key) return 0;
         const av = a[sortConfig.key], bv = b[sortConfig.key];
-        if (typeof av === "number" && typeof bv === "number") return sortConfig.direction === "asc" ? av - bv : bv - av;
-        return sortConfig.direction === "asc" ? String(av || "").localeCompare(String(bv || "")) : String(bv || "").localeCompare(String(av || ""));
+        if (typeof av === "number" && typeof bv === "number")
+            return sortConfig.direction === "asc" ? av - bv : bv - av;
+        return sortConfig.direction === "asc"
+            ? String(av || "").localeCompare(String(bv || ""))
+            : String(bv || "").localeCompare(String(av || ""));
     });
-    const toTitleCase = s => s.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+    const toTitleCase = (s) => s.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 
-    useEffect(() => {
-        const fetchViews = async () => {
-            try {
-                const params = new URLSearchParams({
-                    project: project,
-                    created_by: decodedToken?.preferred_username,
-                });
-                const response = await fetch(`${hostnameV2}/get-all-views_v2?${params}`);
-                const data = await response.json();
-                if (data && data.result) {
-                    setShownViews(data.result);
-                } else {
-                    console.error("Invalid response from the API");
-                }
-            } catch (error) {
-                console.error("Error fetching views:", error);
-            }
-        };
-        fetchViews();
-    }, []);
+    // ── Toast helper ──────────────────────────────────────────────────────────
+    const showToast = (message, type = "error") => {
+        setToast({ show: true, message, type });
+        setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+    };
 
+    // ── Click outside → close download menu ──────────────────────────────────
     useEffect(() => {
         const handleClickOutside = (e) => {
             if (downloadMenuRef.current && !downloadMenuRef.current.contains(e.target)) {
@@ -190,244 +328,178 @@ export default function Builder({ handleSwitch, checked }) {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    // ── CSV helpers ───────────────────────────────────────────────────────────
     const convertToCSV = (jsonData) => {
-        const headers = Object.keys(jsonData[0]).join(',');
-        const csvRows = jsonData.map(obj => Object.values(obj).map(val => `"${val}"`).join(','));
-        return [headers, ...csvRows].join('\n');
+        const headers = Object.keys(jsonData[0]).join(",");
+        const csvRows = jsonData.map((obj) => Object.values(obj).map((val) => `"${val}"`).join(","));
+        return [headers, ...csvRows].join("\n");
     };
-
-    const triggerCSVDownload = (csvContent, filename) => {
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const downloadCSV = (csvContent, filename) => {
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', filename);
-        link.style.visibility = 'hidden';
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", filename);
+        link.style.visibility = "hidden";
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
     };
-
     const handleDownloadCurrentPage = () => {
         setShowDownloadMenu(false);
-        if (!data || data.length === 0) {
-            setToast({ show: true, message: "No data to download", type: "error" });
-            setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-            return;
+        if (!data.length) { showToast("No data to download"); return; }
+        downloadCSV(convertToCSV(data), `data_page_${pageNo}.csv`);
+    };
+
+    // ── Core fetch: one page of the selected view ────────────────────────────
+    // Throws Error("EMPTY") when the table/page has no rows, so callers can
+    // distinguish "nothing to show" from a real failure.
+    const getPolicyId = () => policyIds[0];
+
+    const fetchViewData = async (page, size = pageSize) => {
+        const policyId = getPolicyId();
+
+        const cachingResponse = await fetch(`${hostnameV1}/checkCaching/${selectedView}`);
+        const cachingData = await cachingResponse.json();
+        const payload = { page, page_size: size };
+
+        const response = await fetch(
+            `${hostnameV1}/execute_view/${selectedView}/${policyId}`,
+            {
+                method: "POST",
+                headers: { accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify(payload),
+            }
+        );
+
+        if (cachingData.result) {
+            const json = await response.json().catch(() => null);
+            if (response.status !== 200) throw new Error(json?.detail || "Error fetching data");
+            if (json?.detail) throw new Error("EMPTY");
+            return Array.isArray(json) ? json : [];
         }
-        const csvContent = convertToCSV(data);
-        triggerCSVDownload(csvContent, `data_page_${pageNo}.csv`);
+
+        const text = await response.text();
+        if (response.status !== 200) {
+            let detail = "Error fetching data";
+            try { detail = JSON.parse(text)?.detail || detail; } catch { /* not JSON */ }
+            throw new Error(detail);
+        }
+        const rows = text
+            .trim()
+            .split("\n")
+            .filter((r) => r.trim() !== "")
+            .map((r) => { try { return JSON.parse(r); } catch { return null; } })
+            .filter(Boolean);
+        if (rows.length === 0) throw new Error("EMPTY");
+        return rows;
     };
 
     const handleDownloadFullData = async () => {
         setShowDownloadMenu(false);
-        if (!selectedView) {
-            setToast({ show: true, message: "Select a view first to download full data", type: "error" });
-            setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-            return;
-        }
+        if (!selectedView) { showToast("Select a view first to download full data"); return; }
         setFullDataLoading(true);
-        setToast({ show: true, message: "Fetching full data, please wait...", type: "success" });
+        showToast("Fetching full data, please wait…", "success");
         try {
             let allRows = [];
-            let currentPage = 1;
-            let morePages = true;
+            let page = 1;
             const batchSize = 1000;
-
-            while (morePages) {
-                const payload = { page: currentPage, page_size: batchSize };
-                const cachingResponse = await fetch(`${hostnameV1}/checkCaching/${selectedView}`);
-                const cachingData = await cachingResponse.json();
-
-                let response;
-                if (cachingData.result) {
-                    response = await fetch(`${hostnameV1}/view/${selectedView}`, {
-                        method: "POST",
-                        headers: { accept: "application/json", "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-                        body: JSON.stringify(payload),
-                    });
-                    if (!response.ok) throw new Error("Failed to fetch page " + currentPage);
-                    const rows = await response.json();
-                    allRows = allRows.concat(rows);
-                    if (rows.length < batchSize) morePages = false;
-                    else currentPage++;
-                } else {
-                    response = await fetch(`${hostnameV1}/view/${selectedView}`, {
-                        method: "POST",
-                        headers: { accept: "application/json", "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-                        body: JSON.stringify(payload),
-                    });
-                    if (!response.ok) throw new Error("Failed to fetch page " + currentPage);
-                    const dataText = await response.text();
-                    const rows = dataText.trim().split("\n")
-                        .filter(r => r.trim() !== "")
-                        .map(r => JSON.parse(r));
-                    allRows = allRows.concat(rows);
-                    if (rows.length < batchSize) morePages = false;
-                    else currentPage++;
+            while (true) {
+                let rows;
+                try {
+                    rows = await fetchViewData(page, batchSize);
+                } catch (err) {
+                    if (err.message === "EMPTY") break;
+                    throw err;
                 }
+                allRows = allRows.concat(rows);
+                if (rows.length < batchSize) break;
+                page++;
             }
-
-            if (allRows.length === 0) {
-                setToast({ show: true, message: "No data available to download", type: "error" });
-                setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-                return;
-            }
-            const csvContent = convertToCSV(allRows);
-            triggerCSVDownload(csvContent, `${selectedView}_full_${Date.now()}.csv`);
-            setToast({ show: true, message: `Downloaded ${allRows.length} rows successfully`, type: "success" });
-            setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-        } catch (error) {
-            console.error("Error downloading full data:", error);
-            setToast({ show: true, message: "Failed to download full data", type: "error" });
-            setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+            if (!allRows.length) { showToast("No data available to download"); return; }
+            downloadCSV(convertToCSV(allRows), `${selectedView}_full_${Date.now()}.csv`);
+            showToast(`Downloaded ${allRows.length} rows successfully`, "success");
+        } catch (err) {
+            showToast("Failed to download full data");
         } finally {
             setFullDataLoading(false);
         }
     };
 
-    const handleViewChange = async (event, value) => {
+    const handleViewChange = (value) => {
         setSelectedView(value);
         setColumnDefs([]);
         setData([]);
-    };
-
-    const checkCaching = async (pay) => {
-        try {
-            const cachingResponse = await fetch(`${hostnameV1}/checkCaching/${selectedView}`);
-            const cachingData = await cachingResponse.json();
-
-            if (cachingData.result) {
-                fetch(`${hostnameV1}/view/${selectedView}`, {
-                    method: "POST",
-                    headers: { accept: "application/json", "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-                    body: JSON.stringify(pay),
-                })
-                    .then((response) => response.json().then((data) => ({ status: response.status, data })))
-                    .then(({ status, data }) => {
-                        if (status === 200) {
-                            if (data.detail) {
-                                setToast({ show: true, message: "Table is empty", type: "error" });
-                                setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-                                setData([]);
-                            } else {
-                                const rows = data;
-                                const colns = Object.keys(rows[0]);
-                                setColumnDefs(colns);
-                                setData(rows);
-                                setHasMore(rows.length === pageSize);
-                            }
-                        } else {
-                            if (data) {
-                                const res = JSON.parse(data);
-                                setToast({ show: true, message: res.detail, type: "error" });
-                                setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-                            }
-                        }
-                    })
-                    .catch((error) => {
-                        console.error("Error fetching data:", error);
-                        setToast({ show: true, message: "Something went wrong!", type: "error" });
-                        setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-                    })
-                    .finally(() => setLoading(false));
-            } else {
-                fetch(`${hostnameV1}/view/${selectedView}`, {
-                    method: "POST",
-                    headers: { accept: "application/json", "Content-Type": "application/json", 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify(pay),
-                })
-                    .then((response) => response.text().then((data) => ({ status: response.status, data })))
-                    .then(({ status, data }) => {
-                        if (status === 200) {
-                            const dataArray = data.split("\n")
-                                .filter(item => item.trim() !== "")
-                                .map(item => { try { return JSON.parse(item); } catch (e) { return null; } })
-                                .filter(item => item !== null);
-
-                            if (dataArray.length === 0) {
-                                setToast({ show: true, message: "Table is empty", type: "error" });
-                                setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-                                setData([]);
-                            } else {
-                                const rows = data.trim().split("\n").map((row) => JSON.parse(row));
-                                const columns = Object.keys(rows[0]);
-                                setColumnDefs(columns);
-                                setData(rows);
-                                setHasMore(rows.length === pageSize);
-                            }
-                        } else {
-                            if (data) {
-                                const res = JSON.parse(data);
-                                setToast({ show: true, message: res.detail, type: "error" });
-                                setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-                            }
-                        }
-                    })
-                    .catch((error) => {
-                        console.error("Error fetching data:", error);
-                        setToast({ show: true, message: "Something went wrong!", type: "error" });
-                        setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-                    })
-                    .finally(() => setLoading(false));
-            }
-        } catch (error) {
-            console.error("Error checking caching status:", error);
-            setToast({ show: true, message: "Failed to check caching status", type: "error" });
-            setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-            setLoading(false);
-        }
-    };
-
-    const executeQuery = (query = "", page = 1) => {
-        setLoading(true);
+        setShowResults(false);
         setViewsDetails(null);
-        const payload = { page, page_size: pageSize };
-        checkCaching(payload);
-        const url = `${hostnameV1}/view/${selectedView}`;
-        fetch(`${hostnameV1}/generate_curl`, {
-            method: "POST",
-            headers: { accept: "application/json", "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-            body: JSON.stringify({ url, page }),
-        })
-            .then((response) => response.text().then((text) => setCurl(text)))
-            .catch((error) => console.error("Error fetching curl:", error));
     };
 
-    const handleNextPage = () => {
-        const nextPage = pageNo + 1;
-        setPageNo(nextPage);
-        executeQuery("", nextPage);
-    };
+    // ── Execute (append=true fetches the next page for infinite scroll) ──────
+    const executeQuery = async (page = 1, { append = false } = {}) => {
+        if (!selectedView) { showToast("Select a view first"); return; }
 
-    const handlePreviousPage = () => {
-        if (pageNo > 1) {
-            const prevPage = pageNo - 1;
-            setPageNo(prevPage);
-            executeQuery("", prevPage);
+        if (append) {
+            setLoadingMore(true);
+        } else {
+            setLoading(true);
+            setData([]);
+            setColumnDefs([]);
+            setViewsDetails(null);
+        }
+        setShowResults(true);
+
+        try {
+            const rows = await fetchViewData(page);
+            if (append) {
+                setData((prev) => [...prev, ...rows]);
+            } else {
+                setColumnDefs(Object.keys(rows[0] || {}));
+                setData(rows);
+            }
+            setHasMore(rows.length === pageSize);
+            setPageNo(page);
+        } catch (err) {
+            if (err.message === "EMPTY") {
+                if (!append) { setData([]); showToast("Table is empty"); }
+                setHasMore(false);
+            } else {
+                showToast(err.message || "Something went wrong!");
+            }
+        } finally {
+            if (append) setLoadingMore(false); else setLoading(false);
         }
     };
 
+    // ── Infinite scroll ────────────────────────────────────────────────────────
+    const handleResultsScroll = (e) => {
+        if (loading || loadingMore || !hasMore) return;
+        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+        if (scrollHeight - scrollTop - clientHeight < 120) {
+            executeQuery(pageNo + 1, { append: true });
+        }
+    };
+
+    // Re-run on page size change if there's an active result set
+    useEffect(() => {
+        if (selectedView && data.length > 0) executeQuery(1);
+    }, [pageSize]);
+
+    // ── Query Details ─────────────────────────────────────────────────────────
     const handleQueryDetails = async () => {
+        if (!selectedView) return;
         if (viewsDetails === null) {
             try {
                 setQueryLoading(true);
                 setIsQueryModalOpen(true);
                 const response = await fetch(`${hostnameV1}/analyzeQuery`, {
-                    method: 'POST',
-                    headers: { accept: "application/json", "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-                    body: JSON.stringify({ viewname: selectedView, pageNo })
+                    method: "POST",
+                    headers: { accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({ viewname: selectedView, pageNo }),
                 });
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
-                if (data) {
-                    setLoading(false);
-                    setViewsDetails(data);
-                } else {
-                    setViewsDetails(null);
-                    console.error("Invalid response from the API");
-                }
+                setViewsDetails(data || null);
             } catch (error) {
                 console.error("Error fetching data:", error);
                 setViewsDetails({ status: "Failed", message: "Unable to fetch data" });
@@ -440,258 +512,191 @@ export default function Builder({ handleSwitch, checked }) {
         }
     };
 
-    useEffect(() => {
-        if (selectedView && data.length > 0) {
-            executeQuery("", 1);
-        }
-    }, [pageSize]);
-
-
-
     return (
         <>
-            <div className="w-full h-full flex flex-col overflow-hidden">
-                {/* ── Top bar ─────────────────────────────────────────────── */}
-                <div className="w-full flex justify-between flex-none items-center py-2" style={{ minHeight: "60px" }}>
-                    <div className="flex items-center ml-4">
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-white">
+                {/* ── Toolbar ── */}
+                <div className="flex items-center gap-2 px-3 py-1.5 border-b border-gray-200 bg-white flex-shrink-0">
+                    <div className="flex items-center gap-1">
                         <CustomSelect
-                            options={shownViews}
+                            options={views}
                             value={selectedView}
                             onChange={handleViewChange}
                             placeholder="Select View"
+                            isLoading={isLoadingViews || isFetchingPolicies}
                         />
-                        <button
-                            type="button"
-                            onClick={executeQuery}
-                            className="ml-10 text-white px-8 py-2 bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
-                        >
-                            Execute
+                        <button onClick={handleRefresh} className="p-1.5 rounded-md hover:bg-gray-200 transition-colors" title="Refresh Views">
+                            <RefreshCw className={`h-4 w-4 text-gray-500 ${isRefreshing ? 'animate-spin' : ''}`} />
                         </button>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="relative" ref={downloadMenuRef}>
-                            <button
-                                type="button"
-                                onClick={() => setShowDownloadMenu((prev) => !prev)}
-                                disabled={fullDataLoading}
-                                title="Download CSV"
-                                className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-1.5 bg-white focus:outline-none flex items-center gap-1 transition-colors"
-                            >
-                                {fullDataLoading ? (
-                                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]" />
-                                ) : (
-                                    <Download className="h-4 w-4" />
-                                )}
-                                <ChevronDown className="h-3 w-3" />
-                            </button>
-                            {showDownloadMenu && (
-                                <div className="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden">
-                                    <button onClick={handleDownloadCurrentPage} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-[#f3f0f9] hover:text-[#8e78b7] flex items-center gap-2 transition-colors">
-                                        <Download className="h-4 w-4 flex-shrink-0" />
-                                        <div>
-                                            <div className="font-medium">Current Page</div>
-                                            <div className="text-xs text-gray-400">Page {pageNo} · {data.length} rows</div>
-                                        </div>
-                                    </button>
-                                    <div className="border-t border-gray-100" />
-                                    <button onClick={handleDownloadFullData} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-[#f3f0f9] hover:text-[#8e78b7] flex items-center gap-2 transition-colors">
-                                        <Download className="h-4 w-4 flex-shrink-0" />
-                                        <div>
-                                            <div className="font-medium">Full Data</div>
-                                            <div className="text-xs text-gray-400">All pages · may take a moment</div>
-                                        </div>
-                                    </button>
-                                </div>
+
+                    <button
+                        type="button"
+                        onClick={() => executeQuery(1)}
+                        disabled={loading || !selectedView}
+                        className="flex items-center gap-1.5 bg-[#8e78b7] hover:bg-[#79669c] disabled:opacity-60 disabled:cursor-not-allowed text-white text-[13px] font-semibold px-3.5 py-1.5 rounded-md transition-colors whitespace-nowrap"
+                    >
+                        <Play size={13} />
+                        {loading ? "Running…" : "Execute"}
+                    </button>
+
+                    <div className="flex-1" />
+
+                    {/* Rows per page (fetch batch size) */}
+                    <select
+                        value={pageSize}
+                        onChange={(e) => { setPageSize(Number(e.target.value)); setPageNo(1); }}
+                        className="border border-gray-200 rounded-md text-[12.5px] text-gray-600 px-2 py-1 bg-white outline-none focus:border-[#8e78b7] cursor-pointer"
+                    >
+                        {[100, 200, 500, 800, 1000].map((n) => (
+                            <option key={n} value={n}>{n} rows</option>
+                        ))}
+                    </select>
+
+                    {/* Export */}
+                    <div className="relative" ref={downloadMenuRef}>
+                        <button
+                            type="button"
+                            onClick={() => setShowDownloadMenu((p) => !p)}
+                            disabled={fullDataLoading}
+                            className="flex items-center gap-1.5 border border-gray-200 text-gray-600 text-[12.5px] px-3 py-1.5 rounded-md hover:border-[#8e78b7] hover:text-[#8e78b7] hover:bg-[#f8f5ff] transition-all whitespace-nowrap"
+                        >
+                            {fullDataLoading ? (
+                                <div className="w-3 h-3 rounded-full border-2 border-[#e0d9f5] border-t-[#8e78b7] animate-spin" />
+                            ) : (
+                                <Download size={13} />
                             )}
-                        </div>
+                            Export
+                            <ChevronDown size={11} />
+                        </button>
+                        {showDownloadMenu && (
+                            <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 w-52 overflow-hidden">
+                                <button
+                                    className="flex items-center gap-2 w-full px-3.5 py-2.5 text-[13px] text-gray-700 hover:bg-[#f8f5ff] transition-colors"
+                                    onClick={handleDownloadCurrentPage}
+                                >
+                                    <Download size={13} />
+                                    <div className="text-left">
+                                        <div className="font-medium">Current Page</div>
+                                        <div className="text-[11px] text-gray-400">Page {pageNo} · {data.length} rows</div>
+                                    </div>
+                                </button>
+                                <div className="border-t border-gray-100" />
+                                <button
+                                    className="flex items-center gap-2 w-full px-3.5 py-2.5 text-[13px] text-gray-700 hover:bg-[#f8f5ff] transition-colors"
+                                    onClick={handleDownloadFullData}
+                                >
+                                    <Download size={13} />
+                                    <div className="text-left">
+                                        <div className="font-medium">Full Data</div>
+                                        <div className="text-[11px] text-gray-400">All pages · may take a moment</div>
+                                    </div>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Editor / Builder toggle */}
+                    <div className="flex items-center gap-1">
                         <Switch
                             checked={checked}
                             onChange={handleSwitch}
                             inputProps={{ "aria-label": "controlled" }}
+                            size="small"
+                            sx={{
+                                "& .MuiSwitch-switchBase.Mui-checked": { color: "#8e78b7" },
+                                "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: "#8e78b7" },
+                            }}
                         />
-                        <span>{checked ? "Editor" : "Builder"}</span>
+                        <span className="text-[13px] text-gray-500 whitespace-nowrap">
+                            {checked ? "Editor" : "Query Views"}
+                        </span>
                     </div>
                 </div>
 
-                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                    {(data?.length > 0 || loading) && (
-                        <>
-                            <div className="flex-1 flex flex-col min-h-0">
-                                <h2 className="text-xl font-bold pb-3">Output</h2>
-                                {loading ? (
-                                    <div className="bg-white rounded-lg shadow w-full flex-1 overflow-hidden flex justify-center items-center">
-                                        <CircularProgress sx={{ color: "#8e78b7" }} />
-                                    </div>
-                                ) : (
-                                    <div className="flex-1 min-h-0 overflow-auto rounded-lg border border-gray-200">
-                                        <table className="w-full bg-white" style={{ borderCollapse: "collapse" }}>
-                                            <thead className="border-b border-gray-200">
-                                                <tr>
-                                                    {orderedCols.map((col, vi) => (
-                                                        <th
-                                                            key={col}
-                                                            draggable
-                                                            onDragStart={e => handleColDragStart(e, vi)}
-                                                            onDragOver={e => handleColDragOver(e, vi)}
-                                                            onDrop={e => handleColDrop(e, vi)}
-                                                            onDragEnd={handleColDragEnd}
-                                                            title={toTitleCase(col)}
-                                                            onClick={() => handleSort(col)}
-                                                            style={{
-                                                                background: "#F9F9F9",
-                                                                color: "#332849",
-                                                                padding: "12px 16px",
-                                                                fontSize: "13px",
-                                                                fontWeight: 600,
-                                                                whiteSpace: "nowrap",
-                                                                maxWidth: "160px",
-                                                                overflow: "hidden",
-                                                                cursor: "grab",
-                                                                userSelect: "none",
-                                                                borderLeft: dragOverCol === vi ? "1px solid #332849" : "none",
-                                                                transition: "background 0.15s ease",
-                                                                position: "sticky",
-                                                                top: 0,
-                                                                zIndex: 10,
-                                                                textAlign: "left",
-                                                                verticalAlign: "middle",
-                                                            }}
-                                                        >
-                                                            <div style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden" }}>
-                                                                <GripVertical size={12} style={{ opacity: 0.5, flexShrink: 0 }} />
-                                                                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
-                                                                    {toTitleCase(col)}
-                                                                </span>
-                                                                <ArrowUpDown size={13} style={{ flexShrink: 0, opacity: sortConfig.key === col ? 1 : 0.5 }} />
-                                                            </div>
-                                                        </th>
-                                                    ))}
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {sortedData.map((row, ri) => (
-                                                    <tr key={ri} style={{ borderBottom: "1px solid #e5e5e5" }} className="hover:bg-gray-50">
-                                                        {orderedCols.map((col, ci) => {
-                                                            const val = row[col];
-                                                            const isLink = typeof val === "string" && val.startsWith("http");
-                                                            return (
-                                                                <td key={ci} style={{ padding: "11px 16px", fontSize: "14px", color: "#23252D", whiteSpace: "nowrap", maxWidth: "260px", overflow: "hidden", textOverflow: "ellipsis", verticalAlign: "middle", }} title={String(val ?? "")}>
-                                                                    {isLink ? <a href={val} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">{val}</a> : (val === 0 ? 0 : val ?? "-")}
-                                                                </td>
-                                                            );
-                                                        })}
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                {/* ── Results pane ── */}
+                {showResults && (
+                    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                        {/* Tab bar */}
+                        <div className="flex items-center justify-between border-b border-gray-200 bg-white flex-shrink-0">
+                            <div className="flex items-center gap-1.5 px-4 py-1.5 text-[13px] font-semibold text-[#8e78b7] border-b-2 border-[#8e78b7] whitespace-nowrap">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M3 15h18M9 3v18" />
+                                </svg>
+                                Results
+                                {data.length > 0 && (
+                                    <span className="text-[11px] font-normal text-gray-400 ml-1">
+                                        · {data.length} rows
+                                    </span>
                                 )}
                             </div>
+                            <div className="flex items-center gap-0.5 mr-1">
+                                <button
+                                    type="button"
+                                    title="Query Details"
+                                    onClick={handleQueryDetails}
+                                    disabled={!selectedView}
+                                    className="text-gray-400 hover:text-[#8e78b7] disabled:opacity-40 disabled:cursor-not-allowed p-1.5 rounded transition-colors"
+                                >
+                                    <Info size={15} />
+                                </button>
+                                <button
+                                    type="button"
+                                    title="Close results"
+                                    onClick={() => setShowResults(false)}
+                                    className="text-gray-400 hover:text-[#8e78b7] p-1.5 rounded transition-colors"
+                                >
+                                    <X size={14} />
+                                </button>
+                            </div>
+                        </div>
 
-                            {/* Accordion and bottom controls */}
-                            {!loading && (
-                                <div className="flex-none mt-2">
-                                    <Accordion
-                                        style={{ width: "100%", padding: "0px", marginBottom: "15px" }}
-                                        className="transition-all duration-300"
-                                    >
-                                        <AccordionSummary expandIcon={<ChevronDown />} aria-controls="panel2-content" id="panel2-header">
-                                            <div className="flex">
-                                                <div className="bg-[#8E77BB] mr-6 text-white rounded-lg px-2.5 py-0.5">POST</div>
-                                                <Typography component="span">/api/v1/view/{selectedView}</Typography>
-                                            </div>
-                                        </AccordionSummary>
-                                        <AccordionDetails>
-                                            <Typography>{curl}</Typography>
-                                        </AccordionDetails>
-                                    </Accordion>
-
-                                    <div className="w-[100%] flex justify-between">
-                                        <div className="flex gap-4 items-center">
-                                            <button
-                                                type="button"
-                                                onClick={handleQueryDetails}
-                                                className="text-white px-8 py-1.5 bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
-                                            >
-                                                Query Details
-                                            </button>
-                                            <select
-                                                value={pageSize}
-                                                onChange={(e) => { setPageSize(Number(e.target.value)); setPageNo(1); }}
-                                                className="px-4 py-1.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#8e78b7]"
-                                            >
-                                                <option value={100}>100</option>
-                                                <option value={200}>200</option>
-                                                <option value={500}>500</option>
-                                                <option value={800}>800</option>
-                                                <option value={1000}>1000</option>
-                                            </select>
-                                        </div>
-                                        <div className="w-[60%] flex justify-end">
-                                            <button
-                                                type="button"
-                                                onClick={handlePreviousPage}
-                                                disabled={pageNo === 1}
-                                                className={`px-8 py-1.5 focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm focus:outline-none mr-4 ${pageNo === 1 ? "text-gray-400 bg-gray-200 cursor-not-allowed" : "text-white bg-[#8e78b7] hover:bg-[#7a63a8]"}`}
-                                            >
-                                                Previous
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={handleNextPage}
-                                                disabled={!hasMore}
-                                                className={`px-8 py-1.5 rounded-lg text-sm ${!hasMore ? "text-gray-400 bg-gray-200 cursor-not-allowed" : "text-white focus:ring-1 focus:ring-[#8e78b7] bg-[#8e78b7] hover:bg-[#7a63a8]"}`}
-                                            >
-                                                Next
-                                            </button>
-                                        </div>
-                                    </div>
+                        {/* Results body */}
+                        <div className="qe-scroll flex-1 overflow-auto bg-white min-h-0">
+                            {loading ? (
+                                <div className="flex items-center justify-center h-full">
+                                    <CircularProgress sx={{ color: "#8e78b7" }} />
+                                </div>
+                            ) : data.length > 0 ? (
+                                <ResultsTable
+                                    orderedCols={orderedCols}
+                                    sortedData={sortedData}
+                                    dragOverCol={dragOverCol}
+                                    sortConfig={sortConfig}
+                                    handleColDragStart={handleColDragStart}
+                                    handleColDragOver={handleColDragOver}
+                                    handleColDrop={handleColDrop}
+                                    handleColDragEnd={handleColDragEnd}
+                                    handleSort={handleSort}
+                                    loadingMore={loadingMore}
+                                    hasMore={hasMore}
+                                    handleResultsScroll={handleResultsScroll}
+                                    toTitleCase={toTitleCase}
+                                />
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-full select-none">
+                                    <span className="text-[30px] font-light text-[#c4b5e8] tracking-widest mb-2.5">&lt;/&gt;</span>
+                                    <p className="text-[14px] text-[#9b8eb5] mb-1">No results returned</p>
+                                    <p className="text-[12px] text-[#c4b5e8]">Try a different view</p>
                                 </div>
                             )}
-                        </>
-                    )}
-                </div>
-
-                {/* Toast */}
-                {toast.show && (
-                    <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${toast.type === "success" ? "bg-green-100 text-green-800 border-l-4 border-green-500" : "bg-red-100 text-red-800 border-l-4 border-red-500"}`}>
-                        <Icon icon={toast.type === "success" ? "mdi:check-circle" : "mdi:alert-circle"} className="h-5 w-5" />
-                        <p>{toast.message}</p>
-                        <button onClick={() => setToast({ show: false, message: "", type: "" })} className="ml-2 text-gray-500 hover:text-gray-700">
-                            <X className="h-4 w-4" />
-                        </button>
+                        </div>
                     </div>
                 )}
+
+                {/* Toast */}
+                <EditorToast
+                    toast={toast}
+                    onClose={() => setToast({ show: false, message: "", type: "" })}
+                />
             </div>
 
-            {/* Query Details Modal */}
-            {isQueryModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg min-w-[32vw] min-h-[50vh] flex flex-col justify-between">
-                        <div className="p-2 pl-4 border-b flex justify-between items-center bg-[#282F49] text-white rounded-t-lg">
-                            <h2 className="text-xl font-semibold">Query Details</h2>
-                        </div>
-                        <div className="mt-4 mx-10 flex justify-center">
-                            {viewsDetails && viewsDetails.length > 0 && (
-                                <div>
-                                    {Object.entries(viewsDetails[0]).filter(([key]) => key !== "query").map(([key, value]) => (
-                                        <div key={key} style={{ marginBottom: '10px', fontSize: '16px', fontWeight: '400', color: '#8E77BB', lineHeight: '1.5' }}>
-                                            <strong style={{ color: '#8E77BB' }}>{key.replace(/_/g, " ").toUpperCase()}:</strong>{" "}
-                                            <span style={{ color: '#555' }}>{value || "N/A"}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                            {queryLoading && <CircularProgress sx={{ color: "#8e78b7" }} />}
-                        </div>
-                        <div className="py-3 pr-4 flex justify-end gap-4">
-                            <button onClick={() => setIsQueryModalOpen(false)} className="px-6 py-1 bg-[#8E77BB] text-white rounded-lg hover:bg-opacity-80">
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <QueryDetailsModal
+                isOpen={isQueryModalOpen}
+                onClose={() => setIsQueryModalOpen(false)}
+                viewsDetails={viewsDetails}
+                queryLoading={queryLoading}
+            />
         </>
     );
 }

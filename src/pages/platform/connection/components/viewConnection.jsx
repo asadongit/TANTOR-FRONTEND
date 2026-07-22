@@ -17,6 +17,7 @@ const ViewConnection = ({
   setViewConnectionData,
   connectionDetails,
   closeModal,
+  policyIds = [], 
 }) => {
   const [serviceSelection, setServiceSelection] = useState({
     is_migrated: false,
@@ -113,8 +114,14 @@ const ViewConnection = ({
     setViewSchema({});
     setIsLoadingSchema(true);
 
+    const params = new URLSearchParams({
+      conn_name: connection.connection_name,
+      table_name: connection.table_name,
+    });
+    if (policyIds.length > 0) params.append('policy_ids', policyIds[0]);
+
     fetch(
-      `${hostnameV1}/connection-master-metadata/find-column-json?conn_name=${connection.connection_name}&table_name=${connection.table_name}`,
+      `${hostnameV1}/connection-master-metadata/find-column-json?${params}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
