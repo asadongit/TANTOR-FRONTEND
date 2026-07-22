@@ -368,7 +368,7 @@ const DataTable = ({
               {columns.map((column, index) => (
                 <th
                   key={column.key || column.label}
-                  className="text-left sticky top-0 z-10 whitespace-normal break-words satoshi-medium-3"
+                  className="text-left sticky top-0 z-10 whitespace-nowrap satoshi-medium-3"
                   // style={{
                   //   background: '#F9F9F9',
                   //   borderBottom: '1px solid #e5e5e5',
