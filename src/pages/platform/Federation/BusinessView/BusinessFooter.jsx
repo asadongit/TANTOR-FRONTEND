@@ -9,6 +9,7 @@ import { useAuth } from "../../../../context/AuthContext";
 import { Icon } from "@iconify/react";
 import { X, ArrowUpDown, GripVertical } from "lucide-react";
 import { useFederationPolicyIds } from "../../../../hooks/platform/federation";
+import { useFederationPolicyIds } from "../../../../hooks/platform/federation";
 
 export function BusinessFooter() {
   const navigate = useNavigate();
