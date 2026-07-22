@@ -1,6 +1,6 @@
-import { NavLink, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import { Bot } from "lucide-react";
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { Bot, Copy } from "lucide-react";
 import {
   ChartBarIcon,
   CubeIcon,
@@ -50,6 +50,7 @@ import MarketplaceIcon from '../assets/ai/margetplace.svg';
 import NeoModeIcon from '../assets/ai/neomode.svg';
 import ObservabilityIcon from '../assets/ai/observability.svg';
 import AccountTreeIcon from '../assets/ai/account_tree.svg';
+import { usePersonaStatuses } from '../hooks/dataGovernance/Users/auth';
 
 const ACTIVE_COLOR = '#8E77BB';
 const INACTIVE_ICON_COLOR = '#818181';
@@ -58,7 +59,7 @@ const INACTIVE_TEXT_COLOR = '#282F49';
 const ACTIVE_FILTER = 'brightness(0) saturate(100%) invert(54%) sepia(25%) saturate(471%) hue-rotate(223deg)';
 const INACTIVE_FILTER = 'brightness(0) saturate(100%) invert(53%) sepia(6%) saturate(300%) hue-rotate(190deg) brightness(90%)';
 
-const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
+const Sidebar = ({ activeSection, isCollapsed, toggleSidebar, setIsSidebarCollapsed }) => {
   const [expandedItem, setExpandedItem] = useState(null);
   const [expandedSubItem, setExpandedSubItem] = useState(null);
   const [currentActiveSection, setCurrentActiveSection] = useState(activeSection);
@@ -72,10 +73,25 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
 
   const { decodedToken } = useAuth();
   const { isAIPlaygroundActive, resetAllStates, datasetState, workflowsState, F1Mode: F1ModeCtx, setF1Mode ,activeWorkflowId} = useAIPlayground();
+  const { personaStatuses, isLoading: personasLoading } = usePersonaStatuses();
   const navigate = useNavigate();
   const workflowState = activeWorkflowId
   ? (workflowsState[activeWorkflowId] ?? null)
   : null; 
+
+  const location = useLocation();
+  const hasAutoCollapsedForEditor = useRef(false);
+
+  useEffect(() => {
+    if (location.pathname === '/editor') {
+      if (!hasAutoCollapsedForEditor.current && setIsSidebarCollapsed) {
+        setIsSidebarCollapsed(true);
+        hasAutoCollapsedForEditor.current = true;
+      }
+    } else {
+      hasAutoCollapsedForEditor.current = false;
+    }
+  }, [location.pathname, setIsSidebarCollapsed]);
 
   const isF1ModeActive = !!F1ModeCtx?.session_id;
   const f1SessionId = F1ModeCtx?.session_id ?? null;
@@ -89,10 +105,20 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     }
   }, [activeSection]);
 
-  const isGlobalAdmin = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'global-admin');
-  const isPolicyManager = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'persona:policy manager');
-  const isUserManager = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'persona:user manager');
-  const isDataAuditor = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'persona:data auditor');
+  const { isGlobalAdmin, isPolicyManager, isUserManager, isDataAuditor, isConnectionCreation  } = useMemo(() => {
+  const hasRoleInToken = (roleKey) =>
+    decodedToken?.resource_access?.darch?.roles?.some(
+      role => role.toLowerCase() === roleKey
+    );
+
+  return {
+    isGlobalAdmin:   hasRoleInToken('global-admin'),
+    isPolicyManager: hasRoleInToken('persona:policy manager') && personaStatuses['persona:policy manager'] === true,
+    isUserManager:   hasRoleInToken('persona:user manager')   && personaStatuses['persona:user manager']   === true,
+    isDataAuditor:   hasRoleInToken('persona:data auditor')   && personaStatuses['persona:data auditor']   === true,
+    isConnectionCreation: hasRoleInToken('persona:connection manager')   && personaStatuses['persona:connection manager']   === true,
+};
+}, [decodedToken, personaStatuses]);
 
   const toggleExpand = (e, routeName) => {
     e.preventDefault();
@@ -143,7 +169,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
         headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ensemble_id: datasetState.ensembleId,
-          training_flag: workflowState?.modelSelection?.apiResponse !== null
+          training_flag: workflowState?.completedJobs?.apiResponse !== null
         })
       });
     } catch (error) {
@@ -185,7 +211,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const platformRoutes = [
     { name: 'Dashboard', icon: DashboardIcon, path: '/dashboard' },
     { name: 'Project', icon: CubeIcon, path: '/project' },
-    { name: 'Connections', icon: LinkIcon, path: '/connections' },
+    { name: 'Connections', icon: LinkIcon, path: '/connections'},
     {
       name: 'Reports',
       icon: DocumentTextIcon,
@@ -207,6 +233,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     { name: 'Purge', icon: TrashIcon, path: '/purge' },
     { name: 'CDC', icon: ServerStackIcon, path: '/cdc' },
     { name: 'Federation', icon: ShareIcon, path: '/federation' },
+    ...(window._env_?.VITE_ENABLE_DEDUP_MODULE === 'true' || window._env_?.ENABLE_DEDUP_MODULE === true ? [{ name: 'MDM', icon: Copy, path: '/dedup-group', expandOnly: true, subItems: [{ name: 'Rules Canvas', path: '/dedup' }, { name: 'Data Review Queue', path: '/dedup-results' }] }] : []),
   ];
 
   const DATAGOVERNANCE_PREFIX = '/datagovernance';
@@ -290,7 +317,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
             subItems: [
                 { name: 'Match Configuration', path: `${DATAGOVERNANCE_PREFIX}/mdm/match&merge/match-configuration` },
                 { name: 'Survivorship Rules', path: `${DATAGOVERNANCE_PREFIX}/mdm/match&merge/survivorship-rules` },
-                { name: 'Match Jobs', path: `${DATAGOVERNANCE_PREFIX}/mdm/match&merge/match-jobs` },
+                // { name: 'Match Jobs', path: `${DATAGOVERNANCE_PREFIX}/mdm/match&merge/match-jobs` },
                 { name: 'Review Queue', path: `${DATAGOVERNANCE_PREFIX}/mdm/match&merge/review-queue` },
             ]
         },
@@ -311,17 +338,19 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
                 { name: 'SLA Dashboard', path: `${DATAGOVERNANCE_PREFIX}/mdm/stewardship-console/sla-dashboard` },
             ]
         },
-        {
-            name: 'Data Sync',
+        // {
+        //     name: 'Data Sync',
+        //     subItems: [
+        //         { name: 'Sync Configuration', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/sync-configuration` },
+        //         { name: 'Sync Monitor', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/sync-monitor` },
+        //         { name: 'Conflict Resolution', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/conflict-resolution` },
+        //         { name: 'API Gateway', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/api-gateway` },
+        //     ]
+        // },
+        { name: 'Processing Center', path: `${DATAGOVERNANCE_PREFIX}/mdm/processing-center` },
+        { 
+            name: 'Agent Mesh',
             subItems: [
-                { name: 'Sync Configuration', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/sync-configuration` },
-                { name: 'Sync Monitor', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/sync-monitor` },
-                { name: 'Conflict Resolution', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/conflict-resolution` },
-                { name: 'API Gateway', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/api-gateway` },
-            ]
-        },
-        { name: 'Agent Mesh',
-        subItems: [
                 { name: 'Agent Dashboard', path: `${DATAGOVERNANCE_PREFIX}/mdm/agent-mesh/agent-dashboard` },
                 { name: 'Agent Chat (NLQ)', path: `${DATAGOVERNANCE_PREFIX}/mdm/agent-mesh/agent-chat` },
                 { name: 'Agent Catalog', path: `${DATAGOVERNANCE_PREFIX}/mdm/agent-mesh/agent-catalog` },
@@ -378,7 +407,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   ];
 
   const currentRoutes =
-    currentActiveSection === 'platform' ? platformRoutes :
+    currentActiveSection === 'platform' ? platformRoutes  :
       currentActiveSection === 'ai' ? aiRoutes :
         dataGovernanceRoutes;
 
@@ -561,7 +590,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
         className={`bg-white border-r border-gray-200 h-[calc(100vh-64px)] transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} fixed flex flex-col`}
       >
         <nav className="px-2 py-2 flex-1 overflow-y-auto">
-          {currentRoutes.map(renderNavItem)}
+          {personasLoading ? null : currentRoutes.map(renderNavItem)}
         </nav>
 
         <div

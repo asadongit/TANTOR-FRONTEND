@@ -91,7 +91,11 @@ function Dataset({ query, setQuery, setQuerySuccess,setFormData }) {
       });
 
       if (!response.ok) throw new Error('Failed to fetch connections');
-      const connectionsData = await response.json();
+      const raw = await response.json();
+      const connectionsRaw = Array.isArray(raw) ? raw : (raw.connections ?? []);
+      const connectionsData = connectionsRaw.map((c) =>
+        typeof c === 'string' ? { connection_name: c } : { connection_name: c.connection_name }
+      );
       setConnections(connectionsData);
       setExpandedItems({});
     } catch (error) {

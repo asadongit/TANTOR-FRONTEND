@@ -1,7 +1,8 @@
 import { Webhook, ChevronDown, ChevronUp } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAIPlayground } from '../../../../context/AIPlaygroundContext';
 import { tw } from '../../../../components/themeContext';
+import MethodParameterField from '../../AIPlayground/Stages/DataPreprocessing/timeseries/components/DataStabilization/MethodParameterField';
 
 const DATA_DRIFT_DEFAULTS = {
   distribution_drift_threshold: 0,
@@ -13,6 +14,8 @@ const DATA_DRIFT_DEFAULTS = {
 const MODEL_DRIFT_DEFAULTS = {
   prediction_drift_threshold: 0,
   performance_drift_threshold: -1,
+  rmse_threshold: '',
+  smape_threshold: '',
 };
 
 const getThresholdValues = (thresholdState, modelKey, defaults) => {
@@ -225,6 +228,23 @@ const DeliveryAlertsTab = () => {
     );
   };
 
+  const isTimeSeries = schedulerState.modeling_type === 'univariate_timeseries' || schedulerState.modeling_type === 'multivariate_timeseries';
+
+  useEffect(() => {
+    if (isTimeSeries) {
+      setSchedulerState(prev => {
+        if (prev.data_drift_check !== 0 || prev.model_drift_check !== 0) {
+          return {
+            ...prev,
+            data_drift_check: 0,
+            model_drift_check: 0
+          };
+        }
+        return prev;
+      });
+    }
+  }, [isTimeSeries, setSchedulerState]);
+
   return (
     <div className="w-full space-y-6">
 
@@ -235,158 +255,21 @@ const DeliveryAlertsTab = () => {
           Define thresholds to detect, warn, or halt model runs when data or performance drifts.
         </p>
 
-        {/* Data Drift Thresholds */}
-        <div className="bg-white rounded-lg p-6 mb-4">
-          <div className="flex items-center justify-between mb-4">
-            {/* Left: title + description */}
-            <div>
-              <h3 className="text-base font-semibold text-gray-900">
-                Global Data Drift Thresholds
-              </h3>
-              <p className="text-sm text-gray-500 mt-1">
-                Set default limits to flag or block model runs based on the Population.
-              </p>
-            </div>
-
-            {/* Right: toggle + chevron */}
-            <div className="flex items-center gap-3 ml-4 flex-shrink-0">
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isDataDriftEnabled}
-                  onChange={(e) => handleDataDriftToggle(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#8e78b7] rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
-              </label>
-              {isDataDriftEnabled && (
-                <button
-                  onClick={() => setIsDataDriftExpanded(!isDataDriftExpanded)}
-                  className="text-gray-500 hover:text-gray-700 transition-colors"
-                >
-                  {isDataDriftExpanded ? (
-                    <ChevronUp className="w-5 h-5" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5" />
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-
-          {isDataDriftEnabled && isDataDriftExpanded && (
-            isEnsembleMode ? (
-              <div className="space-y-4">
-                {ensembleModels.map(({ modelName, modelId }) => {
-                  const dataThreshold = getThresholdValues(schedulerState.data_drift_threshold, modelId, DATA_DRIFT_DEFAULTS);
-                  return (
-                    <div key={modelId} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                      <div className="mb-4">
-                        <h4 className="text-sm font-semibold text-gray-900">{modelName}</h4>
-                        <p className="text-xs text-gray-500 break-all">Model ID: {modelId}</p>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {renderSlider(
-                          'Distribution Drift Threshold',
-                          dataThreshold.distribution_drift_threshold,
-                          (e) => handleDataDriftChangeForModel(modelId, 'distribution_drift_threshold', parseFloat(e.target.value))
-                        )}
-                        {renderSlider(
-                          'Statistical Significance Level',
-                          dataThreshold.statistical_significance_level,
-                          (e) => handleDataDriftChangeForModel(modelId, 'statistical_significance_level', parseFloat(e.target.value)),
-                          0, 1, 0.01, true
-                        )}
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                        {renderSlider(
-                          'Information Stability Threshold',
-                          dataThreshold.information_stability_threshold,
-                          (e) => handleDataDriftChangeForModel(modelId, 'information_stability_threshold', parseFloat(e.target.value))
-                        )}
-                        {renderSlider(
-                          'Target Stability Threshold',
-                          dataThreshold.target_stability_threshold,
-                          (e) => handleDataDriftChangeForModel(modelId, 'target_stability_threshold', parseFloat(e.target.value))
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+        {isTimeSeries ? (
+          /* Time-series UI: RMSE and SMAPE Health Thresholds */
+          <div className="bg-white rounded-lg p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">
+                  Model Health Thresholds
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Define RMSE and SMAPE thresholds to detect when model performance drops below the baseline.
+                </p>
               </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {renderSlider(
-                    'Distribution Drift Threshold',
-                    getThresholdValues(schedulerState.data_drift_threshold, primaryModelId, DATA_DRIFT_DEFAULTS).distribution_drift_threshold,
-                    (e) => handleDataDriftChange('distribution_drift_threshold', parseFloat(e.target.value))
-                  )}
-                  {renderSlider(
-                    'Statistical Significance Level',
-                    getThresholdValues(schedulerState.data_drift_threshold, primaryModelId, DATA_DRIFT_DEFAULTS).statistical_significance_level,
-                    (e) => handleDataDriftChange('statistical_significance_level', parseFloat(e.target.value)),
-                    0, 1, 0.01, true
-                  )}
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {renderSlider(
-                    'Information Stability Threshold',
-                    getThresholdValues(schedulerState.data_drift_threshold, primaryModelId, DATA_DRIFT_DEFAULTS).information_stability_threshold,
-                    (e) => handleDataDriftChange('information_stability_threshold', parseFloat(e.target.value))
-                  )}
-                  {renderSlider(
-                    'Target Stability Threshold',
-                    getThresholdValues(schedulerState.data_drift_threshold, primaryModelId, DATA_DRIFT_DEFAULTS).target_stability_threshold,
-                    (e) => handleDataDriftChange('target_stability_threshold', parseFloat(e.target.value))
-                  )}
-                </div>
-              </div>
-            )
-          )}
-        </div>
-
-        {/* Model Drift Thresholds */}
-        <div className="bg-white rounded-lg p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            {/* Left: title + description */}
-            <div>
-              <h3 className="text-base font-semibold text-gray-900">
-                Model Drift Monitor
-              </h3>
-              <p className="text-sm text-gray-500 mt-1">
-                Receive alerts when model performance drops below the baseline.
-              </p>
             </div>
 
-            {/* Right: toggle + chevron */}
-            <div className="flex items-center gap-3 ml-4 flex-shrink-0">
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isModelDriftEnabled}
-                  onChange={(e) => handleModelDriftToggle(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#8e78b7] rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
-              </label>
-              {isModelDriftEnabled && (
-                <button
-                  onClick={() => setIsModelDriftExpanded(!isModelDriftExpanded)}
-                  className="text-gray-500 hover:text-gray-700 transition-colors"
-                >
-                  {isModelDriftExpanded ? (
-                    <ChevronUp className="w-5 h-5" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5" />
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-
-          {isModelDriftEnabled && isModelDriftExpanded && (
-            isEnsembleMode ? (
+            {isEnsembleMode ? (
               <div className="space-y-4">
                 {ensembleModels.map(({ modelName, modelId }) => {
                   const modelThreshold = getThresholdValues(schedulerState.model_drift_threshold, modelId, MODEL_DRIFT_DEFAULTS);
@@ -396,40 +279,245 @@ const DeliveryAlertsTab = () => {
                         <h4 className="text-sm font-semibold text-gray-900">{modelName}</h4>
                         <p className="text-xs text-gray-500 break-all">Model ID: {modelId}</p>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {renderSlider(
-                          'Prediction Drift Threshold',
-                          modelThreshold.prediction_drift_threshold,
-                          (e) => handleModelDriftChangeForModel(modelId, 'prediction_drift_threshold', parseFloat(e.target.value))
-                        )}
-                        {renderSlider(
-                          'Performance Drift Threshold',
-                          modelThreshold.performance_drift_threshold,
-                          (e) => handleModelDriftChangeForModel(modelId, 'performance_drift_threshold', parseFloat(e.target.value)),
-                          -1, 0, 0.01, true
-                        )}
+                      <div className="grid grid-cols-2 gap-4">
+                        <MethodParameterField
+                          label="RMSE Threshold"
+                          value={modelThreshold.rmse_threshold}
+                          onChange={(val) => handleModelDriftChangeForModel(modelId, 'rmse_threshold', val === '' ? '' : parseFloat(val))}
+                          min={0}
+                          max={9999}
+                        />
+                        <MethodParameterField
+                          label="SMAPE Threshold (%)"
+                          value={modelThreshold.smape_threshold}
+                          onChange={(val) => handleModelDriftChangeForModel(modelId, 'smape_threshold', val === '' ? '' : parseFloat(val))}
+                          min={0}
+                          max={100}
+                        />
                       </div>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {renderSlider(
-                  'Prediction Drift Threshold',
-                  getThresholdValues(schedulerState.model_drift_threshold, primaryModelId, MODEL_DRIFT_DEFAULTS).prediction_drift_threshold,
-                  (e) => handleModelDriftChange('prediction_drift_threshold', parseFloat(e.target.value))
-                )}
-                {renderSlider(
-                  'Performance Drift Threshold',
-                  getThresholdValues(schedulerState.model_drift_threshold, primaryModelId, MODEL_DRIFT_DEFAULTS).performance_drift_threshold,
-                  (e) => handleModelDriftChange('performance_drift_threshold', parseFloat(e.target.value)),
-                  -1, 0, 0.01, true
-                )}
+              <div className="grid grid-cols-2 gap-4">
+                <MethodParameterField
+                  label="RMSE Threshold"
+                  value={getThresholdValues(schedulerState.model_drift_threshold, primaryModelId, MODEL_DRIFT_DEFAULTS).rmse_threshold}
+                  onChange={(val) => handleModelDriftChange('rmse_threshold', val === '' ? '' : parseFloat(val))}
+                  min={0}
+                  max={9999}
+                />
+                <MethodParameterField
+                  label="SMAPE Threshold (%)"
+                  value={getThresholdValues(schedulerState.model_drift_threshold, primaryModelId, MODEL_DRIFT_DEFAULTS).smape_threshold}
+                  onChange={(val) => handleModelDriftChange('smape_threshold', val === '' ? '' : parseFloat(val))}
+                  min={0}
+                  max={100}
+                />
               </div>
-            )
-          )}
-        </div>
+            )}
+          </div>
+        ) : (
+          /* Non-Time-series UI (Standard UI) */
+          <>
+            {/* Data Drift Thresholds */}
+            <div className="bg-white rounded-lg p-6 mb-4">
+              <div className="flex items-center justify-between mb-4">
+                {/* Left: title + description */}
+                <div>
+                  <h3 className="text-base font-semibold text-gray-900">
+                    Global Data Drift Thresholds
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Set default limits to flag or block model runs based on the Population.
+                  </p>
+                </div>
+
+                {/* Right: toggle + chevron */}
+                <div className="flex items-center gap-3 ml-4 flex-shrink-0">
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isDataDriftEnabled}
+                      onChange={(e) => handleDataDriftToggle(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#8e78b7] rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
+                  </label>
+                  {isDataDriftEnabled && (
+                    <button
+                      onClick={() => setIsDataDriftExpanded(!isDataDriftExpanded)}
+                      className="text-gray-500 hover:text-gray-700 transition-colors"
+                    >
+                      {isDataDriftExpanded ? (
+                        <ChevronUp className="w-5 h-5" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5" />
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {isDataDriftEnabled && isDataDriftExpanded && (
+                isEnsembleMode ? (
+                  <div className="space-y-4">
+                    {ensembleModels.map(({ modelName, modelId }) => {
+                      const dataThreshold = getThresholdValues(schedulerState.data_drift_threshold, modelId, DATA_DRIFT_DEFAULTS);
+                      return (
+                        <div key={modelId} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                          <div className="mb-4">
+                            <h4 className="text-sm font-semibold text-gray-900">{modelName}</h4>
+                            <p className="text-xs text-gray-500 break-all">Model ID: {modelId}</p>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {renderSlider(
+                              'Distribution Drift Threshold',
+                              dataThreshold.distribution_drift_threshold,
+                              (e) => handleDataDriftChangeForModel(modelId, 'distribution_drift_threshold', parseFloat(e.target.value))
+                            )}
+                            {renderSlider(
+                              'Statistical Significance Level',
+                              dataThreshold.statistical_significance_level,
+                              (e) => handleDataDriftChangeForModel(modelId, 'statistical_significance_level', parseFloat(e.target.value)),
+                              0, 1, 0.01, true
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                            {renderSlider(
+                              'Information Stability Threshold',
+                              dataThreshold.information_stability_threshold,
+                              (e) => handleDataDriftChangeForModel(modelId, 'information_stability_threshold', parseFloat(e.target.value))
+                            )}
+                            {renderSlider(
+                              'Target Stability Threshold',
+                              dataThreshold.target_stability_threshold,
+                              (e) => handleDataDriftChangeForModel(modelId, 'target_stability_threshold', parseFloat(e.target.value))
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {renderSlider(
+                        'Distribution Drift Threshold',
+                        getThresholdValues(schedulerState.data_drift_threshold, primaryModelId, DATA_DRIFT_DEFAULTS).distribution_drift_threshold,
+                        (e) => handleDataDriftChange('distribution_drift_threshold', parseFloat(e.target.value))
+                      )}
+                      {renderSlider(
+                        'Statistical Significance Level',
+                        getThresholdValues(schedulerState.data_drift_threshold, primaryModelId, DATA_DRIFT_DEFAULTS).statistical_significance_level,
+                        (e) => handleDataDriftChange('statistical_significance_level', parseFloat(e.target.value)),
+                        0, 1, 0.01, true
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {renderSlider(
+                        'Information Stability Threshold',
+                        getThresholdValues(schedulerState.data_drift_threshold, primaryModelId, DATA_DRIFT_DEFAULTS).information_stability_threshold,
+                        (e) => handleDataDriftChange('information_stability_threshold', parseFloat(e.target.value))
+                      )}
+                      {renderSlider(
+                        'Target Stability Threshold',
+                        getThresholdValues(schedulerState.data_drift_threshold, primaryModelId, DATA_DRIFT_DEFAULTS).target_stability_threshold,
+                        (e) => handleDataDriftChange('target_stability_threshold', parseFloat(e.target.value))
+                      )}
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+
+            {/* Model Drift Thresholds */}
+            <div className="bg-white rounded-lg p-6 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                {/* Left: title + description */}
+                <div>
+                  <h3 className="text-base font-semibold text-gray-900">
+                    Model Drift Monitor
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Receive alerts when model performance drops below the baseline.
+                  </p>
+                </div>
+
+                {/* Right: toggle + chevron */}
+                <div className="flex items-center gap-3 ml-4 flex-shrink-0">
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isModelDriftEnabled}
+                      onChange={(e) => handleModelDriftToggle(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#8e78b7] rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
+                  </label>
+                  {isModelDriftEnabled && (
+                    <button
+                      onClick={() => setIsModelDriftExpanded(!isModelDriftExpanded)}
+                      className="text-gray-500 hover:text-gray-700 transition-colors"
+                    >
+                      {isModelDriftExpanded ? (
+                        <ChevronUp className="w-5 h-5" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5" />
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {isModelDriftEnabled && isModelDriftExpanded && (
+                isEnsembleMode ? (
+                  <div className="space-y-4">
+                    {ensembleModels.map(({ modelName, modelId }) => {
+                      const modelThreshold = getThresholdValues(schedulerState.model_drift_threshold, modelId, MODEL_DRIFT_DEFAULTS);
+                      return (
+                        <div key={modelId} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                          <div className="mb-4">
+                            <h4 className="text-sm font-semibold text-gray-900">{modelName}</h4>
+                            <p className="text-xs text-gray-500 break-all">Model ID: {modelId}</p>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {renderSlider(
+                              'Prediction Drift Threshold',
+                              modelThreshold.prediction_drift_threshold,
+                              (e) => handleModelDriftChangeForModel(modelId, 'prediction_drift_threshold', parseFloat(e.target.value))
+                            )}
+                            {renderSlider(
+                              'Performance Drift Threshold',
+                              modelThreshold.performance_drift_threshold,
+                              (e) => handleModelDriftChangeForModel(modelId, 'performance_drift_threshold', parseFloat(e.target.value)),
+                              -1, 0, 0.01, true
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {renderSlider(
+                      'Prediction Drift Threshold',
+                      getThresholdValues(schedulerState.model_drift_threshold, primaryModelId, MODEL_DRIFT_DEFAULTS).prediction_drift_threshold,
+                      (e) => handleModelDriftChange('prediction_drift_threshold', parseFloat(e.target.value))
+                    )}
+                    {renderSlider(
+                      'Performance Drift Threshold',
+                      getThresholdValues(schedulerState.model_drift_threshold, primaryModelId, MODEL_DRIFT_DEFAULTS).performance_drift_threshold,
+                      (e) => handleModelDriftChange('performance_drift_threshold', parseFloat(e.target.value)),
+                      -1, 0, 0.01, true
+                    )}
+                  </div>
+                )
+              )}
+            </div>
+          </>
+        )}
 
         {/* Alert Channels — merged inside the same gray card */}
         <div className="border-t border-gray-200 pt-6">

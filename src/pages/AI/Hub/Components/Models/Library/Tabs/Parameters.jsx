@@ -8,8 +8,67 @@ import ScalingTransformation from '../../../../../AIPlayground/Stages/DataPrepro
 import StatisticalAnalysis from '../../../../../AIPlayground/Stages/DataPreprocessing/Steps/StatisticalAnalysis'
 import FeatureImportance from '../../../../../AIPlayground/Stages/DataPreprocessing/Steps/FeatureImportance'
 import Step7 from '../../../../../AIPlayground/Stages/DataPreprocessing/Steps/Step7'
+import HandleMissingValues from '../../../../../AIPlayground/Stages/DataPreprocessing/timeseries/components/HandleMissingValues'
+import FeatureIntegrity from '../../../../../AIPlayground/Stages/DataPreprocessing/timeseries/components/FeatureIntegrity'
+import DataStabilization from '../../../../../AIPlayground/Stages/DataPreprocessing/timeseries/components/DataStabilization'
+import Seasonality from '../../../../../AIPlayground/Stages/DataPreprocessing/timeseries/components/Seasonality'
+import StationarityTreatment from '../../../../../AIPlayground/Stages/DataPreprocessing/timeseries/components/StationarityTreatment'
+import FeatureDependency from '../../../../../AIPlayground/Stages/DataPreprocessing/timeseries/FeatureDependency'
+import ScalingandEncoding from '../../../../../AIPlayground/Stages/DataPreprocessing/timeseries/components/ScalingandEncoding'
 
 const AUTO_MODES = ['Swift', 'Standard', 'Comprehensive']
+
+const PREPROCESSING_STEP_MAP = {
+  binary: [
+    "initial_clean",
+    "feature_selection",
+    "feature_engineering",
+    "advanced_transformation",
+    "statistical_analysis",
+    "feature_importance",
+    "imbalance_handling"
+  ],
+
+  multiclass: [
+    "initial_clean",
+    "feature_selection",
+    "feature_engineering",
+    "advanced_transformation",
+    "statistical_analysis",
+    "feature_importance",
+    "imbalance_handling"
+  ],
+
+  regression: [
+    "initial_clean",
+    "feature_selection",
+    "feature_engineering",
+    "advanced_transformation",
+    "statistical_analysis",
+    "feature_importance",
+    "imbalance_handling"
+  ],
+
+  multivariate_timeseries: [
+    "initial_clean_timeseries",
+    "handle_missing_values_timeseries",
+    "feature_integrity_validation_timeseries",
+    "data_stabalization_timeseries",
+    "data_seasonalization_timeseries",
+    "data_stationarity_treatment_timeseries",
+    "feature_dependency_analysis_timeseries",
+    "scaling_and_encoding_timeseries"
+  ],
+
+  univariate_timeseries: [
+    "initial_clean_timeseries",
+    "handle_missing_values_timeseries",
+    "feature_integrity_validation_timeseries",
+    "data_stabalization_timeseries",
+    "data_seasonalization_timeseries",
+    "data_stationarity_treatment_timeseries"
+  ]
+};
 
 function Parameters({ modelData }) {
   const { token } = useAuth()
@@ -64,6 +123,23 @@ function Parameters({ modelData }) {
             return
           }
 
+          const modellingType =
+            fetchedModel.prefill?.data_preprocessing?.request?.genesis?.modelling_type;
+
+          const preprocessingSteps =
+            PREPROCESSING_STEP_MAP[modellingType] || [];
+
+          const dataPreprocessing = {};
+
+          preprocessingSteps.forEach((stepName, index) => {
+            dataPreprocessing[`step${index + 1}`] = {
+              config:
+                fetchedModel.prefill?.data_preprocessing?.request?.[stepName] || null,
+              apiResponse:
+                fetchedModel.prefill?.data_preprocessing?.response?.[stepName] || null
+            };
+          });
+
           const newWorkflowState = {
             workflow_id: resolvedWorkflowId,
             workflow_name: fetchedModel?.workflow_name || null,
@@ -71,36 +147,8 @@ function Parameters({ modelData }) {
               config: fetchedModel.prefill?.data_preprocessing?.request?.genesis || null,
               apiResponse: fetchedModel.prefill?.data_preprocessing?.response?.genesis || null
             },
-            dataPreprocessing: {
-              step1: {
-                config: fetchedModel.prefill?.data_preprocessing?.request?.initial_clean || null,
-                apiResponse: fetchedModel.prefill?.data_preprocessing?.response?.initial_clean || null
-              },
-              step2: {
-                config: fetchedModel.prefill?.data_preprocessing?.request?.feature_selection || null,
-                apiResponse: fetchedModel.prefill?.data_preprocessing?.response?.feature_selection || null
-              },
-              step3: {
-                config: fetchedModel.prefill?.data_preprocessing?.request?.feature_engineering || null,
-                apiResponse: fetchedModel.prefill?.data_preprocessing?.response?.feature_engineering || null
-              },
-              step4: {
-                config: fetchedModel.prefill?.data_preprocessing?.request?.advanced_transformation || null,
-                apiResponse: fetchedModel.prefill?.data_preprocessing?.response?.advanced_transformation || null
-              },
-              step5: {
-                config: fetchedModel.prefill?.data_preprocessing?.request?.statistical_analysis || null,
-                apiResponse: fetchedModel.prefill?.data_preprocessing?.response?.statistical_analysis || null
-              },
-              step6: {
-                config: fetchedModel.prefill?.data_preprocessing?.request?.feature_importance || null,
-                apiResponse: fetchedModel.prefill?.data_preprocessing?.response?.feature_importance || null
-              },
-              step7: {
-                config: fetchedModel.prefill?.data_preprocessing?.request?.imbalance_handling || null,
-                apiResponse: fetchedModel.prefill?.data_preprocessing?.response?.imbalance_handling || null
-              }
-            },
+            dataPreprocessing,
+           
             modelSelection: {
               config: fetchedModel.prefill?.training?.request || null,
               apiResponse: fetchedModel.prefill?.training?.response || null
@@ -286,7 +334,7 @@ function Parameters({ modelData }) {
   }
 
   const NoteBar = ({ children }) => (
-    <div className="border border-purple-200 bg-purple-50 text-purple-700 rounded-lg px-4 py-3 text-xs">
+    <div className="border border-yellow-200 bg-yellow-50 text-yellow-800 rounded-lg px-4 py-3 text-xs">
       {children}
     </div>
   )
@@ -559,8 +607,45 @@ function Parameters({ modelData }) {
   const isAuto = AUTO_MODES.includes(dpMode)
   const isManual = dpMode === 'Manual'
 
-  const manualTabs = useMemo(
-    () => [
+  const modellingType =
+  details?.prefill?.data_preprocessing?.request?.genesis?.modelling_type;
+
+  const manualTabs = useMemo(() => {
+    if (modellingType === 'univariate_timeseries') {
+      return [
+        { label: 'Handle Missing Values', key: 'handle_missing_values_timeseries' },
+        { label: 'Feature Integrity', key: 'feature_integrity_validation_timeseries' },
+        { label: 'Data Stabilization', key: 'data_stabalization_timeseries' },
+        { label: 'Seasonalization', key: 'data_seasonalization_timeseries' },
+        { label: 'Stationarity Treatment', key: 'data_stationarity_treatment_timeseries' }
+      ];
+    }
+
+    if (modellingType === 'multivariate_timeseries') {
+      const stationarityAnalysisActive =
+        details?.prefill?.data_preprocessing?.request?.data_seasonalization_timeseries
+          ?.stationarity_analysis_active ?? false;
+
+      const tabs = [
+        { label: 'Handle Missing Values', key: 'handle_missing_values_timeseries' },
+        { label: 'Feature Integrity', key: 'feature_integrity_validation_timeseries' },
+        { label: 'Data Stabilization', key: 'data_stabalization_timeseries' },
+        { label: 'Seasonalization', key: 'data_seasonalization_timeseries' }
+      ];
+
+      if (stationarityAnalysisActive) {
+        tabs.push({ label: 'Stationarity Treatment', key: 'data_stationarity_treatment_timeseries' });
+      }
+
+      tabs.push(
+        { label: 'Feature Dependency', key: 'feature_dependency_analysis_timeseries' },
+        { label: 'Scaling & Encoding', key: 'scaling_and_encoding_timeseries' }
+      );
+
+      return tabs;
+    }
+
+    return [
       { label: 'Data Preprocessing', key: 'initial_clean' },
       { label: 'Feature Selection', key: 'feature_selection' },
       { label: 'Feature Engineering', key: 'feature_engineering' },
@@ -568,11 +653,8 @@ function Parameters({ modelData }) {
       { label: 'Statistical Analysis', key: 'statistical_analysis' },
       { label: 'Feature Importance', key: 'feature_importance' },
       { label: 'Imbalance Handling', key: 'imbalance_handling' }
-
-    ],
-    []
-  )
-
+    ];
+  }, [modellingType, details]);
   const autoTabs = useMemo(() => [manualTabs[0]], [manualTabs])
 
   const tabCounts = useMemo(() => {
@@ -680,6 +762,20 @@ function Parameters({ modelData }) {
           return <FeatureImportance onValidationChange={() => {}} onApiCall={() => {}} />
         case 'imbalance_handling':
           return <Step7 showPreview={false} onApiCall={() => {}} />
+        case 'handle_missing_values_timeseries':
+          return <HandleMissingValues readonly={true} predictionType={modellingType} onValidationChange={() => {}} onApiCall={() => {}} />
+        case 'feature_integrity_validation_timeseries':
+          return <FeatureIntegrity readonly={true} predictionType={modellingType} onApiCall={() => {}} />
+        case 'data_stabalization_timeseries':
+          return <DataStabilization readonly={true} predictionType={modellingType} onApiCall={() => {}} />
+        case 'data_seasonalization_timeseries':
+          return <Seasonality readonly={true} predictionType={modellingType} onValidationChange={() => {}} onApiCall={() => {}} />
+        case 'data_stationarity_treatment_timeseries':
+          return <StationarityTreatment readonly={true} onValidationChange={() => {}} onApiCall={() => {}} />
+        case 'feature_dependency_analysis_timeseries':
+          return <FeatureDependency onValidationChange={() => {}} onApiCall={() => {}} />
+        case 'scaling_and_encoding_timeseries':
+          return <ScalingandEncoding onValidationChange={() => {}} onApiCall={() => {}} />
         default:
           return <Empty title="No Playground view yet" hint="This step has no dedicated UI yet." />
       }

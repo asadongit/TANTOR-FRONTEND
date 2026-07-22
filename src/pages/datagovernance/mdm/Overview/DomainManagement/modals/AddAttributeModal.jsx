@@ -4,7 +4,7 @@ import { useAuth } from '../../../../../../context/AuthContext';
 import { toast } from 'react-hot-toast';
 import SearchableDropdown from '../../../components/SearchableDropdown';
 import MultiSelectDropdown from '../../../components/MultiSelectDropdown';
-import { useAllRules, useAddAttribute } from '../../../../../../hooks/mdm/domainManagement';
+import { useDQDimensions, useRulesByDimensions, useAddAttribute } from '../../../../../../hooks/mdm/domainManagement';
 
 const inputClass =
     'w-full border border-[#CCCCCC] rounded-lg px-3.5 py-2.5 text-sm font-normal text-[#282F49] outline-none bg-white font-[Satoshi,sans-serif] leading-none box-border focus:border-[#8e78b7]';
@@ -12,16 +12,16 @@ const labelClass =
     'text-sm font-medium text-[#332849] font-[Satoshi,sans-serif] leading-none mb-1.5 block';
 
 const DATA_TYPE_OPTIONS = [
-    { label: 'VARCHAR',      value: 'VARCHAR' },
-    { label: 'VARCHAR(n)',   value: 'VARCHAR(n)' },
-    { label: 'TEXT',         value: 'TEXT' },
-    { label: 'INTEGER',      value: 'INTEGER' },
-    { label: 'BIGINT',       value: 'BIGINT' },
-    { label: 'NUMERIC(p,s)', value: 'NUMERIC(p,s)' },
-    { label: 'DATE',         value: 'DATE' },
-    { label: 'TIMESTAMPTZ',  value: 'TIMESTAMPTZ' },
-    { label: 'BOOLEAN',      value: 'BOOLEAN' },
-    { label: 'JSONB',        value: 'JSONB' },
+    { label: 'VARCHAR',      value: 'VARCHAR',     payloadType: 'VARCHAR',     lengthMode: null },
+    { label: 'VARCHAR(n)',   value: 'VARCHAR_N',   payloadType: 'VARCHAR',     lengthMode: 'length' },
+    { label: 'TEXT',         value: 'TEXT',        payloadType: 'TEXT',        lengthMode: null },
+    { label: 'INTEGER',      value: 'INTEGER',     payloadType: 'INTEGER',     lengthMode: null },
+    { label: 'BIGINT',       value: 'BIGINT',      payloadType: 'BIGINT',      lengthMode: null },
+    { label: 'NUMERIC(p,s)', value: 'NUMERIC_PS',  payloadType: 'NUMERIC',     lengthMode: 'precision_scale' },
+    { label: 'DATE',         value: 'DATE',        payloadType: 'DATE',        lengthMode: null },
+    { label: 'TIMESTAMPTZ',  value: 'TIMESTAMPTZ', payloadType: 'TIMESTAMPTZ', lengthMode: null },
+    { label: 'BOOLEAN',      value: 'BOOLEAN',     payloadType: 'BOOLEAN',     lengthMode: null },
+    { label: 'JSONB',        value: 'JSONB',       payloadType: 'JSONB',       lengthMode: null },
 ];
 
 const REQUIRED_OPTIONS = [
@@ -29,35 +29,149 @@ const REQUIRED_OPTIONS = [
     { label: 'No',  value: 'No' },
 ];
 
-const SURVIVORSHIP_OPTIONS = [
-    { label: 'Most Recent',    value: 'most_recent' },
-    { label: 'Most Frequent',  value: 'most_frequent' },
-    { label: 'Longest',        value: 'longest' },
-    { label: 'Shortest',       value: 'shortest' },
-    { label: 'First Non-Null', value: 'first_non_null' },
-    { label: 'Last Non-Null',  value: 'last_non_null' },
-    { label: 'Max',            value: 'max' },
-    { label: 'Min',            value: 'min' },
-    { label: 'Manual',         value: 'manual' },
-];
+const getLengthMode = (dtValue) =>
+    DATA_TYPE_OPTIONS.find(o => o.value === dtValue)?.lengthMode ?? null;
+
+const getPayloadType = (dtValue) =>
+    DATA_TYPE_OPTIONS.find(o => o.value === dtValue)?.payloadType ?? dtValue;
+
+const isLengthValid = (dataType, lengthPrecision) => {
+    const mode = getLengthMode(dataType);
+    if (!mode) return true;
+    if (mode === 'length') return !!lengthPrecision?.toString().trim();
+    const parts = (lengthPrecision || '').split('/');
+    return !!(parts[0]?.trim() && parts[1]?.trim());
+};
+const LengthPrecisionInput = ({ dataType, lengthPrecision, onChange }) => {
+    const mode = getLengthMode(dataType);
+    if (!mode) return null;
+
+    if (mode === 'length') {
+        return (
+            <div>
+                <label className={labelClass}>Length (n) <span className="text-[#E05252]">*</span></label>
+                <input type="number" min={1} placeholder="e.g. 100"
+                    value={lengthPrecision}
+                    onChange={e => onChange('lengthPrecision', e.target.value)}
+                    className={inputClass} />
+            </div>
+        );
+    }
+
+    const parts = (lengthPrecision || '').split('/');
+    const precision = parts[0] || '';
+    const scale     = parts[1] || '';
+
+    return (
+        <>
+            <div>
+                <label className={labelClass}>Precision (p) <span className="text-[#E05252]">*</span></label>
+                <input type="number" min={1} placeholder="e.g. 10"
+                    value={precision}
+                    onChange={e => onChange('lengthPrecision', `${e.target.value}/${scale}`)}
+                    className={inputClass} />
+            </div>
+            <div>
+                <label className={labelClass}>Scale (s) <span className="text-[#E05252]">*</span></label>
+                <input type="number" min={0} placeholder="e.g. 2"
+                    value={scale}
+                    onChange={e => onChange('lengthPrecision', `${precision}/${e.target.value}`)}
+                    className={inputClass} />
+            </div>
+        </>
+    );
+};
+
+
 
 const emptyAttribute = () => ({
     id: Date.now() + Math.random(),
     attributeName: '',
     displayName: '',
+    sourceAttributeName: '',  
+    sourceDisplayName: '', 
     dataType: '',
     lengthPrecision: '',
     required: '',
+    dqDimension: [],
     dqRuleIds: [],
-    customRegex: '',
-    matchWeight: '',
-    survivorshipStrategy: '',
     expanded: true,
 });
 
-const isAttrValid = (attr) =>
-    attr.attributeName.trim() && attr.displayName.trim() && attr.dataType;
+const isAttrValid = (attr) => {
+    if (!attr.attributeName.trim() || !attr.displayName.trim() || !attr.sourceAttributeName.trim() ||
+        !attr.sourceDisplayName.trim() || !attr.dataType ||
+        !isLengthValid(attr.dataType, attr.lengthPrecision)) {
+        return false;
+    }
+    // If DQ Dimension is selected, DQ Rule must be selected
+    const hasDimension = attr.dqDimension?.length > 0;
+    if (hasDimension && (!attr.dqRuleIds || attr.dqRuleIds.length === 0)) {
+        return false;
+    }
+    return true;
+};
 
+
+const AttributeRuleFields = ({ attr, onUpdate }) => {
+    const { dimensions, isLoading: dimsLoading } = useDQDimensions();
+    const { rules, isLoading: rulesLoading, fetchRules } = useRulesByDimensions();
+
+    useEffect(() => {
+        if (attr.dqDimension?.length > 0) {
+            fetchRules(attr.dqDimension);
+        } else {
+            onUpdate(attr.id, 'dqRuleIds', []);
+        }
+    }, [attr.dqDimension]);
+
+    const dimensionOptions = dimensions.map(d => ({ rule_id: d, rule_name: d }));
+
+    return (
+        <>
+            <div>
+                <label className={labelClass}>DQ Dimension</label>
+                <MultiSelectDropdown
+                    options={dimensionOptions}
+                    selectedIds={attr.dqDimension}
+                    onToggle={(id) => {
+                        const next = attr.dqDimension.includes(id)
+                            ? attr.dqDimension.filter(v => v !== id)
+                            : [...attr.dqDimension, id];
+                        onUpdate(attr.id, 'dqDimension', next);
+                        onUpdate(attr.id, 'dqRuleIds', []);
+                    }}
+                    onSelectAll={(currentIds) => {
+                        const allIds = dimensions;
+                        onUpdate(attr.id, 'dqDimension', currentIds.length === allIds.length ? [] : allIds);
+                        onUpdate(attr.id, 'dqRuleIds', []);
+                    }}
+                    placeholder={dimsLoading ? 'Loading...' : 'Select Dimension'}
+                />
+            </div>
+            {attr.dqDimension?.length > 0 && (
+                <div>
+                    <label className={labelClass}>DQ Rule <span className="text-[#E05252]">*</span></label>
+                    <MultiSelectDropdown
+                        options={rules.map(r => ({ rule_id: r.rule_id, rule_name: r.rule_name }))}
+                        selectedIds={attr.dqRuleIds}
+                        onToggle={(id) => {
+                            const next = attr.dqRuleIds.includes(id)
+                                ? attr.dqRuleIds.filter(v => v !== id)
+                                : [...attr.dqRuleIds, id];
+                            onUpdate(attr.id, 'dqRuleIds', next);
+                        }}
+                        onSelectAll={(currentIds) => {
+                            const allIds = rules.map(r => r.rule_id);
+                            onUpdate(attr.id, 'dqRuleIds', currentIds.length === allIds.length ? [] : allIds);
+                        }}
+                        placeholder={rulesLoading ? 'Loading rules...' : 'Select Rules'}
+                    />
+                </div>
+            )}
+        </>
+    );
+};
 /* ─────────────────────────────────────────────
    Main Component
 ───────────────────────────────────────────── */
@@ -78,7 +192,6 @@ const AddAttributeModal = ({
     );
 
     /* ── Hooks ── */
-    const { rules: allRules } = useAllRules();
     const { isSubmitting, addAttribute } = useAddAttribute();
 
     useEffect(() => {
@@ -98,25 +211,6 @@ const AddAttributeModal = ({
     const updateAttr = (id, field, value) =>
         setAttributes((prev) => prev.map((a) => (a.id === id ? { ...a, [field]: value } : a)));
 
-    const toggleRuleForAttr = (attrId, ruleId) => {
-        setAttributes((prev) =>
-            prev.map((a) => {
-                if (a.id !== attrId) return a;
-                const has = a.dqRuleIds.includes(ruleId);
-                return { ...a, dqRuleIds: has ? a.dqRuleIds.filter((id) => id !== ruleId) : [...a.dqRuleIds, ruleId] };
-            })
-        );
-    };
-
-    const selectAllRulesForAttr = (attrId, currentIds) => {
-        setAttributes((prev) =>
-            prev.map((a) =>
-                a.id === attrId
-                    ? { ...a, dqRuleIds: currentIds.length === allRules.length ? [] : allRules.map((r) => r.rule_id) }
-                    : a
-            )
-        );
-    };
 
     const toggleExpand = (id) =>
         setAttributes((prev) =>
@@ -143,13 +237,12 @@ const AddAttributeModal = ({
                 attributes: attributes.map((attr) => ({
                     attribute_name:       attr.attributeName,
                     display_name:         attr.displayName,
-                    data_type:            attr.dataType,
-                    length_precision:     attr.lengthPrecision || null,
+                    source_attribute_name: attr.sourceAttributeName,
+                    source_display_name:   attr.sourceDisplayName,  
+                    data_type:        getPayloadType(attr.dataType),
+                    length_precision: getLengthMode(attr.dataType) ? (attr.lengthPrecision || null) : null,
                     required:             attr.required ? attr.required : 'no',
                     rule_ids:             attr.dqRuleIds?.length > 0 ? attr.dqRuleIds : null,
-                    regex:                attr.customRegex || null,
-                    match_weight:         attr.matchWeight ? Number(attr.matchWeight) : null,
-                    survivorship_strategy: attr.survivorshipStrategy || null,
                 })),
                 created_by: decodedToken?.preferred_username,
             };
@@ -251,54 +344,45 @@ const AddAttributeModal = ({
                             {attr.expanded && (
                                 <div className="px-4 pb-4 grid grid-cols-2 gap-3.5">
                                     <div>
-                                        <label className={labelClass}>
-                                            Attribute Name <span className="text-[#E05252]">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            placeholder="Enter Attribute Name"
+                                        <label className={labelClass}>Golden Attribute Name <span className="text-[#E05252]">*</span></label>
+                                        <input type="text" placeholder="Enter Golden Attribute Name"
                                             value={attr.attributeName}
                                             onChange={(e) => updateAttr(attr.id, 'attributeName', e.target.value)}
-                                            className={inputClass}
-                                        />
+                                            className={inputClass} />
                                     </div>
-
                                     <div>
-                                        <label className={labelClass}>
-                                            Display Name <span className="text-[#E05252]">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            placeholder="Enter Display Name"
+                                        <label className={labelClass}> Golden Attribute Display Name <span className="text-[#E05252]">*</span></label>
+                                        <input type="text" placeholder="Enter Golden Attribute Display Name"
                                             value={attr.displayName}
                                             onChange={(e) => updateAttr(attr.id, 'displayName', e.target.value)}
-                                            className={inputClass}
-                                        />
+                                            className={inputClass} />
                                     </div>
-
                                     <div>
-                                        <label className={labelClass}>
-                                            Data Type <span className="text-[#E05252]">*</span>
-                                        </label>
+                                        <label className={labelClass}>Source Attribute Name <span className="text-[#E05252]">*</span></label>
+                                        <input type="text" placeholder="Enter Source Attribute Name"
+                                            value={attr.sourceAttributeName}
+                                            onChange={(e) => updateAttr(attr.id, 'sourceAttributeName', e.target.value)}
+                                            className={inputClass} />
+                                    </div>
+                                    <div>
+                                        <label className={labelClass}>Source Attribute Display Name <span className="text-[#E05252]">*</span></label>
+                                        <input type="text" placeholder="Enter Source Attribute Display Name"
+                                            value={attr.sourceDisplayName}
+                                            onChange={(e) => updateAttr(attr.id, 'sourceDisplayName', e.target.value)}
+                                            className={inputClass} />
+                                    </div>
+                                    <div>
+                                        <label className={labelClass}>Data Type <span className="text-[#E05252]">*</span></label>
                                         <SearchableDropdown
                                             value={attr.dataType}
-                                            onChange={(val) => updateAttr(attr.id, 'dataType', val)}
+                                            onChange={val => {
+                                                updateAttr(attr.id, 'dataType', val);
+                                                updateAttr(attr.id, 'lengthPrecision', '');
+                                            }}
                                             options={DATA_TYPE_OPTIONS}
                                             placeholder="Select Data Type"
                                         />
                                     </div>
-
-                                    <div>
-                                        <label className={labelClass}>Length / Precision</label>
-                                        <input
-                                            type="text"
-                                            placeholder="Enter Length / Precision"
-                                            value={attr.lengthPrecision}
-                                            onChange={(e) => updateAttr(attr.id, 'lengthPrecision', e.target.value)}
-                                            className={inputClass}
-                                        />
-                                    </div>
-
                                     <div>
                                         <label className={labelClass}>Required</label>
                                         <SearchableDropdown
@@ -308,48 +392,12 @@ const AddAttributeModal = ({
                                             placeholder="Select"
                                         />
                                     </div>
-
-                                    <div>
-                                        <label className={labelClass}>DQ Rule</label>
-                                        <MultiSelectDropdown
-                                            selectedIds={attr.dqRuleIds}
-                                            onToggle={(ruleId) => toggleRuleForAttr(attr.id, ruleId)}
-                                            onSelectAll={(currentIds) => selectAllRulesForAttr(attr.id, currentIds)}
-                                            options={allRules}
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className={labelClass}>Custom Regex (if applicable)</label>
-                                        <input
-                                            type="text"
-                                            placeholder="Enter Custom Regex"
-                                            value={attr.customRegex}
-                                            onChange={(e) => updateAttr(attr.id, 'customRegex', e.target.value)}
-                                            className={inputClass}
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className={labelClass}>Match Weight (%)</label>
-                                        <input
-                                            type="text"
-                                            placeholder="Enter Match Weight"
-                                            value={attr.matchWeight}
-                                            onChange={(e) => updateAttr(attr.id, 'matchWeight', e.target.value)}
-                                            className={inputClass}
-                                        />
-                                    </div>
-
-                                    <div className="col-span-2">
-                                        <label className={labelClass}>Survivorship Strategy</label>
-                                        <SearchableDropdown
-                                            value={attr.survivorshipStrategy}
-                                            onChange={(val) => updateAttr(attr.id, 'survivorshipStrategy', val)}
-                                            options={SURVIVORSHIP_OPTIONS}
-                                            placeholder="Select Survivorship Strategy"
-                                        />
-                                    </div>
+                                    <LengthPrecisionInput
+                                        dataType={attr.dataType}
+                                        lengthPrecision={attr.lengthPrecision}
+                                        onChange={(field, val) => updateAttr(attr.id, field, val)}
+                                    />
+                                    <AttributeRuleFields attr={attr} onUpdate={updateAttr} />
                                 </div>
                             )}
                         </div>

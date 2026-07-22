@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useFetchUser } from '../hooks/platform/user';
 import Notifications from './Notifications';
 import GovernanceSearch from '../pages/datagovernance/Components/GovernanceSearch';
+import { usePersonaStatuses } from '../hooks/dataGovernance/Users/auth';
 
 const Header = ({ activeSection }) => {
   const navigate = useNavigate();
@@ -17,18 +18,18 @@ const Header = ({ activeSection }) => {
 
   const dropdownRef = useRef(null);
 
-  const { decodedToken, logout } = useAuth();
+  const { decodedToken, logout, changePassword } = useAuth();
   const userId = decodedToken?.sub;
   const { data: user, isLoading } = useFetchUser(userId);
+  const { personaStatuses } = usePersonaStatuses()
 
-  const isDataSteward = decodedToken?.resource_access?.darch?.roles?.some(role =>
-    ['persona:data steward'].includes(role.toLowerCase())
-  );
+  const hasRoleInToken = (roleKey) =>
+  decodedToken?.resource_access?.darch?.roles?.some(
+    role => role.toLowerCase() === roleKey
+    );
 
-  const isDataOwner = decodedToken?.resource_access?.darch?.roles?.some(role =>
-    ['persona:data owner'].includes(role.toLowerCase())
-  );
-
+  const isDataSteward = hasRoleInToken('persona:data steward') && personaStatuses['persona:data steward'] === true;
+  const isDataOwner   = hasRoleInToken('persona:data owner')   && personaStatuses['persona:data owner']   === true;
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -188,6 +189,12 @@ const Header = ({ activeSection }) => {
                     <HelpCircle size={16} className="mr-3 text-gray-500" /> Help & Support
                   </button>
                 </div> */}
+
+                <div className="py-1 border-t border-gray-100">
+                  <button className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 w-full text-left" onClick={changePassword}>
+                    <Settings size={16} className="mr-3 text-gray-500" /> Change Password
+                  </button>
+                </div>
 
                 <div className="py-1 border-t border-gray-100 bg-gray-50">
                   {isLoading ? (

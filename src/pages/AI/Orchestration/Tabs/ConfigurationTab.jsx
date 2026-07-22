@@ -222,17 +222,24 @@ const ConfigurationTab = ({ onValidationErrors }) => {
         switch (field) {
             case 'project': {
                 const selectedProject = projects.find(p => p.name === value);
+
                 setSchedulerState(prev => ({
                     ...prev,
                     project: value,
                     ensemble_name: '',
                     model: isEnsembleEnabled ? [] : '',
                     model_id: isEnsembleEnabled ? [] : '',
-                    project_id: selectedProject ? selectedProject.id : ''
+                    project_id: selectedProject ? selectedProject.id : '',
+                    source: {
+                        ...prev.source,
+                        source_table: ''
+                    }
                 }));
+
                 setSelectedEnsemble('');
                 setEnsembleNames([]);
                 setModels([]);
+                setDataSources([]);   // <-- add here
                 setSummary(null);
                 break;
             }
@@ -250,14 +257,33 @@ const ConfigurationTab = ({ onValidationErrors }) => {
             }
             case 'model': {
                 const selectedValues = Array.isArray(value) ? value : [value].filter(Boolean);
-                const selectedModelIds = models
-                    .filter(m => selectedValues.includes(m.value || m.model_name))
-                    .map(m => m.model_id || '');
+                const selectedValuesSet = new Set(selectedValues);
+
+                // `models` is ordered by workflow_seq_number (see fetchModelsByEnsemble), so filtering it
+                // - rather than reusing the raw selection order - keeps model/model_id aligned to that order.
+                const selectedModels = models.filter(
+                    m => selectedValuesSet.has(m.value || m.model_name)
+                );
+
+                const orderedModelNames = selectedModels.map(m => m.value || m.model_name);
+                const selectedModelIds = selectedModels.map(m => m.model_id || '');
+
+                const selectedModel = selectedModels[0];
+
                 setSchedulerState(prev => ({
                     ...prev,
-                    model: Array.isArray(value) ? value : value,
-                    model_id: isEnsembleEnabled ? selectedModelIds : (selectedModelIds[0] || '')
+                    model: isEnsembleEnabled ? orderedModelNames : value,
+                    model_id: isEnsembleEnabled
+                        ? selectedModelIds
+                        : (selectedModelIds[0] || ''),
+                    modeling_type: selectedModel?.modeling_type || '',
+                    modelling_type: selectedModel?.modeling_type || ''
                 }));
+
+                if (selectedModel) {
+                    fetchDataSources(selectedModel.modeling_type);
+                }
+
                 setSummary(null);
                 break;
             }
@@ -342,16 +368,16 @@ const ConfigurationTab = ({ onValidationErrors }) => {
 
     const validateScheduleName = (name) => {
         if (!name.trim()) return null;
-        
+
         if (name.length > 100) return 'Schedule name must be 100 characters or less';
-        
+
         if (!/^[A-Za-z]/.test(name.trim())) return 'Schedule name must start with an alphabet';
-        
+
         if (/^\d+$/.test(name.trim())) return 'Schedule name cannot contain only digits';
-        
+
         const validCharPattern = /^[A-Za-z0-9_\-@#& ]+$/;
         if (!validCharPattern.test(name)) return 'Only letters, numbers, underscore, hyphen, space, @, #, and & are allowed';
-        
+
         if (existingSchedules.some(s => s.name.toLowerCase() === name.toLowerCase()))
             return 'A schedule with this name already exists. Please choose a different name.';
         return null;
@@ -403,6 +429,13 @@ const ConfigurationTab = ({ onValidationErrors }) => {
             const secureQueryData = await secureQueryResponse.json();
             const policyIds = secureQueryData.matched_policy_ids;
 
+            // Get modeling_type from the selected model
+            const selectedModelNames = getModelListValue();
+            const selectedModels = models.filter(
+                m => selectedModelNames.includes(m.value || m.model_name)
+            );
+            const modellingType = selectedModels[0]?.modeling_type || '';
+
             const response = await fetch(`${hostnameAI}/orchestration/validate-tables`, {
                 method: 'POST',
                 headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
@@ -410,7 +443,8 @@ const ConfigurationTab = ({ onValidationErrors }) => {
                     model_name: getModelListValue(),
                     source_table: schedulerState.source.source_table,
                     destination_table: schedulerState.target.destination_table,
-                    policy_id: policyIds
+                    policy_id: policyIds,
+                    modelling_type: modellingType
                 })
             });
             if (!response.ok) throw new Error('Validation failed');
@@ -433,7 +467,6 @@ const ConfigurationTab = ({ onValidationErrors }) => {
     useEffect(() => {
         fetchExistingSchedules();
         fetchProjects();
-        fetchDataSources();
         fetchDestinationTables();
     }, []);
 
@@ -537,27 +570,38 @@ const ConfigurationTab = ({ onValidationErrors }) => {
                 ? data.workflow_models
                 : {};
 
-            const normalizedWorkflowModels = Object.entries(rawWorkflowModels).reduce((acc, [workflowName, modelList]) => {
-                const normalizedModels = Array.isArray(modelList)
-                    ? modelList
-                        .map(modelItem => {
-                            if (typeof modelItem === 'string') return modelItem;
-                            if (modelItem && typeof modelItem === 'object') {
-                                return modelItem.model_name || modelItem.name || modelItem.value || '';
-                            }
-                            return '';
-                        })
-                        .filter(Boolean)
-                    : [];
+            // Workflows with a numeric workflow_seq_number are ordered by it (1st, 2nd, ...);
+            // workflows with a null seq number keep their original response order, placed after the numbered ones.
+            const orderedWorkflowEntries = Object.entries(rawWorkflowModels)
+                .map(([workflowName, workflowData], index) => ({ workflowName, workflowData, index }))
+                .sort((a, b) => {
+                    const seqA = a.workflowData?.workflow_seq_number;
+                    const seqB = b.workflowData?.workflow_seq_number;
+                    if (seqA == null && seqB == null) return a.index - b.index;
+                    if (seqA == null) return 1;
+                    if (seqB == null) return -1;
+                    return seqA - seqB;
+                });
 
-                acc[workflowName] = normalizedModels;
+            const getWorkflowModelList = (workflowData) => Array.isArray(workflowData?.models) ? workflowData.models : [];
+
+            const normalizedWorkflowModels = orderedWorkflowEntries.reduce((acc, { workflowName, workflowData }) => {
+                acc[workflowName] = getWorkflowModelList(workflowData)
+                    .map(modelItem => {
+                        if (typeof modelItem === 'string') return modelItem;
+                        if (modelItem && typeof modelItem === 'object') {
+                            return modelItem.model_name || modelItem.name || modelItem.value || '';
+                        }
+                        return '';
+                    })
+                    .filter(Boolean);
                 return acc;
             }, {});
 
             setWorkflowModelMap(normalizedWorkflowModels);
 
-            const flattenedModels = Object.entries(normalizedWorkflowModels).flatMap(([workflowName, modelList]) =>
-                (Array.isArray(rawWorkflowModels[workflowName]) ? rawWorkflowModels[workflowName] : [])
+            const flattenedModels = orderedWorkflowEntries.flatMap(({ workflowName, workflowData }) =>
+                getWorkflowModelList(workflowData)
                     .map(modelItem => {
                         if (typeof modelItem === 'string') {
                             return modelItem ? {
@@ -637,7 +681,7 @@ const ConfigurationTab = ({ onValidationErrors }) => {
         return selectedModels.find(modelName => workflowModels.includes(modelName)) || '';
     };
 
-    const fetchDataSources = async () => {
+    const fetchDataSources = async (modelingType) => {
         setLoadingDataSources(true);
         try {
             const secureQueryResponse = await fetch(`${window._env_?.VITE_FAST_API}/secure-query`, {
@@ -648,8 +692,15 @@ const ConfigurationTab = ({ onValidationErrors }) => {
             if (!secureQueryResponse.ok) throw new Error("Failed to fetch policy IDs");
             const secureQueryData = await secureQueryResponse.json();
             const policyIds = secureQueryData.matched_policy_ids;
+            const isTimeSeries =
+                modelingType === 'univariate_timeseries' ||
+                modelingType === 'multivariate_timeseries';
+            const endpoint = isTimeSeries
+                ? `${hostnameAI}/schemas/source-schema/tables`
+                : `${hostnameAI}/schemas/predictions-source-schema/tables`;
 
-            const response = await fetch(`${hostnameAI}/schemas/predictions-source-schema/tables`, {
+            const response = await fetch(
+                endpoint, {
                 method: 'POST',
                 headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
                 body: JSON.stringify({ policy_id: policyIds })
@@ -913,7 +964,7 @@ const ConfigurationTab = ({ onValidationErrors }) => {
         setSchedulerState(prev => ({
             ...createBlankSchedulerState(enabled),
             owner_id: prev?.owner_id || '',
-           
+
         }));
     };
 

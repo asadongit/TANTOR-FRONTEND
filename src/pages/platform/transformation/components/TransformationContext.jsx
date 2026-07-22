@@ -667,6 +667,31 @@ export function TransformationProvider({ children }) {
               },
               EnableCountLogging: sourceData.enableCountLogging === true,
             };
+          } else if (sourceData.sourceType === "federation-views") {   // ADD THIS BRANCH
+            const columnNames = Array.isArray(originalColumns) && originalColumns.length > 0
+              ? originalColumns.map((col) =>
+                  typeof col === "string" ? col : col.name
+                )
+              : Array.isArray(sourceData.columns)
+              ? sourceData.columns.map((col) =>
+                  typeof col === "string" ? col : col.name
+                )
+              : [];
+
+            result.source[sourceKey] = {
+              sourceType: "federation",
+              sourceConnName: "federation",
+              objectType: "tables",
+              column: columnNames,
+              ConnectionParameters: {
+                sourceTable: sourceData.federationView || "",
+              },
+              readParameters: {
+                watermarkColumn: "",
+                watermarkColumnDataType: "",
+              },
+              EnableCountLogging: sourceData.enableCountLogging === true,
+            };
           } else {
             // Check if this is a source-query mode
             if (sourceData.objectType === "source-query") {
@@ -682,6 +707,21 @@ export function TransformationProvider({ children }) {
                       : col.datatype;
                 });
 
+              // Build column_format for date/datetime/timestamp columns
+              const queryColumnFormat = {};
+              queryColumns
+                .filter(
+                  (col) =>
+                    col.name &&
+                    col.name.trim() !== "" &&
+                    ["date", "datetime", "timestamp"].includes(col.datatype) &&
+                    col.format &&
+                    col.format.trim() !== ""
+                )
+                .forEach((col) => {
+                  queryColumnFormat[col.name] = col.format;
+                });
+
               result.source[sourceKey] = {
                 sourceType: sourceData.connectionType || "unknown",
                 sourceConnName: sourceData.connection || "unknown",
@@ -689,6 +729,9 @@ export function TransformationProvider({ children }) {
                 sourceQualifier: sourceData.customQuery,
                 objectType: "source-query",
                 column: [columnMapping],
+                  ...(Object.keys(queryColumnFormat).length > 0 && {
+                  column_format: [queryColumnFormat],
+                }),
                 ConnectionParameters: {
                   sourceSchema: sourceData.schema || "",
                   sourceTable: sourceData.table || "",
@@ -756,8 +799,25 @@ export function TransformationProvider({ children }) {
               : selectedSourceId;
           }
 
+          if (targetData.targetType === "file") {
+            // CSV / File target
+            result.target[targetKey] = {
+              targetType: (targetData.fileType || "csv").toLowerCase(),
+              sourceDataframe: sourceDataframe,
+              LoadingParams: {
+                targetFilePath: targetData.targetFilePath || "",
+                targetFileName: targetData.targetFileName || "",
+                delimiter: targetData.delimiter || ",",
+                header: typeof targetData.header === "boolean" ? targetData.header : true,
+                loadStrategy: targetData.loadStrategy || "",
+              },
+              EnableCountLogging: targetData.enableCountLogging === true,
+              targetMapping: targetData.targetMapping || {},
+            };
+          } 
+
           // helper to serialize single vs array -> string or "[]"
-          const serialize = (arr) => {
+          else {const serialize = (arr) => {
             if (!Array.isArray(arr)) return arr || "";
             if (arr.length === 0) return "";
             return arr.length === 1 ? arr[0] : JSON.stringify(arr);
@@ -808,6 +868,7 @@ export function TransformationProvider({ children }) {
             targetMapping: targetData.targetMapping || {},
           };
         }
+      }
       });
 
       transformationNodes.forEach((nodeId) => {
@@ -1032,7 +1093,14 @@ export function useTrackConnections(nodes, edges) {
                 fileColumns: data.fileColumns,
                 columns: data.columns,
               };
-            } else {
+            } else if (data.sourceType === "federation-views") {   // ADD THIS BRANCH
+              sourcePayload.data = {
+                ...sourcePayload.data,
+                sourceType: data.sourceType,
+                federationView: data.federationView,
+                columns: data.columns,
+              };
+              } else {
               sourcePayload.data = {
                 ...sourcePayload.data,
                 sourceType: data.sourceType || "database",
@@ -1077,36 +1145,55 @@ export function useTrackConnections(nodes, edges) {
         case "target":
           const targetIndex = targetNodeIds.get(id);
           if (targetIndex) {
+            const targetPayload = {
+              id,
+              data: {
+                dfId: `t_df_${targetIndex}`,
+                alias: data.alias,
+                targetMapping: data.targetMapping || {},
+                selectedSourceId: data.selectedSourceId,
+                objectType: data.objectType,
+                preProcedures: data.preProcedures,
+                postProcedures: data.postProcedures,
+                enableCountLogging: data.enableCountLogging || false,
+                surPopulation: data.surPopulation || false,
+                scdConfig: data.scdConfig || {
+                  primaryKeys: [],
+                  surrogateKey: "",
+                  checksumColumns: [],
+                  changeType: "",
+                },
+                targetType: data.targetType || "database",
+              },
+            };
+
+            if (data.targetType === "file") {
+              targetPayload.data = {
+                ...targetPayload.data,
+                fileType: data.fileType,
+                targetFilePath: data.targetFilePath,
+                targetFileName: data.targetFileName,
+                delimiter: data.delimiter,
+                header: data.header,
+                loadStrategy: data.loadStrategy,
+                fileColumns: data.fileColumns,
+              };
+            } else {
+              targetPayload.data = {
+                ...targetPayload.data,
+                connection: data.connection,
+                connectionId: data.connectionId,
+                connectionType: data.connectionType,
+                schema: data.schema,
+                table: data.table,
+                loadType: data.loadType,
+                loadStrategy: data.loadStrategy,
+              };
+            }
+
             dispatch({
               type: ACTION_TYPES.ADD_TARGET,
-              payload: {
-                id,
-                data: {
-                  connection: data.connection,
-                  connectionId: data.connectionId,
-                  connectionType: data.connectionType,
-                  schema: data.schema,
-                  table: data.table,
-                  loadType: data.loadType,
-                  loadStrategy: data.loadStrategy,
-                  dfId: `t_df_${targetIndex}`,
-                  alias: data.alias,
-                  targetMapping: data.targetMapping || {},
-                  selectedSourceId: data.selectedSourceId,
-                  objectType: data.objectType,
-                  preProcedures: data.preProcedures,
-                  postProcedures: data.postProcedures,
-                  enableCountLogging: data.enableCountLogging || false,
-                  surPopulation: data.surPopulation || false,
-                  // NEW: carry any existing SCD config from node data
-                  scdConfig: data.scdConfig || {
-                    primaryKeys: [],
-                    surrogateKey: "",
-                    checksumColumns: [],
-                    changeType: "",
-                  },
-                },
-              },
+              payload: targetPayload,
             });
 
             if (data.selectedSourceId) {
@@ -1120,7 +1207,7 @@ export function useTrackConnections(nodes, edges) {
             }
           }
           break;
-
+          
         default:
           break;
       }

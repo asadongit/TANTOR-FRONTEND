@@ -551,11 +551,14 @@ const currentUsers = users;
                 />
               </th>
             <th className="text-left" style={{ padding: '16px 19.75px' }}>User</th>
+            <th className="text-left" style={{ padding: '16px 19.75px' }}>Source</th>
               <th className="text-left" style={{ padding: '16px 19.75px' }}>Roles</th>
               <th className="text-left" style={{ padding: '16px 19.75px' }}>Persona</th>
               <th className="text-left" style={{ padding: '16px 19.75px' }}>Group</th>
               <th className="text-left" style={{ padding: '16px 19.75px' }}>Sub group</th>
               <th className="text-center" style={{ padding: '16px 19.75px' }}>Status</th>
+              <th className="text-center" style={{ padding: '16px 19.75px' }}>Created By</th>
+              <th className="text-center" style={{ padding: '16px 19.75px' }}>Created On</th>
               <th className="text-left" style={{ padding: '16px 19.75px' }}>Action</th>
           </tr>
           </thead>
@@ -601,6 +604,12 @@ const currentUsers = users;
                     </div>
                   </td>
                   <td style={{ padding: '16px 19.75px' }}>
+                    <span className="inline-block px-2 py-2 rounded-md text-sm font-medium"
+                      style={{ background: '#ede9f7', color: '#8e78b7', minWidth: '88px', textAlign: 'center' }}>
+                      {user.source}
+                    </span>
+                  </td>
+                  <td style={{ padding: '16px 19.75px' }}>
                     <button
                       onClick={() => showDetailModal('role', user.roles, user)}
                       className="text-center font-medium underline decoration-1 underline-offset-4"
@@ -644,6 +653,24 @@ const currentUsers = users;
                           style={{ background: '#f3f4f6', color: '#6b7280', minWidth: '88px', textAlign: 'center' }}>
                           Inactive
                         </span>
+                      )}
+                    </div>
+                  </td>
+                  <td style={{ padding: '16px 19.75px' }}>
+                    <div className="text-center">
+                      {user.created_by ? (
+                        <span className="text-sm text-gray-600">{user.created_by}</span>
+                      ) : (
+                        <span className="text-sm text-gray-400">-</span>
+                      )}
+                    </div>
+                  </td>
+                  <td style={{ padding: '16px 19.75px' }}>
+                    <div className="text-center">
+                      {user.created_on ? (
+                        <span className="text-sm text-gray-600">{user.created_on}</span>
+                      ) : (
+                        <span className="text-sm text-gray-400">-</span>
                       )}
                     </div>
                   </td>

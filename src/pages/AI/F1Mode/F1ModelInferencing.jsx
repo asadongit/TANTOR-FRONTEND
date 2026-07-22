@@ -164,7 +164,9 @@ function PerformanceTable({ allResults, task }) {
     const [currentPage, setCurrentPage] = useState(1);
     const [searchQuery, setSearchQuery] = useState('');
     
-    const metricKeys = METRIC_KEYS_BY_TASK[task] || METRIC_KEYS_BY_TASK.classification;
+    // Normalize task type: multiclass and binary are treated as classification
+    const normalizedTask = (task === 'multiclass' || task === 'binary') ? 'classification' : task;
+    const metricKeys = METRIC_KEYS_BY_TASK[normalizedTask] || METRIC_KEYS_BY_TASK.classification;
 
     const tableData = useMemo(() => {
         return allResults.map((result) => {
@@ -245,8 +247,8 @@ function PerformanceTable({ allResults, task }) {
         setCurrentPage(1);
     };
 
-    if (task && !METRIC_KEYS_BY_TASK[task]) {
-        console.error(`[PerformanceTable] Unsupported task type: "${task}". Only 'classification' and 'regression' are supported.`);
+    if (normalizedTask && !METRIC_KEYS_BY_TASK[normalizedTask]) {
+        console.error(`[PerformanceTable] Unsupported task type: "${normalizedTask}". Only 'classification' and 'regression' are supported.`);
     }
 
     return (
@@ -366,13 +368,13 @@ function PerformanceTable({ allResults, task }) {
                                                 key={`test-${m.key}`}
                                                 className={`py-2 px-4 text-gray-700 ${i === arr.length - 1 ? 'border-r border-gray-200' : ''}`}
                                             >
-                                                {formatTableVal(row[`test_${m.key}`], { isLogLoss: m.isLogLoss, task })}
+                                                {formatTableVal(row[`test_${m.key}`], { isLogLoss: m.isLogLoss, task: normalizedTask })}
                                             </td>
                                         ))}
 
                                         {visibleMetrics.filter((m) => trainVisible[m.key]).map((m) => (
                                             <td key={`train-${m.key}`} className="py-2 px-4 text-gray-700">
-                                                {formatTableVal(row[`train_${m.key}`], { isLogLoss: m.isLogLoss, task })}
+                                                {formatTableVal(row[`train_${m.key}`], { isLogLoss: m.isLogLoss, task: normalizedTask })}
                                             </td>
                                         ))}
                                     </tr>

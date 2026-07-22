@@ -6,12 +6,19 @@ import { secureQuery, fetchConnectionDetails } from './Components/function.js';
 import { useAuth } from "../../../context/AuthContext.jsx";
 import Edit from "./Edit.jsx";
 import { useLocation, useNavigate } from "react-router-dom";
+import { usePersonaStatuses } from '../../../hooks/dataGovernance/Users/auth';
 
 function Tables() {
   const { token, decodedToken } = useAuth();
-  const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
-    ['persona:data steward', 'persona:data owner'].includes(role?.toLowerCase())
-  );
+  const { personaStatuses } = usePersonaStatuses();
+  const hasRoleInToken = (roleKey) =>
+      decodedToken?.resource_access?.darch?.roles?.some(
+          role => role.toLowerCase() === roleKey
+      );
+
+  const isUserAuthorized = 
+      (hasRoleInToken('persona:data steward') && personaStatuses['persona:data steward'] === true) ||
+      (hasRoleInToken('persona:data owner')   && personaStatuses['persona:data owner']   === true);
   const [loading, setLoading] = useState(true);
   const [tableData, setTableData] = useState([]);
   const [toast, setToast] = useState({ show: false, message: '', type: '' });

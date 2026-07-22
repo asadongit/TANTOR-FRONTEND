@@ -73,6 +73,19 @@ export const SourceNode = ({ id, data }) => {
   const [sourceTypeDropdownOpen, setSourceTypeDropdownOpen] = useState(false);
   const [fileTypeDropdownOpen, setFileTypeDropdownOpen] = useState(false);
 
+  // Federation Views state
+  const [federationViews, setFederationViews] = useState([]);
+  const [selectedFederationView, setSelectedFederationView] = useState(data.federationView || "");
+  const [federationViewDropdownOpen, setFederationViewDropdownOpen] = useState(false);
+  const [federationViewsLoading, setFederationViewsLoading] = useState(false);
+  const federationViewDropdownRef = useRef(null);
+  const [federationViewSearch, setFederationViewSearch] = useState("");
+
+  const [viewColumns, setViewColumns] = useState([]);
+  const [selectedViewColumns, setSelectedViewColumns] = useState([]);
+  const [viewColumnSearch, setViewColumnSearch] = useState("");
+  const [viewColumnsLoading, setViewColumnsLoading] = useState(false);
+
   const [customDatatypeModalOpen, setCustomDatatypeModalOpen] = useState(false);
   const [customDatatypeInput, setCustomDatatypeInput] = useState("");
   const [currentEditingColumn, setCurrentEditingColumn] = useState(null);
@@ -81,12 +94,120 @@ export const SourceNode = ({ id, data }) => {
   const { token, decodedToken, project } = useAuth();
   const { dispatch, ACTION_TYPES } = useTransformation();
 
+  // const [sourceQueryTable, setSourceQueryTable] = useState(data.sourceQueryTable || "");
+  const [sourceQueryTable, setSourceQueryTable] = useState(
+    data.sourceQueryTable || 
+    (data.objectType === "source-query" ? (data.table || "") : "")
+  );
+
+
+  const [sourceQueryTableDropdownOpen, setSourceQueryTableDropdownOpen] = useState(false);
+
+  // const [sourceQueryTableSearch, setSourceQueryTableSearch] = useState("");
+  const [sourceQueryTableSearch, setSourceQueryTableSearch] = useState(
+    data.sourceQueryTable || 
+    (data.objectType === "source-query" ? (data.table || "") : "")
+  );
+
+  const restoredTableRef = useRef(
+    data.objectType === "source-query" ? (data.sourceQueryTable || data.table || "") : ""
+  );
+
+  const isRestoredSourceQuery = useRef(
+    !!(
+      data.objectType === "source-query" &&
+      data.fileColumns &&
+      Array.isArray(data.fileColumns) &&
+      data.fileColumns.length > 0 &&
+      data.fileColumns[0].name &&
+      (data.sourceQueryTable || data.table)
+    )
+  );
+  
+  const hasAutoFetchedOnRestore = useRef(false);
+
+
   const connectionDropdownRef = useRef(null);
   const schemaDropdownRef = useRef(null);
   const tableDropdownRef = useRef(null);
   const sourceTypeDropdownRef = useRef(null);
   const fileTypeDropdownRef = useRef(null);
 
+  // Fetch all federation views from backend
+  const fetchFederationViews = useCallback(async () => {
+    try {
+      setFederationViewsLoading(true);
+      setFederationViews([]);
+      const hostnameV2 = window._env_?.VITE_FAST_API_V2;
+      const params = new URLSearchParams();
+      if (project) params.append("project", project);
+      if (decodedToken?.preferred_username) params.append("created_by", decodedToken.preferred_username);
+      const response = await fetch(`${hostnameV2}/get-all-views-etl_V2?${params.toString()}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const json = await response.json();
+      setFederationViews(json.result || []);
+    } catch (error) {
+      console.error("Error fetching federation views:", error);
+      setFederationViews([]);
+    } finally {
+      setFederationViewsLoading(false);
+    }
+  }, [token, decodedToken, project]);
+
+
+  const fetchViewColumns = useCallback(async (viewName) => {
+    if (!viewName) return;
+    try {
+      setViewColumnsLoading(true);
+      setViewColumns([]);
+
+      const hostnameV1Local = window._env_?.VITE_FAST_API;
+      const response = await fetch(`${hostnameV1Local}/fetch_view_columns`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ view_names: [viewName] }),
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const json = await response.json();
+
+      // Assumes result is keyed by view name: { [viewName]: [{ column_name, data_type }, ...] }
+      const cols = json.result?.[viewName] || [];
+      setViewColumns(cols);
+    } catch (error) {
+      console.error("Error fetching view columns:", error);
+      setViewColumns([]);
+    } finally {
+      setViewColumnsLoading(false);
+    }
+  }, [token]);
+
+  // Views list fetch karo agar edit mode mein sourceType already federation-views hai
+  useEffect(() => {
+    if (sourceType === "federation-views" && federationViews.length === 0 && !federationViewsLoading) {
+      fetchFederationViews();
+    }
+  }, [sourceType, federationViews.length, federationViewsLoading, fetchFederationViews]);
+
+  // selectedFederationView already set hone par bhi columns fetch karo
+  useEffect(() => {
+    if (
+      sourceType === "federation-views" &&
+      selectedFederationView &&
+      viewColumns.length === 0 &&
+      !viewColumnsLoading
+    ) {
+      fetchViewColumns(selectedFederationView);
+    }
+  }, [sourceType, selectedFederationView, viewColumns.length, viewColumnsLoading, fetchViewColumns]);
 
   const fetchConnections = useCallback(async () => {
     try {
@@ -477,6 +598,33 @@ export const SourceNode = ({ id, data }) => {
   };
 
   useEffect(() => {
+    if (
+      sourceType === "database" &&
+      selectedConnection.name &&
+      selectedSchema &&
+      tables.length === 0 &&
+      dataFetchStatus.tables !== "loading"
+    ) {
+      fetchTablesAndColumns(selectedConnection.name, selectedSchema);
+    }
+  }, [sourceType, selectedConnection.name, selectedSchema]);
+
+  useEffect(() => {
+    if (
+      sourceType === "database" &&
+      selectedTable &&
+      tables.length > 0 &&
+      columns.length === 0 &&
+      selectedConnection.name &&
+      selectedSchema
+    ) {
+      fetchColumns(selectedConnection.name, selectedSchema, selectedTable).then(cols => {
+        if (cols.length > 0) setColumns(cols);
+      });
+    }
+  }, [tables, selectedTable, sourceType]);
+
+  useEffect(() => {
     fetchConnections();
   }, [fetchConnections]);
 
@@ -554,19 +702,33 @@ export const SourceNode = ({ id, data }) => {
             datatype: col.datatype === 'custom' ? (col.customDatatype || 'custom') : col.datatype
           }));
 
+
+        const columnFormat = {};
+          fileColumns
+            .filter(col => 
+              col.name.trim() !== "" && 
+              ['date', 'datetime', 'timestamp'].includes(col.datatype) &&
+              col.format && col.format.trim() !== ""
+            )
+            .forEach(col => {
+              columnFormat[col.name] = col.format;
+            });
+
         data.onDataChange({
           sourceType: "database",
           connection: selectedConnection.name,
           connectionId: selectedConnection.id,
           connectionType: selectedConnection.type,
           schema: selectedSchema,
-          table: selectedTable,
+          table: sourceQueryTable,
+          sourceQueryTable: sourceQueryTable,
           columns: fileColumnsFormatted,
           alias: alias,
           objectType: selectedObjectType,
           customQuery: customQuery,
           fileColumns: fileColumns,
           enableCountLogging: enableCountLogging,
+          column_format: Object.keys(columnFormat).length > 0 ? [columnFormat] : undefined,
         });
 
 
@@ -603,7 +765,9 @@ export const SourceNode = ({ id, data }) => {
           }
         });
 
-      } else {
+      } 
+      
+      else {
 
         const currentTable = selectedObjectType === "procedures" && tableSelections.selectedTable
           ? tableSelections.selectedTable
@@ -670,7 +834,7 @@ export const SourceNode = ({ id, data }) => {
           table: currentTable,
           columns: currentColumns.map(col => ({
             name: col.name,
-            datatype: col.datatype
+            datatype: "string"
           })),
           alias: alias,
           objectType: selectedObjectType,
@@ -718,8 +882,40 @@ export const SourceNode = ({ id, data }) => {
           }
         });
       }
+    } else if (sourceType === "federation-views") {
+      data.onDataChange({
+        sourceType: "federation-views",
+        federationView: selectedFederationView,
+        columns: selectedViewColumns,
+        alias: alias,
+        enableCountLogging: enableCountLogging,
+      });
+
+      dispatch({
+        type: ACTION_TYPES.UPDATE_SELECTED_SOURCE_COLUMNS,
+        payload: {
+          sourceNodeId: id,
+          columns: selectedViewColumns.map((col) => col.name),
+        },
+      });
+
+      dispatch({
+        type: ACTION_TYPES.SET_ORIGINAL_SOURCE_COLUMNS,
+        payload: {
+          sourceNodeId: id,
+          columns: selectedViewColumns,
+        },
+      });
+
+      dispatch({
+        type: ACTION_TYPES.SET_SOURCE_ORIGINAL_COLUMNS,
+        payload: {
+          sourceNodeId: id,
+          columns: selectedViewColumns,
+        },
+      });
     }
-  }, [sourceType, fileType, filePath, fileName, fileColumns, selectedConnection, selectedSchema, selectedTable, selectedColumns, alias, id, dispatch, ACTION_TYPES, selectedObjectType, tableSelections, selectedPreProcedures, selectedPostProcedures, storedParameterMappings, enableCountLogging, customQuery]);
+  }, [sourceType, fileType, filePath, fileName, fileColumns, selectedConnection, selectedSchema, selectedTable, selectedColumns, alias, id, dispatch, ACTION_TYPES, selectedObjectType, tableSelections, selectedPreProcedures, selectedPostProcedures, storedParameterMappings, enableCountLogging, customQuery, selectedFederationView, selectedViewColumns])
 
 
 
@@ -736,6 +932,17 @@ export const SourceNode = ({ id, data }) => {
   );
   const filteredTables = tables.filter(table =>
     table.table_name?.toLowerCase().includes(tableSearch.toLowerCase())
+  );
+  const filteredFederationViews = federationViews.filter(view =>
+    view.view_name?.toLowerCase().includes(federationViewSearch.toLowerCase())
+  );
+
+  const filteredViewColumns = useMemo(
+    () =>
+      viewColumns.filter((col) =>
+        col.column_name?.toLowerCase().includes(viewColumnSearch.toLowerCase())
+      ),
+    [viewColumns, viewColumnSearch]
   );
 
   const filteredColumns = useMemo(() =>
@@ -826,6 +1033,32 @@ export const SourceNode = ({ id, data }) => {
       return aliasWithSuffix;
     }
 
+    if (sourceType === "federation-views") {
+      const baseAlias = selectedFederationView ? `df_${selectedFederationView}` : `unnamed_source_${id}`;
+      const sourceNodesFromWindow = window.allNodes ?
+        window.allNodes.filter(n => n.type === "source") : [];
+
+      const usedAliases = sourceNodesFromWindow
+        .filter(node =>
+          node.id !== id &&
+          node.data &&
+          typeof node.data.alias === "string"
+        )
+        .map(node => node.data.alias);
+
+      if (!usedAliases.includes(baseAlias)) {
+        return baseAlias;
+      }
+
+      let suffix = 1;
+      let aliasWithSuffix = `${baseAlias}_${suffix}`;
+      while (usedAliases.includes(aliasWithSuffix)) {
+        suffix += 1;
+        aliasWithSuffix = `${baseAlias}_${suffix}`;
+      }
+      return aliasWithSuffix;
+    }
+
     if (sourceType === "database" && selectedObjectType === "source-query") {
       const baseAlias = `unnamed_source_${id}`;
       const sourceNodesFromWindow = window.allNodes ?
@@ -878,7 +1111,7 @@ export const SourceNode = ({ id, data }) => {
       aliasWithSuffix = `${baseAlias}_${suffix}`;
     }
     return aliasWithSuffix;
-  }, [id, selectedTable, sourceType, fileName, selectedObjectType]);
+  }, [id, selectedTable, sourceType, fileName, selectedObjectType, selectedFederationView]);
 
   const lastAliasTableRef = useRef(data.table || "");
 
@@ -896,8 +1129,12 @@ export const SourceNode = ({ id, data }) => {
       if (!alias) {
         setAlias(getNextAlias());
       }
+    } else if (sourceType === "federation-views" && selectedFederationView) {
+      if (!alias) {
+        setAlias(getNextAlias());
+      }
     }
-  }, [selectedTable, alias, getNextAlias, sourceType, selectedObjectType]);
+  }, [selectedTable, alias, getNextAlias, sourceType, selectedObjectType, selectedFederationView]);
 
   const handleObjectTypeChange = useCallback((newObjectType) => {
     if (newObjectType === selectedObjectType) return;
@@ -968,6 +1205,40 @@ export const SourceNode = ({ id, data }) => {
           customDatatype: col.customDatatype || ""
         }));
         setFileColumns(restoredColumns);
+        hasUpdated = true;
+      }
+    }
+
+    if (data.sourceType === "federation-views") {
+      if (!sourceType) {
+        setSourceType("federation-views");
+        hasUpdated = true;
+      }
+
+      if (data.federationView && !selectedFederationView) {
+        setSelectedFederationView(data.federationView);
+        hasUpdated = true;
+
+        if (federationViews.length === 0) {
+          fetchFederationViews();
+        }
+        if (viewColumns.length === 0) {
+          fetchViewColumns(data.federationView);
+        }
+      }
+
+      if (
+        data.columns &&
+        Array.isArray(data.columns) &&
+        data.columns.length > 0 &&
+        selectedViewColumns.length === 0
+      ) {
+        const normalizedColumns = data.columns.map((col) =>
+          typeof col === "string"
+            ? { name: col, datatype: null }
+            : { name: col.name, datatype: col.datatype }
+        );
+        setSelectedViewColumns(normalizedColumns);
         hasUpdated = true;
       }
     }
@@ -1071,17 +1342,27 @@ export const SourceNode = ({ id, data }) => {
         hasUpdated = true;
       }
 
+      if (data.objectType === "source-query" && data.table && !sourceQueryTable) {
+        setSourceQueryTable(data.table);
+        hasUpdated = true;
+      }
+
       // Restore fileColumns (used as column mapping in source-query mode)
       if (
         data.objectType === "source-query" &&
         data.fileColumns &&
         Array.isArray(data.fileColumns) &&
+        data.fileColumns.length > 0 &&
+        data.fileColumns[0].name &&
         fileColumns.length === 1 &&
         !fileColumns[0].name
       ) {
         const restoredColumns = data.fileColumns.map(col => ({
-          ...col,
-          customDatatype: col.customDatatype || ""
+          id: col.id,
+          name: col.name,
+          datatype: col.datatype || "string",
+          customDatatype: col.customDatatype || "",
+          format: col.format || "",
         }));
         setFileColumns(restoredColumns);
         hasUpdated = true;
@@ -1116,7 +1397,9 @@ export const SourceNode = ({ id, data }) => {
     data.alias,
     data.objectType,
     data.customQuery,
-    data.enableCountLogging
+    data.enableCountLogging,
+    data.federationView,
+    data.columns,  
   ]);
 
   useEffect(() => {
@@ -1429,6 +1712,78 @@ export const SourceNode = ({ id, data }) => {
     setCurrentEditingColumn(null);
   };
 
+
+  useEffect(() => {
+    if (
+      selectedObjectType === "source-query" &&
+      selectedConnection.name &&
+      selectedSchema &&
+      sourceQueryTable
+    ) {
+
+      const isRestoredTable = sourceQueryTable === (data.sourceQueryTable || data.table);
+      const hasSavedColumns =
+        Array.isArray(data.fileColumns) &&
+        data.fileColumns.length > 0 &&
+        data.fileColumns[0].name !== "";
+
+      // CASE 1: Edit/restore mode — table matches saved table, and we haven't fetched yet
+      if (hasSavedColumns && isRestoredTable && !hasAutoFetchedOnRestore.current) {
+        hasAutoFetchedOnRestore.current = true;
+
+        fetchColumns(selectedConnection.name, selectedSchema, sourceQueryTable).then((cols) => {
+          if (cols.length > 0) {
+            // Build lookup from saved fileColumns to preserve user-modified datatypes
+            const savedColMap = {};
+            data.fileColumns.forEach((savedCol) => {
+              if (savedCol.name) {
+                savedColMap[savedCol.name] = savedCol;
+              }
+            });
+
+            const merged = cols.map((col, idx) => {
+              const savedCol = savedColMap[col.column_name];
+              return {
+                id: idx + 1,
+                name: col.column_name,
+                datatype: savedCol?.datatype ?? "string",
+                customDatatype: savedCol?.customDatatype ?? "",
+                format: savedCol?.format ?? "",
+              };
+            });
+
+            setFileColumns(merged);
+          }
+        });
+        return;
+      }
+
+      // CASE 2: Edit mode fetch already done for the restored table — skip re-fetch on re-renders
+      if (hasAutoFetchedOnRestore.current && isRestoredTable) {
+        return;
+      }
+
+      // CASE 3: User changed the table (different from restored/saved table), OR fresh creation flow
+      // Re-fetch fresh columns, reset datatypes to string (no saved mapping to preserve)
+      setFileColumns([{ id: 1, name: "", datatype: "string", customDatatype: "", format: "" }]);
+
+      fetchColumns(selectedConnection.name, selectedSchema, sourceQueryTable).then((cols) => {
+        if (cols.length > 0) {
+          const mapped = cols.map((col, idx) => ({
+            id: idx + 1,
+            name: col.column_name,
+            datatype: "string",
+            customDatatype: "",
+            format: "",
+          }));
+          setFileColumns(mapped);
+        }
+      });
+    }
+  }, [selectedObjectType, selectedConnection.name, selectedSchema, sourceQueryTable, fetchColumns, data.fileColumns]);
+
+
+
   return (
     <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[320px] max-w-[320px] relative group">
       <button
@@ -1458,7 +1813,7 @@ export const SourceNode = ({ id, data }) => {
               className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
               onClick={() => setSourceTypeDropdownOpen(v => !v)}
             >
-              {sourceType === "database" ? "Database" : sourceType === "file" ? "File" : "Select source type"}
+              {sourceType === "database" ? "Database" : sourceType === "file" ? "File" : sourceType === "federation-views" ? "Federation Views" : "Select source type"}
               <span className="ml-auto pl-2">&#9662;</span>
             </button>
 
@@ -1508,11 +1863,250 @@ export const SourceNode = ({ id, data }) => {
                 >
                   File
                 </div>
+
+                <div
+                className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${sourceType === "federation-views" ? "bg-gray-100" : ""}`}
+                onClick={() => {
+                  setSourceType("federation-views");
+                  setSourceTypeDropdownOpen(false);
+                  setSelectedConnection({ name: "", id: "", type: "" });
+                  setSelectedSchema("");
+                  setSelectedTable("");
+                  setSelectedColumns([]);
+                  setSelectedObjectType("");
+
+                  setSchemas([]);
+                  setTables([]);
+                  setColumns([]);
+                  setProcedures([]);
+
+                  setConnectionDropdownOpen(false);
+                  setSchemaDropdownOpen(false);
+                  setTableDropdownOpen(false);
+
+                  setConnectionSearch("");
+                  setSchemaSearch("");
+                  setTableSearch("");
+                  setColumnSearch("");
+                }}
+              >
+                Federation Views
+              </div>
               </div>
             )}
           </div>
         </div>
 
+        {/* Views dropdown — visible only when Federation Views is selected */}
+        {sourceType === "federation-views" && (
+          <div>
+            <label className="text-xs font-semibold text-black mb-0.5 block">
+              Views
+            </label>
+            <div className="relative" ref={federationViewDropdownRef}>
+              <button
+                type="button"
+                className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
+                onClick={() => {
+                  const willOpen = !federationViewDropdownOpen;
+                  setFederationViewDropdownOpen(willOpen);
+                  if (willOpen && federationViews.length === 0) {
+                    fetchFederationViews();
+                  }
+                }}
+                disabled={federationViewsLoading}
+              >
+                {federationViewsLoading
+                  ? "Loading views..."
+                  : selectedFederationView
+                  ? selectedFederationView
+                  : "Select a view"}
+                <span className="ml-auto pl-2">&#9662;</span>
+              </button>
+
+              {federationViewDropdownOpen && !federationViewsLoading && (
+                <div className="absolute z-10 left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-56 overflow-y-auto">
+                  <div className="p-1.5 sticky top-0 bg-white border-b border-gray-100">
+                    <input
+                      type="text"
+                      value={federationViewSearch}
+                      onChange={(e) => setFederationViewSearch(e.target.value)}
+                      placeholder="Search views..."
+                      spellCheck="false"
+                      autoComplete="off"
+                      className="w-full p-1.5 text-[11px] border border-gray-300 rounded text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+                      autoFocus
+                    />
+                  </div>
+
+                  {filteredFederationViews.length === 0 ? (
+                    <div className="p-2 text-[11px] text-gray-500 italic">No views found</div>
+                  ) : (
+                    filteredFederationViews.map((view, idx) => (
+                      <div
+                        key={idx}
+                        className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${
+                          selectedFederationView === view.view_name ? "bg-gray-100" : ""
+                        }`}
+                        onClick={() => {
+                          setSelectedFederationView(view.view_name);
+                          setFederationViewDropdownOpen(false);
+                          setFederationViewSearch("");
+                          setSelectedViewColumns([]);
+                          fetchViewColumns(view.view_name);
+
+                          dispatch({
+                            type: ACTION_TYPES.UPDATE_SOURCE,
+                            payload: {
+                              id,
+                              data: {
+                                sourceType: "federation-views",
+                                federationView: view.view_name,
+                                isMaterialized: view.ismaterializedview,
+                                isCached: view.iscached,
+                              },
+                            },
+                          });
+                          if (window.allNodes) {
+                            const nodeIndex = window.allNodes.findIndex((n) => n.id === id);
+                            if (nodeIndex !== -1) {
+                              window.allNodes[nodeIndex].data.federationView = view.view_name;
+                            }
+                          }
+                          window.allNodesLastUpdate = Date.now();
+                          if (window.triggerSidebarUpdate) window.triggerSidebarUpdate();
+                        }}
+                      >
+                        <span className="font-medium">{view.view_name}</span>
+                        {view.ismaterializedview && (
+                          <span className="ml-1 text-[10px] text-purple-500">(Materialized)</span>
+                        )}
+                        {view.iscached && (
+                          <span className="ml-1 text-[10px] text-blue-500">(Cached)</span>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        {sourceType === "federation-views" && selectedFederationView && (
+          <>
+            <div>
+              <label className="text-xs font-semibold text-black mb-0.5 block">
+                Alias Name
+              </label>
+              <input
+                type="text"
+                value={alias}
+                onChange={(e) => setAlias(e.target.value)}
+                className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+              />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-0.5">
+                <label className="text-xs font-semibold text-black block">
+                  Columns ({selectedViewColumns.length}/{viewColumns.length})
+                </label>
+                <input
+                  type="text"
+                  value={viewColumnSearch}
+                  onChange={(e) => setViewColumnSearch(e.target.value)}
+                  placeholder="Search columns..."
+                  spellCheck="false"
+                  autoComplete="off"
+                  className="w-1/2 p-1 text-[11px] border border-gray-300 rounded text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+                />
+              </div>
+
+              <div className="border border-gray-300 rounded max-h-40 overflow-y-auto">
+                {viewColumnsLoading ? (
+                  <div className="p-2 text-[11px] text-gray-400 italic">Loading columns...</div>
+                ) : viewColumns.length === 0 ? (
+                  <div className="p-2 text-[11px] text-gray-400 italic">No columns found</div>
+                ) : (
+                  <>
+                    <label className="flex items-center gap-2 p-2 text-[11px] font-medium text-black cursor-pointer border-b border-gray-100">
+                      <input
+                        type="checkbox"
+                        checked={
+                          viewColumns.length > 0 &&
+                          selectedViewColumns.length === viewColumns.length
+                        }
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedViewColumns(
+                              viewColumns.map((col) => ({
+                                name: col.column_name,
+                                datatype: col.data_type,
+                              }))
+                            );
+                          } else {
+                            setSelectedViewColumns([]);
+                          }
+                        }}
+                        className="accent-[#8E77BB]"
+                      />
+                      Select All
+                    </label>
+
+                    {filteredViewColumns.map((col, idx) => {
+                      const isChecked = selectedViewColumns.some(
+                        (c) => c.name === col.column_name
+                      );
+                      return (
+                        <label
+                          key={idx}
+                          className="flex items-center gap-2 p-2 text-[11px] text-black cursor-pointer hover:bg-gray-50"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedViewColumns((prev) => [
+                                  ...prev,
+                                  { name: col.column_name, datatype: col.data_type },
+                                ]);
+                              } else {
+                                setSelectedViewColumns((prev) =>
+                                  prev.filter((c) => c.name !== col.column_name)
+                                );
+                              }
+                            }}
+                            className="accent-[#8E77BB]"
+                          />
+                          <span className="font-medium">{col.column_name}</span>
+                          <span className="text-gray-400">({col.data_type})</span>
+                        </label>
+                      );
+                    })}
+                  </>
+                )}
+              </div>
+            </div>
+
+            <label className="flex items-center gap-2 text-[11px] font-semibold text-black cursor-pointer">
+              <input
+                type="checkbox"
+                checked={enableCountLogging}
+                onChange={(e) => setEnableCountLogging(e.target.checked)}
+                className="accent-[#8E77BB]"
+              />
+              Enable Count Logging
+            </label>
+
+            <div className="mt-1 pt-2 border-t border-gray-200">
+              <span className="text-[10px] text-gray-500">
+                Connection Type:{" "}
+                <span className="font-semibold text-[#8E77BB]">Federation View</span>
+              </span>
+            </div>
+          </>
+        )}
         {sourceType === "database" && (
           <SourceDatabaseType
             selectedConnection={selectedConnection}
@@ -1619,7 +2213,10 @@ export const SourceNode = ({ id, data }) => {
             setLoading={setLoading}
             setDataFetchStatus={setDataFetchStatus}
             setProcedures={setProcedures}
-
+            sourceQueryTable={sourceQueryTable}
+            setSourceQueryTable={setSourceQueryTable}
+            sourceQueryTableDropdownOpen={sourceQueryTableDropdownOpen}
+            setSourceQueryTableDropdownOpen={setSourceQueryTableDropdownOpen}
           />
         )}
 

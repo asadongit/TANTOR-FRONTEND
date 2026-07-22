@@ -1,11 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { X, Plus, Search } from 'lucide-react';
-import DataTable from '../../../../../../components/DataTable';
 import EditIcon from '../../../../../../assets/mdm/edit.svg';
 import BlockIcon from '../../../../../../assets/mdm/block.svg';
 import { AddRuleModal, EditRuleModal } from './Addeditrulemodal';
 import ToggleStatusConfirmModal from './ToggleStatusConfirmModal.jsx';
-import { useRuleSetRules, useToggleRuleStatus } from '../../../../../../hooks/mdm/matchMerge.jsx';
+import {useRuleSetRules, useToggleRuleStatus, useReorderMatchRules } from '../../../../../../hooks/mdm/matchMerge.jsx';
 
 // ─── Local display components ─────────────────────────────────────────────────
 
@@ -101,6 +100,9 @@ const RowActions = ({ row, onEdit, onToggle }) => {
 
 const RuleSetRulesDrawer = ({ isOpen, onClose, ruleSet, selectedDomain }) => {
     const { rules, total, isLoading, isError, fetchRules } = useRuleSetRules(ruleSet?.id, isOpen);
+    useEffect(() => {
+        setOrderedRules(rules);
+    }, [rules]);
 
     const [searchTerm, setSearchTerm] = useState('');
     const [addOpen, setAddOpen] = useState(false);
@@ -108,50 +110,66 @@ const RuleSetRulesDrawer = ({ isOpen, onClose, ruleSet, selectedDomain }) => {
     const [editTarget, setEditTarget] = useState(null);
     const [toggleTarget, setToggleTarget] = useState(null);
     const [toggleModalOpen, setToggleModalOpen] = useState(false);
+    const [orderedRules, setOrderedRules] = useState([]);
+    const [draggedIndex, setDraggedIndex] = useState(null);
 
     const { isToggling, toggle } = useToggleRuleStatus(() => {
         fetchRules();
         setToggleModalOpen(false);
         setToggleTarget(null);
     });
+    const { reorderRules } = useReorderMatchRules();
 
     const handleToggleConfirm = () => toggle(toggleTarget?.rule_id);
     const handleToggleCancel = () => { if (!isToggling) { setToggleModalOpen(false); setToggleTarget(null); } };
 
+    const handleDragStart = (index) => {
+        setDraggedIndex(index);
+    };
+
+    const handleDragOver = (e, index) => {
+        e.preventDefault();
+
+        if (
+            draggedIndex === null ||
+            draggedIndex === index
+        ) {
+            return;
+        }
+
+        const updated = [...orderedRules];
+
+        const draggedRule = updated[draggedIndex];
+
+        updated.splice(draggedIndex, 1);
+
+        updated.splice(index, 0, draggedRule);
+
+        setOrderedRules(updated);
+        setDraggedIndex(index);
+    };
+
+    const handleDragEnd = () => {
+        setDraggedIndex(null);
+        reorderRules({
+            rule_set_id: ruleSet.id,
+            rule_ids: orderedRules.map((r) => r.rule_id),
+        });
+    };
+
+
     const filteredRules = useMemo(() => {
-        if (!searchTerm.trim()) return rules;
-        return rules.filter((row) =>
+        if (!searchTerm.trim()) return orderedRules;
+
+        return orderedRules.filter((row) =>
             Object.values(row).some((v) =>
-                String(v).toLowerCase().includes(searchTerm.toLowerCase())
+                String(v)
+                    .toLowerCase()
+                    .includes(searchTerm.toLowerCase())
             )
         );
-    }, [rules, searchTerm]);
+    }, [orderedRules, searchTerm]);
 
-    const columns = useMemo(() => [
-        {
-            key: 'attribute',
-            label: 'Attribute',
-            render: (row) => <span className="text-sm font-normal text-[#23252D]">{row.attribute}</span>,
-        },
-        { key: 'algorithm', label: 'Algorithm', render: (row) => <AlgoBadge algo={row.algorithm} /> },
-        { key: 'weight', label: 'Weight', render: (row) => <span className="text-sm font-normal text-gray-600">{row.weight}</span> },
-        { key: 'threshold', label: 'Threshold', render: (row) => <span className="text-sm font-normal text-gray-600">{row.threshold}</span> },
-        { key: 'blocking', label: 'Blocking', render: (row) => <span className="text-sm font-normal text-gray-600">{row.blocking}</span> },
-        { key: 'null_handling', label: 'Null Handling', render: (row) => <span className="text-sm font-normal text-gray-500">{row.null_handling}</span> },
-        { key: 'status', label: 'Status', render: (row) => <StatusBadge status={row.status} /> },
-        {
-            key: 'actions',
-            label: 'Actions',
-            sortable: false,
-            render: (row) => (
-                <RowActions
-                    row={row}
-                    onEdit={(r) => { setEditTarget(r); setEditOpen(true); }}
-                    onToggle={(r) => { setToggleTarget(r); setToggleModalOpen(true); }}
-                />
-            ),
-        },
-    ], []);
 
     if (!isOpen) return null;
 
@@ -205,19 +223,97 @@ const RuleSetRulesDrawer = ({ isOpen, onClose, ruleSet, selectedDomain }) => {
                         </button>
                     </div>
                 </div>
+            <div className="px-4 overflow-auto flex-1">
+                <div className="border rounded-lg overflow-y-auto" style={{ maxHeight: "calc(100vh - 240px)" }}>
+                    <table className="w-full bg-white" style={{ borderCollapse: "collapse", borderSpacing: 0 }}>
+                    <thead>
+                        <tr>
+                            <th className="text-left satoshi-medium-3" style={{ background: "#F9F9F9", padding: "16px", fontSize: "16px", lineHeight: "22px", borderBottom: "1px solid #E5E5E5", width: "50px" }}></th>
+                            <th className="text-left satoshi-medium-3" style={{ background: "#F9F9F9", padding: "16px", fontSize: "16px", lineHeight: "22px", borderBottom: "1px solid #E5E5E5", width: "60px" }}>Sno</th>
+                            <th className="text-left satoshi-medium-3" style={{ background: "#F9F9F9", padding: "16px", fontSize: "16px", lineHeight: "22px", borderBottom: "1px solid #E5E5E5" }}>Rule Name</th>
+                            <th className="text-left satoshi-medium-3" style={{ background: "#F9F9F9", padding: "16px", fontSize: "16px", lineHeight: "22px", borderBottom: "1px solid #E5E5E5" }}>Attribute</th>
+                            <th className="text-left satoshi-medium-3" style={{ background: "#F9F9F9", padding: "16px", fontSize: "16px", lineHeight: "22px", borderBottom: "1px solid #E5E5E5" }}>Algorithm</th>
+                            <th className="text-left satoshi-medium-3" style={{ background: "#F9F9F9", padding: "16px", fontSize: "16px", lineHeight: "22px", borderBottom: "1px solid #E5E5E5" }}>Weight</th>
+                            <th className="text-left satoshi-medium-3" style={{ background: "#F9F9F9", padding: "16px", fontSize: "16px", lineHeight: "22px", borderBottom: "1px solid #E5E5E5" }}>Threshold</th>
+                            <th className="text-left satoshi-medium-3" style={{ background: "#F9F9F9", padding: "16px", fontSize: "16px", lineHeight: "22px", borderBottom: "1px solid #E5E5E5" }}>Blocking</th>
+                            <th className="text-left satoshi-medium-3" style={{ background: "#F9F9F9", padding: "16px", fontSize: "16px", lineHeight: "22px", borderBottom: "1px solid #E5E5E5" }}>Null Handling</th>
+                            <th className="text-left satoshi-medium-3" style={{ background: "#F9F9F9", padding: "16px", fontSize: "16px", lineHeight: "22px", borderBottom: "1px solid #E5E5E5" }}>Actions</th>
+                        </tr>
+                    </thead>
 
-                {/* Table */}
-                <div className="px-4 overflow-auto flex-1">
-                    <DataTable
-                        columns={columns}
-                        data={filteredRules}
-                        isLoading={isLoading}
-                        isError={isError}
-                        refetch={fetchRules}
-                        title=""
-                    />
+                    <tbody>
+                        {filteredRules.map((rule, index) => (
+                        <tr
+                            key={rule.rule_id}
+                            draggable
+                            onDragStart={() => handleDragStart(index)}
+                            onDragOver={(e) => handleDragOver(e, index)}
+                            onDragEnd={handleDragEnd}
+                            style={{ height: "52px" }}
+                            className={`border-b cursor-move transition-colors align-middle ${
+                                draggedIndex === index ? "bg-[#F3EFFF]" : "hover:bg-gray-50"
+                            }`}
+                        >
+                            {/* Drag handle */}
+                            <td style={{ padding: "11.50px 16px", fontSize: "14px", fontWeight: 400, lineHeight: "18.5px", color: "#818181" }}>
+                                ⋮⋮
+                            </td>
+
+                            {/* Sno */}
+                            <td style={{ padding: "11.50px 16px", fontSize: "14px", fontWeight: 400, lineHeight: "18.5px", color: "#23252D" }}>
+                                {rule.sequence_order}
+                            </td>
+
+                            {/* Rule Name */}
+                            <td style={{ padding: "11.50px 16px", fontSize: "14px", fontWeight: 400, lineHeight: "18.5px", color: "#23252D" }}>
+                                {rule.rule_name}
+                            </td>
+
+                            {/* Attribute */}
+                            <td style={{ padding: "11.50px 16px", fontSize: "14px", fontWeight: 400, lineHeight: "18.5px", color: "#23252D" }}>
+                                {rule.target_attribute}
+                            </td>
+
+                            {/* Algorithm */}
+                            <td style={{ padding: "11.50px 16px", fontSize: "14px", fontWeight: 400, lineHeight: "18.5px", color: "#23252D" }}>
+                                <AlgoBadge algo={rule.algorithm} />
+                            </td>
+
+                            {/* Weight */}
+                            <td style={{ padding: "11.50px 16px", fontSize: "14px", fontWeight: 400, lineHeight: "18.5px", color: "#23252D" }}>
+                                {rule.weight}%
+                            </td>
+
+                            {/* Threshold */}
+                            <td style={{ padding: "11.50px 16px", fontSize: "14px", fontWeight: 400, lineHeight: "18.5px", color: "#23252D" }}>
+                                {rule.threshold}%
+                            </td>
+
+                            {/* Blocking */}
+                            <td style={{ padding: "11.50px 16px", fontSize: "14px", fontWeight: 400, lineHeight: "18.5px", color: "#23252D" }}>
+                                {rule.blocking}
+                            </td>
+
+                            {/* Null Handling */}
+                            <td style={{ padding: "11.50px 16px", fontSize: "14px", fontWeight: 400, lineHeight: "18.5px", color: "#23252D" }}>
+                                {rule.null_handling}
+                            </td>
+
+                            {/* Actions */}
+                            <td style={{ padding: "11.50px 16px", fontSize: "14px", fontWeight: 400, lineHeight: "18.5px", color: "#23252D" }}>
+                                <RowActions
+                                    row={rule}
+                                    onEdit={(r) => { setEditTarget(r); setEditOpen(true); }}
+                                    onToggle={(r) => { setToggleTarget(r); setToggleModalOpen(true); }}
+                                />
+                            </td>
+                        </tr>
+                    ))}
+                    </tbody>
+                </table>
                 </div>
             </div>
+        </div>
 
             <AddRuleModal
                 isOpen={addOpen}
@@ -237,7 +333,7 @@ const RuleSetRulesDrawer = ({ isOpen, onClose, ruleSet, selectedDomain }) => {
 
             <ToggleStatusConfirmModal
                 isOpen={toggleModalOpen}
-                ruleName={toggleTarget?.attribute}
+                ruleName={toggleTarget?.rule_name}
                 currentStatus={toggleTarget?.status}
                 onConfirm={handleToggleConfirm}
                 onCancel={handleToggleCancel}

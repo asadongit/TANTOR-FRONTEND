@@ -239,7 +239,8 @@ const Role = () => {
           name: role.name,
           description: role.description || "No description available",
           status: role.attributes?.Status?.[0] === "Enabled" ? "Enabled" : "Disabled",
-          createdOn: formattedDate,
+          created_by: role.attributes?.created_by?.[0] || "-",
+          createdOn: formattedDate || "-",
           startDate: role.attributes?.startDate?.[0] || "",
           endDate: role.attributes?.endDate?.[0] || "",
         };
@@ -562,7 +563,8 @@ const Role = () => {
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>Name</th>
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>Description</th>
                       <th className="text-center" style={{ padding: '16px 19.75px' }}>Status</th>
-                      <th className="text-left" style={{ padding: '16px 19.75px' }}>Created On</th>
+                      <th className="text-left" style={{ padding: '16px 19.75px' }}>Created By</th>
+                      <th className="text-left" style={{ padding: '16px 19.75px' }}>Created Date</th>
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>Start Date</th>
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>End Date</th>
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>Action</th>
@@ -601,6 +603,7 @@ const Role = () => {
                             )}
                           </div>
                         </td>
+                        <td style={{ padding: '16px 19.75px' }} className="text-gray-600">{role.created_by || "-"}</td>
                         <td style={{ padding: '16px 19.75px' }} className="text-gray-600">{role.createdOn || "-"}</td>
                         <td style={{ padding: '16px 19.75px' }} className="text-gray-600">{role.startDate || "-"}</td>
                         <td style={{ padding: '16px 19.75px' }} className="text-gray-600">{role.endDate || "-"}</td>

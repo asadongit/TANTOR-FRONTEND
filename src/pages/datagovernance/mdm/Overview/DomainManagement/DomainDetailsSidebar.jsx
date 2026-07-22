@@ -93,6 +93,19 @@ const AttributeActionMenu = ({ row, onEdit, onDelete, isMultiSelected, selectedC
         </div>
     );
 };
+const CriticalityBadge = ({ value }) => {
+    const map = {
+        HIGH:   'text-[#EF4D5F] bg-[#F276A74D]',
+        MEDIUM: 'text-[#E08E40] bg-[#F5C18A4D]',
+        LOW:    'text-[#069B68] bg-[#2AC79240]',
+    };
+    const cls = map[value] || 'text-[#6B7280] bg-[#F3F4F6]';
+    return (
+        <span className={`${cls} px-2 py-1.5 text-xs font-normal rounded-md`}>
+            {value || '--'}
+        </span>
+    );
+};
 
 /* ─────────────────────────────────────────────
    Sidebar
@@ -193,9 +206,8 @@ const DomainDetailsSidebar = ({ domain, onClose, onEdit }) => {
         { key: 'attributeName', label: 'Attribute Name', maxWidth: '150px' },
         { key: 'dataType',      label: 'Data Type',      maxWidth: '130px' },
         { key: 'required',      label: 'Required',       maxWidth: '90px' },
+        { key: 'criticality',   label: 'Criticality',    maxWidth: '110px', render: (row) => <CriticalityBadge value={row.criticality} /> },
         { key: 'dqRule',        label: 'DQ Rule',        maxWidth: '160px' },
-        { key: 'matchWeight',   label: 'Match Weight',   maxWidth: '110px' },
-        { key: 'survivorship',  label: 'Survivorship',   maxWidth: '150px' },
         {
             label: 'Action',
             sortable: false,

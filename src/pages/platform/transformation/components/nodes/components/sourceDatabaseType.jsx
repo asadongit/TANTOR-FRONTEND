@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
 import { Loader, Plus, X } from "lucide-react";
+import { DATE_FORMATS } from "../../drawer/operations/timeZoneFormatMapping";
 
 export const SourceDatabaseType = ({
   selectedConnection,
@@ -76,7 +77,11 @@ export const SourceDatabaseType = ({
   data,
   dispatch,
   ACTION_TYPES,
-  setColumns
+  setColumns,
+  sourceQueryTable,
+  setSourceQueryTable,
+  sourceQueryTableDropdownOpen,
+  setSourceQueryTableDropdownOpen,
 }) => {
   // Build a Set for O(1) column checked lookups instead of O(n) .some() per row
   const checkedSet = useMemo(() => {
@@ -101,6 +106,50 @@ export const SourceDatabaseType = ({
     if (scrollHeight - scrollTop - clientHeight < 60) {
       setVisibleCount(prev => Math.min(prev + COLUMN_PAGE_SIZE, filteredColumns.length));
     }
+  };
+
+  const [sourceQueryTableSearch, setSourceQueryTableSearch] = useState("");
+
+  const [dateFormatModalOpen, setDateFormatModalOpen] = useState(false);
+  const [selectedColumnForFormat, setSelectedColumnForFormat] = useState(null);
+  const [selectedFormat, setSelectedFormat] = useState("");
+  const [customFormatInput, setCustomFormatInput] = useState("");
+
+
+  const handleDatatypeChange = (columnId, value) => {
+    updateFileColumn(columnId, 'datatype', value);
+    if (['date', 'datetime', 'timestamp'].includes(value)) {
+      const column = fileColumns.find(col => col.id === columnId);
+      const existingFormat = column?.format || "";
+      const isPredefined = DATE_FORMATS.some(df => df.format === existingFormat);
+      if (isPredefined) {
+        setSelectedFormat(existingFormat);
+        setCustomFormatInput("");
+      } else {
+        setSelectedFormat("custom");
+        setCustomFormatInput(existingFormat);
+      }
+      setSelectedColumnForFormat(columnId);
+      setDateFormatModalOpen(true);
+    }
+  };
+
+  const handleFormatSave = () => {
+    if (selectedColumnForFormat) {
+      const formatToSave = selectedFormat === "custom" ? customFormatInput : selectedFormat;
+      updateFileColumn(selectedColumnForFormat, 'format', formatToSave);
+    }
+    setDateFormatModalOpen(false);
+    setSelectedColumnForFormat(null);
+    setSelectedFormat("");
+    setCustomFormatInput("");
+  };
+
+  const handleFormatCancel = () => {
+    setDateFormatModalOpen(false);
+    setSelectedColumnForFormat(null);
+    setSelectedFormat("");
+    setCustomFormatInput("");
   };
 
   return (
@@ -378,6 +427,56 @@ export const SourceDatabaseType = ({
 
           {selectedObjectType === "source-query" && (
             <div>
+              <div className="mt-2">
+                <label className="text-xs font-semibold text-black mb-0.5 block">
+                  Table
+                </label>
+                <div className="relative">
+                  <button
+                    type="button"
+                    className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400"
+                    onClick={() => setSourceQueryTableDropdownOpen(v => !v)}
+                  >
+                    {sourceQueryTable || "Select table"}
+                    <span className="ml-auto pl-2">&#9662;</span>
+                  </button>
+                  {sourceQueryTableDropdownOpen && (
+                    <div className="absolute z-10 left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-[150px] overflow-y-auto">  
+                      <input
+                        type="search"
+                        placeholder="Search tables..."
+                        className="w-full p-1 text-[11px] text-black border-b border-gray-200 sticky top-0"
+                        value={sourceQueryTableSearch}
+                        onChange={e => setSourceQueryTableSearch(e.target.value)}
+                        autoFocus
+                      />
+                      {filteredTables
+                        .filter(t => t.table_name?.toLowerCase().includes(sourceQueryTableSearch.toLowerCase()))
+                        .map((table) => (
+                          <div
+                            key={table.table_name}
+                            className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${
+                              sourceQueryTable === table.table_name ? "bg-gray-100 font-medium" : ""
+                            }`}
+                            onClick={() => {
+                              setSourceQueryTable(table.table_name);
+                              setSourceQueryTableDropdownOpen(false);
+                              setSourceQueryTableSearch("");
+                            }}
+                          >
+                            {table.table_name}
+                          </div>
+                        ))
+                      }
+                      {filteredTables.filter(t =>
+                        t.table_name?.toLowerCase().includes(sourceQueryTableSearch.toLowerCase())
+                      ).length === 0 && (
+                        <div className="p-2 text-[11px] text-gray-500">No tables found</div>
+                      )}                  
+                    </div>
+                  )}
+                </div>
+              </div>
               {(
                 <div className="mt-4">
                   <label className="text-xs font-semibold text-black mb-0.5 block">
@@ -420,7 +519,7 @@ export const SourceDatabaseType = ({
                         <select
                           className="flex-1 p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800"
                           value={column.datatype === 'custom' ? (column.customDatatype || 'custom') : column.datatype}
-                          onChange={e => updateFileColumn(column.id, 'datatype', e.target.value)}
+                          onChange={e => handleDatatypeChange(column.id, e.target.value)}
                         >
                           <option value="string">string</option>
                           <option value="integer">integer</option>
@@ -428,8 +527,7 @@ export const SourceDatabaseType = ({
                           <option value="boolean">boolean</option>
                           <option value="date">date</option>
                           <option value="datetime">datetime</option>
-                                          <option value="timestamp">timestamp</option>
-
+                          <option value="timestamp">timestamp</option>
                           <option value="custom">custom</option>
                           {column.datatype === 'custom' && column.customDatatype && (
                             <option value={column.customDatatype}>{column.customDatatype}</option>
@@ -817,6 +915,75 @@ export const SourceDatabaseType = ({
             </div>
           )}
         </>
+      )}
+      {dateFormatModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+          <div className="bg-white rounded-lg p-4 w-[400px]">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-semibold text-black">Select Date Format</h3>
+              <button onClick={handleFormatCancel} className="text-gray-400 hover:text-gray-600 focus:outline-none">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-black mb-1 block">
+                  Choose a date format:
+                </label>
+                <select
+                  className="w-full p-2 text-sm bg-white rounded border border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+                  value={selectedFormat}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSelectedFormat(value);
+                    if (value !== "custom") setCustomFormatInput("");
+                  }}
+                >
+                  <option value="">Select format</option>
+                  {DATE_FORMATS.map((df) => (
+                    <option key={df.format} value={df.format}>
+                      {df.format} - {df.example}
+                    </option>
+                  ))}
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+              {selectedFormat === "custom" && (
+                <div>
+                  <label className="text-sm font-medium text-black mb-1 block">
+                    Enter custom date format:
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full p-2 text-sm bg-white rounded border border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+                    value={customFormatInput}
+                    onChange={(e) => setCustomFormatInput(e.target.value)}
+                    placeholder="e.g., yyyy-MM-dd HH:mm:ss"
+                  />
+                </div>
+              )}
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={handleFormatCancel}
+                className="px-3 py-1.5 text-sm bg-gray-200 text-gray-800 rounded hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleFormatSave}
+                className={`px-3 py-1.5 text-sm rounded focus:outline-none focus:ring-2 ${
+                  (selectedFormat === "custom" ? customFormatInput.trim() !== "" : selectedFormat.trim() !== "")
+                    ? "bg-[#8E77BB] text-white hover:bg-[#7A6BA3] focus:ring-[#8E77BB]"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                }`}
+                disabled={selectedFormat === "custom" ? customFormatInput.trim() === "" : selectedFormat.trim() === ""}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

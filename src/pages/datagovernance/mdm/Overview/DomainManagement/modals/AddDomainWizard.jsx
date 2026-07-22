@@ -19,7 +19,11 @@ const VERSIONING_OPTIONS = [
     { label: "Yes", value: "Yes" },
     { label: "No", value: "No" },
 ];
-
+const CRITICALITY_OPTIONS = [
+    { label: "Low",    value: "low" },
+    { label: "Medium", value: "medium" },
+    { label: "High",   value: "high" },
+];
 const DATA_TYPE_OPTIONS = [
     { label: "VARCHAR", value: "VARCHAR", payloadType: "VARCHAR", lengthMode: null },
     { label: "VARCHAR(n)", value: "VARCHAR_N", payloadType: "VARCHAR", lengthMode: "length" },
@@ -37,18 +41,7 @@ const REQUIRED_OPTIONS = [
     { label: "Yes", value: "yes" },
     { label: "No", value: "no" },
 ];
-const SURVIVORSHIP_OPTIONS = [
-    { label: "Most Recent", value: "MOST_RECENT" },
-    { label: "Most Frequent", value: "MOST_FREQUENT" },
-    { label: "Longest", value: "LONGEST" },
-    { label: "Shortest", value: "SHORTEST" },
-    { label: "First Non-Null", value: "FIRST_NON_NULL" },
-    { label: "Last Non-Null", value: "LAST_NON_NULL" },
-    { label: "Max", value: "MAX" },
-    { label: "Min", value: "MIN" },
-    { label: "Manual", value: "MANUAL" },
-    { label: "Most Trusted", value: "MOST_TRUSTED" },
-];
+
 
 const getLengthMode = (dtValue) =>
     DATA_TYPE_OPTIONS.find(o => o.value === dtValue)?.lengthMode ?? null;
@@ -59,12 +52,13 @@ const getPayloadType = (dtValue) =>
 const emptyAttr = () => ({
     id: Date.now() + Math.random(),
     attributeName: "", displayName: "",
+    sourceAttributeName: "", sourceDisplayName: "",
     dataType: "",
     lengthPrecision: "",
     scaleValue: "",
     required: "",
-    dqRule: [], dqDimension: [], customRegex: "", matchWeight: "",
-    survivorshipStrategy: "", expanded: true,
+    criticality: "",
+    dqRule: [], dqDimension: [], expanded: true,
 });
 
 const inputClass =
@@ -250,14 +244,26 @@ const AttributeCard = ({ attr, index, total, onUpdate, onRemove }) => {
                 <div className="px-4 pb-4 grid grid-cols-3 gap-x-4 gap-y-3.5">
                     {/* Attribute Name */}
                     <div>
-                        <label className={labelClass}>Attribute Name <span className="text-[#E05252]">*</span></label>
-                        <input value={attr.attributeName} onChange={e => upd("attributeName", e.target.value)} placeholder="Enter Attribute Name" className={inputClass} />
+                        <label className={labelClass}>Golden Attribute Name <span className="text-[#E05252]">*</span></label>
+                        <input value={attr.attributeName} onChange={e => upd("attributeName", e.target.value)} placeholder="Enter Golden Attribute Name" className={inputClass} />
                     </div>
 
                     {/* Display Name */}
                     <div>
-                        <label className={labelClass}>Display Name <span className="text-[#E05252]">*</span></label>
-                        <input value={attr.displayName} onChange={e => upd("displayName", e.target.value)} placeholder="Enter Display Name" className={inputClass} />
+                        <label className={labelClass}> Golden Attribute Display Name <span className="text-[#E05252]">*</span></label>
+                        <input value={attr.displayName} onChange={e => upd("displayName", e.target.value)} placeholder="Enter Golden Display Name" className={inputClass} />
+                    </div>
+
+                    {/* Source Attribute Name */}
+                    <div>
+                        <label className={labelClass}>Staging Attribute Name<span className="text-[#E05252]">*</span></label>
+                        <input value={attr.sourceAttributeName} onChange={e => upd("sourceAttributeName", e.target.value)} placeholder="Enter Staging Attribute Name" className={inputClass} />
+                    </div>
+
+                    {/* Source Display Name */}
+                    <div>
+                        <label className={labelClass}>Staging Attribute Display Name<span className="text-[#E05252]">*</span></label>
+                        <input value={attr.sourceDisplayName} onChange={e => upd("sourceDisplayName", e.target.value)} placeholder="Enter Staging Display Name" className={inputClass} />
                     </div>
 
                     {/* Data Type */}
@@ -277,6 +283,12 @@ const AttributeCard = ({ attr, index, total, onUpdate, onRemove }) => {
                     <div>
                         <label className={labelClass}>Required</label>
                         <SearchableDropdown value={attr.required} onChange={v => upd("required", v)} options={REQUIRED_OPTIONS} placeholder="Select" />
+                    </div>
+
+                    {/* Criticality */}
+                    <div>
+                        <label className={labelClass}>Criticality <span className="text-[#E05252]">*</span></label>
+                        <SearchableDropdown value={attr.criticality} onChange={v => upd("criticality", v)} options={CRITICALITY_OPTIONS} placeholder="Select Criticality" />
                     </div>
 
                     {/* DQ Dimension */}
@@ -304,43 +316,33 @@ const AttributeCard = ({ attr, index, total, onUpdate, onRemove }) => {
                     </div>
 
                     {/* DQ Rule */}
-                    <div>
-                        <label className={labelClass}>DQ Rule</label>
-                        <MultiSelectDropdown
-                            options={ruleOptions}
-                            selectedIds={attr.dqRule}
-                            onToggle={(id) => {
-                                const next = attr.dqRule.includes(id)
-                                    ? attr.dqRule.filter(v => v !== id)
-                                    : [...attr.dqRule, id];
-                                upd("dqRule", next);
-                            }}
-                            onSelectAll={(currentIds) => {
-                                const allIds = ruleOptions.map(r => r.rule_id);
-                                upd("dqRule", currentIds.length === allIds.length ? [] : allIds);
-                            }}
-                            placeholder={
-                                rulesLoading
-                                    ? "Loading rules..."
-                                    : (!attr.dqDimension || (Array.isArray(attr.dqDimension) && attr.dqDimension.length === 0))
-                                        ? "Select dimension first"
+                    {(Array.isArray(attr.dqDimension) ? attr.dqDimension.length > 0 : !!attr.dqDimension) && (
+                        <div>
+                            <label className={labelClass}>
+                                DQ Rule
+                                <span className="text-[#E05252]"> *</span>
+                            </label>
+                            <MultiSelectDropdown
+                                options={ruleOptions}
+                                selectedIds={attr.dqRule}
+                                onToggle={(id) => {
+                                    const next = attr.dqRule.includes(id)
+                                        ? attr.dqRule.filter(v => v !== id)
+                                        : [...attr.dqRule, id];
+                                    upd("dqRule", next);
+                                }}
+                                onSelectAll={(currentIds) => {
+                                    const allIds = ruleOptions.map(r => r.rule_id);
+                                    upd("dqRule", currentIds.length === allIds.length ? [] : allIds);
+                                }}
+                                placeholder={
+                                    rulesLoading
+                                        ? "Loading rules..."
                                         : "Select Rules"
-                            }
-                        />
-                    </div>
-
-                    <div>
-                        <label className={labelClass}>Custom Regex (if applicable)</label>
-                        <input value={attr.customRegex} onChange={e => upd("customRegex", e.target.value)} placeholder="Enter Custom Regex" className={inputClass} />
-                    </div>
-                    <div>
-                        <label className={labelClass}>Match Weight (%)</label>
-                        <input value={attr.matchWeight} onChange={e => upd("matchWeight", e.target.value)} placeholder="Enter Match Weight" className={inputClass} type="number" />
-                    </div>
-                    <div>
-                        <label className={labelClass}>Survivorship Strategy</label>
-                        <SearchableDropdown value={attr.survivorshipStrategy} onChange={v => upd("survivorshipStrategy", v)} options={SURVIVORSHIP_OPTIONS} placeholder="Select Survivorship Strategy" />
-                    </div>
+                                }
+                            />
+                        </div>
+                    )}
                 </div>
             )}
         </div>
@@ -357,7 +359,7 @@ const Step2 = ({ attributes, setAttributes }) => {
         <div className="px-5 py-4">
             <div className="p-2 text-sm font-medium text-[#332849] bg-[#FAFAFA] rounded-lg mb-3">
                 <span className="font-semibold text-[#8e78b7]">Note: </span>
-                Define the schema and validation rules for each attribute. You can add multiple attributes at once by clicking "Add Another Attribute" below.
+                Define the schema and validation rules for each attribute. Add at least 2 attributes to continue. Click "Add Another Attribute" to add more.
             </div>
             <div className="">
                 {attributes.map((attr, i) => (
@@ -386,10 +388,20 @@ const AddFieldsModal = ({ isOpen, onClose, onSubmit, availableOptions, title = "
     const toggle = (val) =>
         setSelected(p => p.includes(val) ? p.filter(v => v !== val) : [...p, val]);
 
+    const allFilteredSelected = filtered.length > 0 && filtered.every(o => selected.includes(o.value));
+    const toggleSelectAll = () => {
+        const filteredValues = filtered.map(o => o.value);
+        if (allFilteredSelected) {
+            setSelected(p => p.filter(v => !filteredValues.includes(v)));
+        } else {
+            setSelected(p => [...new Set([...p, ...filteredValues])]);
+        }
+    };
+
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[200] bg-[#00000099] flex items-center justify-center" onClick={onClose}>
+        <div className="fixed inset-0 z-[200] bg-[#00000099] flex items-center justify-center">
             <div className="w-[480px] bg-white rounded-2xl border border-[#CCCCCC] mx-4" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between px-6 pt-4 pb-3 rounded-t-2xl bg-white shadow-[0px_4px_9px_0px_rgba(0,0,0,0.10)]">
                     <span className="text-lg font-medium text-[#282F49] font-[Satoshi,sans-serif]">
@@ -410,22 +422,31 @@ const AddFieldsModal = ({ isOpen, onClose, onSubmit, availableOptions, title = "
                         </svg>
                         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search" className="w-full border border-[#CCCCCC] rounded-lg pl-9 pr-3.5 py-2 text-sm font-normal text-[#282F49] outline-none bg-white leading-none box-border focus:border-[#8e78b7] font-[Satoshi,sans-serif]" />
                     </div>
-                    <div className="max-h-56 overflow-y-auto rounded-lg">
-                        {filtered.length === 0 ? (
-                            <div className="px-4 py-3 text-sm text-[#9CA3AF] text-center">No options found</div>
-                        ) : filtered.map((o, i) => {
-                            const checked = selected.includes(o.value);
-                            return (
-                                <button key={o.value} type="button" onClick={() => toggle(o.value)}
-                                    className={`w-full flex items-center gap-3 px-4 py-2.5 bg-white border-none text-left cursor-pointer transition-colors ${i !== filtered.length - 1 ? 'border-b border-[#F5F5F5]' : ''} hover:bg-[#FAFAFA]`}>
-                                    <span className={`w-4 h-4 rounded flex-shrink-0 flex items-center justify-center border transition-colors ${checked ? 'bg-[#8E77BB] border-[#8E77BB]' : 'bg-white border-[#CCCCCC]'}`}>
-                                        {checked && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-                                    </span>
-                                    <span className="text-sm font-normal text-[#282F49] font-[Satoshi,sans-serif]">{o.label}</span>
-                                </button>
-                            );
-                        })}
-                    </div>
+                   <div className="max-h-56 overflow-y-auto rounded-lg divide-y divide-[#F5F5F5]">
+                    {filtered.length > 0 && (
+                        <button type="button" onClick={toggleSelectAll}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 bg-white border-none text-left cursor-pointer transition-colors hover:bg-[#FAFAFA]">
+                            <span className={`w-4 h-4 rounded flex-shrink-0 flex items-center justify-center border transition-colors ${allFilteredSelected ? 'bg-[#8E77BB] border-[#8E77BB]' : 'bg-white border-[#CCCCCC]'}`}>
+                                {allFilteredSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                            </span>
+                            <span className="text-sm font-medium text-[#8E77BB] font-[Satoshi,sans-serif]">Select All</span>
+                        </button>
+                    )}
+                    {filtered.length === 0 ? (
+                        <div className="px-4 py-3 text-sm text-[#9CA3AF] text-center">No options found</div>
+                    ) : filtered.map((o) => {
+                        const checked = selected.includes(o.value);
+                        return (
+                            <button key={o.value} type="button" onClick={() => toggle(o.value)}
+                                className="w-full flex items-center gap-3 px-4 py-2.5 bg-white border-none text-left cursor-pointer transition-colors hover:bg-[#FAFAFA]">
+                                <span className={`w-4 h-4 rounded flex-shrink-0 flex items-center justify-center border transition-colors ${checked ? 'bg-[#8E77BB] border-[#8E77BB]' : 'bg-white border-[#CCCCCC]'}`}>
+                                    {checked && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                                </span>
+                                <span className="text-sm font-normal text-[#282F49] font-[Satoshi,sans-serif]">{o.label}</span>
+                            </button>
+                        );
+                    })}
+                </div>
                 </div>
                 <div className="h-[68px] flex items-center justify-end gap-3 px-6 rounded-b-2xl bg-white shadow-[0px_-4px_9px_0px_rgba(0,0,0,0.08)]">
                     <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-[#282F49] border border-[#CCCCCC] rounded-lg bg-white cursor-pointer font-[Satoshi,sans-serif] hover:bg-gray-50 transition-colors">Cancel</button>
@@ -445,7 +466,7 @@ const AddTabModal = ({ isOpen, onClose, onSubmit }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[200] bg-[#00000099] flex items-center justify-center" onClick={onClose}>
+        <div className="fixed inset-0 z-[200] bg-[#00000099] flex items-center justify-center">
             <div className="w-[480px] bg-white rounded-2xl border border-[#CCCCCC] mx-4" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between px-6 pt-4 pb-2 rounded-t-2xl bg-white shadow-[0px_4px_9px_0px_rgba(0,0,0,0.10)]">
                     <span className="text-lg font-medium text-[#282F49] font-[Satoshi]">Add New Tab to 360° View</span>
@@ -494,7 +515,7 @@ const Step3 = ({ attributes, viewConfig, setViewConfig }) => {
     const getLabel = (val) => attrOptions.find(o => o.value === val)?.label || val;
 
     const sidebarOptions = attrOptions.filter(
-        o => o.value !== viewConfig.p1 && o.value !== viewConfig.p2
+        o => o.value !== viewConfig.p1 && o.value !== viewConfig.p2 && !viewConfig.sidebarFields.includes(o.value)
     );
 
     return (
@@ -578,11 +599,15 @@ const Step3 = ({ attributes, viewConfig, setViewConfig }) => {
                     ))}
                 </div>
             </div>
-            <AddFieldsModal
+            <AddFieldsModal 
                 isOpen={!!addFieldsTarget}
                 onClose={() => setAddFieldsTarget(null)}
                 title={addFieldsTarget === "sidebar" ? "Add Fields - Sidebar" : `Add Fields - ${viewConfig.tabs.find(t => t.id === addFieldsTarget)?.name || ""}`}
-                availableOptions={addFieldsTarget === "sidebar" ? sidebarOptions : attrOptions}
+                availableOptions={
+                    addFieldsTarget === "sidebar"
+                        ? sidebarOptions
+                        : attrOptions.filter(o => !(viewConfig.tabs.find(t => t.id === addFieldsTarget)?.fields || []).includes(o.value))
+                }
                 onSubmit={(vals) => {
                     if (addFieldsTarget === "sidebar") addSidebarFields(vals);
                     else addTabFields(addFieldsTarget, vals);
@@ -618,17 +643,22 @@ export default function AddDomainWizard() {
 
     const isAttrValid = (a) => {
         if (!a.attributeName.trim() || !a.displayName.trim() || !a.dataType) return false;
+        if (!a.sourceAttributeName.trim() || !a.sourceDisplayName.trim()) return false;
+        if (!a.criticality) return false;
         const mode = getLengthMode(a.dataType);
         if (mode === "length") {
-            return !!a.lengthPrecision.toString().trim();
+            if (!a.lengthPrecision.toString().trim()) return false;
         }
         if (mode === "precision_scale") {
             const parts = (a.lengthPrecision || "").split("/");
-            return !!(parts[0]?.trim() && parts[1]?.trim());
+            if (!(parts[0]?.trim() && parts[1]?.trim())) return false;
         }
+        // If DQ Dimension is selected, DQ Rule must be selected
+        const hasDimension = Array.isArray(a.dqDimension) ? a.dqDimension.length > 0 : !!a.dqDimension;
+        if (hasDimension && (!a.dqRule || a.dqRule.length === 0)) return false;
         return true;
     };
-    const step2Valid = attributes.every(isAttrValid);
+    const step2Valid = attributes.length >= 2 && attributes.every(isAttrValid);
 
     const step3Valid = viewConfig.p1 && viewConfig.p2;
 
@@ -655,11 +685,12 @@ export default function AddDomainWizard() {
                 return {
                     attribute_name: a.attributeName,
                     display_name: a.displayName,
+                    source_attribute_name: a.sourceAttributeName,
+                    source_display_name: a.sourceDisplayName,
                     data_type: getPayloadType(a.dataType),   // "VARCHAR", "NUMERIC", etc.
                     length_precision,
                     required: a.required || "no",
-                    match_weight: a.matchWeight ? Number(a.matchWeight) : null,
-                    survivorship_strategy: a.survivorshipStrategy || null,
+                    criticality: a.criticality || null,
                     rule_ids: a.dqRule.length > 0 ? a.dqRule : null,
                 };
             }),
