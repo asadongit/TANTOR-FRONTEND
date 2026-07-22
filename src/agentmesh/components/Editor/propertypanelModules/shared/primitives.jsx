@@ -5,7 +5,7 @@ import { useRunStore, useWorkflowStore } from '../../../../store';
 export const FONT = "'Google Sans','Roboto',sans-serif";
 
 export const PROVIDERS = [
-  'groq', 'openai', 'anthropic', 'google', 'ollama', 'together', 'mistral', 'huggingface',
+  'groq', 'openai', 'anthropic', 'google', 'ollama', 'sglang', 'together', 'mistral', 'huggingface',
   'deepseek', 'cohere', 'perplexity', 'openrouter', 'azure', 'bedrock', 'vllm'
 ];
 
@@ -23,6 +23,7 @@ export const MODELS = {
   anthropic: ['claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307', 'claude-opus-4'],
   google: ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
   ollama: ['gemma3:1b', 'granite4:1b', 'deepseek-coder-v2:16b', 'qwen2.5:7b', 'gemma4:e2b'],
+  sglang: ['meta-llama/Llama-3.1-8B-Instruct', 'deepseek-ai/DeepSeek-R1-Distill-Qwen-14B', 'custom-model'],
   together: ['mistralai/Mixtral-8x7B-Instruct-v0.1', 'meta-llama/Llama-3-70b-chat-hf', 'togethercomputer/llama-2-70b-chat'],
   mistral: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest', 'open-mixtral-8x22b', 'codestral-latest'],
   huggingface: ['meta-llama/Meta-Llama-3-8B-Instruct', 'mistralai/Mistral-7B-Instruct-v0.2', 'microsoft/Phi-3-mini-4k-instruct'],

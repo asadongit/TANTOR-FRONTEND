@@ -6,26 +6,71 @@ import { SearchableSelect } from './SearchableSelect';
 export const LLMConfigSection = memo(function LLMConfigSection({ llm, onChange }) {
   const provider = llm?.provider || 'groq';
   const models = MODELS[provider] || [];
-  const isOllama = provider === 'ollama';
+  const isSelfHosted = ['ollama', 'sglang', 'vllm'].includes(provider);
+
+  const selectedModelInList = models.includes(llm?.model);
+  const isCustomModel = !selectedModelInList || llm?.model === 'custom-model';
 
   return (
     <>
       <Field label="Provider">
-        <Select value={provider} onChange={(v) => onChange({ ...llm, provider: v, model: MODELS[v]?.[0] || '' })} options={PROVIDERS} />
+        <Select
+          value={provider}
+          onChange={(v) => onChange({ ...llm, provider: v, model: MODELS[v]?.[0] || '' })}
+          options={PROVIDERS}
+        />
       </Field>
+
       <Field label="Model">
-        <Select value={llm?.model || ''} onChange={(v) => onChange({ ...llm, model: v })} options={[...(models), ...(llm?.model && !models.includes(llm.model) ? [llm.model] : [])]} />
+        <Select
+          value={selectedModelInList ? llm.model : 'custom-model'}
+          onChange={(v) => {
+            if (v === 'custom-model') {
+              onChange({ ...llm, model: 'custom-model' });
+            } else {
+              onChange({ ...llm, model: v });
+            }
+          }}
+          options={[...models, ...(models.includes('custom-model') ? [] : ['custom-model'])]}
+        />
       </Field>
+
+      {isCustomModel && (
+        <Field label="Custom Model Name" hint="Enter the exact model identifier hosted on your server (e.g., meta-llama/Llama-3.1-70B-Instruct)">
+          <Input
+            value={llm?.model === 'custom-model' ? '' : (llm?.model || '')}
+            onChange={(v) => onChange({ ...llm, model: v || 'custom-model' })}
+            placeholder="e.g. meta-llama/Llama-3.1-70B-Instruct"
+          />
+        </Field>
+      )}
+
       <Field label="Temperature">
-        <Input type="number" value={llm?.temperature ?? 0} onChange={(v) => onChange({ ...llm, temperature: parseFloat(v) || 0 })} placeholder="0.0" className="w-full" />
+        <Input
+          type="number"
+          value={llm?.temperature ?? 0}
+          onChange={(v) => onChange({ ...llm, temperature: Number.parseFloat(v) || 0 })}
+          placeholder="0.0"
+          className="w-full"
+        />
       </Field>
-      {isOllama ? (
-        <Field label="Ollama Base URL" hint="e.g., http://73.245.233.186:31059 or http://localhost:11434">
-          <Input value={llm?.base_url || ''} onChange={(v) => onChange({ ...llm, base_url: v || null })} placeholder="http://localhost:11434" />
+
+      {isSelfHosted ? (
+        <Field label={`${provider.toUpperCase()} Base URL`} hint={provider === 'sglang' ? "e.g., http://localhost:30000/v1" : "e.g., http://localhost:11434"}>
+          <Input
+            value={llm?.base_url || ''}
+            onChange={(v) => onChange({ ...llm, base_url: v || null })}
+            placeholder={provider === 'sglang' ? "http://localhost:30000/v1" : "http://localhost:11434"}
+          />
         </Field>
       ) : (
         <Field label="API Key Override" hint="Leave blank to use the backend's default key.">
-          <Input value={llm?.api_key_override || ''} onChange={(v) => onChange({ ...llm, api_key_override: v || null })} placeholder="sk-..." type="password" />
+          <Input
+            value={llm?.api_key_override || ''}
+            onChange={(v) => onChange({ ...llm, api_key_override: v || null })}
+            placeholder="sk-..."
+            type="password"
+          />
         </Field>
       )}
     </>
