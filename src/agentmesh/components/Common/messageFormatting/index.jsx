@@ -177,9 +177,86 @@ const CodeBlock = ({ part }) => {
     );
 };
 
+// ─── Tool Call Capsule Component ───────────────────────────────────────────────
+export const ToolCallCapsule = ({ content }) => {
+    let toolName = 'Tool Call';
+    let queryPreview = '';
+
+    if (typeof content === 'string') {
+        const raw = content.trim();
+        try {
+            const parsed = JSON.parse(raw);
+            if (parsed.name) toolName = parsed.name;
+            if (parsed.arguments) {
+                if (typeof parsed.arguments === 'string') {
+                    queryPreview = parsed.arguments;
+                } else if (typeof parsed.arguments === 'object' && parsed.arguments !== null) {
+                    queryPreview = parsed.arguments.query || parsed.arguments.input || JSON.stringify(parsed.arguments);
+                }
+            }
+        } catch {
+            const nameMatch = raw.match(/"name":\s*"([^"]+)"/);
+            if (nameMatch) toolName = nameMatch[1];
+            const queryMatch = raw.match(/"query":\s*"([^"]+)"/) || raw.match(/"input":\s*"([^"]+)"/);
+            if (queryMatch) queryPreview = queryMatch[1];
+        }
+    }
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 3, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '6px 14px',
+                margin: '6px 0',
+                background: '#F3E8FF',
+                border: '1px solid #E9D5FF',
+                borderRadius: '999px',
+                color: '#7E22CE',
+                fontSize: 12,
+                fontWeight: 600,
+                boxShadow: '0 2px 8px rgba(126, 34, 206, 0.08)',
+                verticalAlign: 'middle'
+            }}
+        >
+            <div style={{
+                width: 22, height: 22, borderRadius: '50%',
+                background: '#E9D5FF', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', flexShrink: 0
+            }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7E22CE" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                </svg>
+            </div>
+            <span style={{ fontWeight: 700, color: '#6B21A8' }}>{toolName}</span>
+            {queryPreview && (
+                <span style={{ opacity: 0.75, fontSize: 11, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    ({queryPreview})
+                </span>
+            )}
+        </motion.div>
+    );
+};
+
 // ─── Inline Formatter ──────────────────────────────────────────────────────────
 export const formatInlineStyles = (text, isLast = false) => {
     if (typeof text !== 'string') return text;
+
+    if (text.includes('<tool_call>')) {
+        const parts = text.split(/(<tool_call>[\s\S]*?<\/tool_call>)/gi);
+        if (parts.length > 1) {
+            return parts.map((part, idx) => {
+                if (part.toLowerCase().startsWith('<tool_call>')) {
+                    const innerContent = part.replace(/^<tool_call>/i, '').replace(/<\/tool_call>$/i, '');
+                    return <ToolCallCapsule key={idx} content={innerContent} />;
+                }
+                return formatInlineStyles(part, isLast);
+            });
+        }
+    }
 
     if (text.includes('__WAIT_FOR_HUMAN__')) {
         const parts = text.split('__WAIT_FOR_HUMAN__');
@@ -517,10 +594,29 @@ const parseTextBlocks = (content, bi, isLast = false) => {
     while (i < lines.length) {
         const line = lines[i];
 
-        // 0. HTML Block Detection
+        // 0. Tool Call Block Detection
+        if (line.trim().toLowerCase().startsWith('<tool_call>')) {
+            flushText();
+            let toolBuffer = line;
+            let j = i + 1;
+            let foundClose = line.toLowerCase().includes('</tool_call>');
+            while (!foundClose && j < lines.length) {
+                toolBuffer += '\n' + lines[j];
+                if (lines[j].toLowerCase().includes('</tool_call>')) {
+                    foundClose = true;
+                }
+                j++;
+            }
+            const innerContent = toolBuffer.replace(/^<tool_call>/i, '').replace(/<\/tool_call>$/i, '');
+            sections.push(<ToolCallCapsule key={`tool-blk-${bi}-${i}`} content={innerContent} />);
+            i = j;
+            continue;
+        }
+
+        // 0.5 HTML Block Detection
         if (line.trim().startsWith('<')) {
             const tagMatch = line.trim().match(/^<([a-zA-Z1-6]+)\b/);
-            if (tagMatch) {
+            if (tagMatch && tagMatch[1].toLowerCase() !== 'tool_call') {
                 flushText();
                 const tagName = tagMatch[1].toLowerCase();
                 const selfClosingTags = ['hr', 'br', 'img', 'input', 'meta', 'link'];
@@ -741,6 +837,7 @@ export const formatMessage = (msg, isCell = false, isLast = false) => {
     // Detect if content is HTML to render it directly
     const trimmedContent = typeof content === 'string' ? content.trim() : '';
     const isHtml = trimmedContent.startsWith('<') && 
+        !trimmedContent.toLowerCase().startsWith('<tool_call>') &&
         /<\/?(div|span|p|a|img|table|tr|td|th|tbody|thead|ul|ol|li|h[1-6]|br|hr|section|style|iframe|button|svg|path|em|strong|b|i|u|font|center|form|input|label|select|option|textarea)\b[^>]*>/i.test(trimmedContent);
 
     if (isHtml) {
