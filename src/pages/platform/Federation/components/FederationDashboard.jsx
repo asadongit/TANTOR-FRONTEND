@@ -356,10 +356,22 @@ const FederationDashBoard = () => {
       render: (row) => row.status === 'refreshing' ? '-' : (row.expiry_time_left || '-')
     },
     {
+      label: "Created By",
+      key: "created_by",
+      sortable: true,
+      render: (row) => row.created_by || "-"
+    },
+    {
       label: "Created At",
       key: "created_at",
       sortable: true,
       render: (row) => formatDate(row.created_at)
+    },
+    {
+      label: "Updated At",
+      key: "updated_at",
+      sortable: true,
+      render: (row) => formatDate(row.updated_at)
     },
     { label: "Action", sortable: false }
   ];
@@ -392,7 +404,7 @@ const FederationDashBoard = () => {
     { icon: "lucide:layout-dashboard", bgcolor: "bg-[#d8d3e4] bg-opacity-25", iconcolor: "text-purple-700", title: "Total Views", count: dashboardData.total_view || 0 },
     { icon: "lucide:database", bgcolor: "bg-[#96CF7B] bg-opacity-25", iconcolor: "text-green-700", title: "Base Views", count: dashboardData.base_view || 0 },
     { icon: "lucide:briefcase", bgcolor: "bg-[#FFC93F] bg-opacity-25", iconcolor: "text-orange-700", title: "Business Views", count: dashboardData.business_view || 0 },
-    { icon: "lucide:layers", bgcolor: "bg-[#16ABC2] bg-opacity-25", iconcolor: "text-cyan-700", title: "Materialized Views", count: dashboardData.materalized_view || 0 }
+    { icon: "lucide:layers", bgcolor: "bg-[#16ABC2] bg-opacity-25", iconcolor: "text-cyan-700", title: "Custom Views", count: dashboardData.custom_view || 0 }
   ];
 
   const handleCardClick = () => {};

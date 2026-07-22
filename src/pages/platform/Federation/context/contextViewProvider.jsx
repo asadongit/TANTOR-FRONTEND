@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useNodesState, useEdgesState } from "reactflow";
 
 const StateContext = createContext();
@@ -38,6 +38,13 @@ export const ContextViewProvider = ({ children }) => {
     consolidation: 0
   });
 
+  const [complexQueryVersion, setComplexQueryVersion] = useState(0);
+  const notifyComplexQuerySaved = useCallback(() => {
+    setComplexQueryVersion(v => v + 1);
+  }, []);
+
+  const [hideBusinessPreview, setHideBusinessPreview] = useState(false);
+
   const [isEditMode, setIsEditMode] = useState(
     () => sessionStorage.getItem("editMode") === "true"
   );
@@ -52,6 +59,7 @@ export const ContextViewProvider = ({ children }) => {
     sessionStorage.removeItem("editViewName");
     sessionStorage.removeItem("editFlowData");
     sessionStorage.removeItem("editOriginalPayload");
+    sessionStorage.removeItem("createQueryType");
   };
 
   const [finalPayload, setFinalPayload] = useState(() => {
@@ -209,6 +217,10 @@ export const ContextViewProvider = ({ children }) => {
         isEditMode,
         editViewName,
         clearEditMode,
+        complexQueryVersion,
+        notifyComplexQuerySaved,
+        hideBusinessPreview,
+        setHideBusinessPreview,
       }}
     >
       {children}

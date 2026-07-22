@@ -12,7 +12,7 @@ import { useFederationPolicyIds } from "../../../../hooks/platform/federation";
 
 export function BusinessFooter() {
   const navigate = useNavigate();
-  const { finalPayload, handleFinalPayload, connectionPayload, viewPayload, columnSettings, consolidationPayload, nodeCount, nodes, edges, isEditMode, editViewName, clearEditMode } = useStateContext("");
+  const { finalPayload, handleFinalPayload, connectionPayload, viewPayload, columnSettings, consolidationPayload, nodeCount, nodes, edges, isEditMode, editViewName, clearEditMode, complexQueryVersion, hideBusinessPreview, setHideBusinessPreview } = useStateContext("");
     const { data: policyIds } = useFederationPolicyIds();
   const [preview, setPreview] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -20,10 +20,22 @@ export function BusinessFooter() {
   const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
 
-  const modalState = useLocation().state || {
-    queryType: "Regular",
-    viewType: "Business",
-  };
+  const locationState = useLocation().state;
+  const resolvedQueryType = (() => {
+    if (locationState?.queryType) return locationState.queryType;
+    const editPayloadStr = sessionStorage.getItem("editOriginalPayload");
+    if (editPayloadStr) {
+      try {
+        const p = JSON.parse(editPayloadStr);
+        const cq = p?.extra_info?.complex_query ?? p?.complex_query;
+        if (cq) return "Complex";
+      } catch (_) {}
+    }
+    const createQueryType = sessionStorage.getItem("createQueryType");
+    if (createQueryType) return createQueryType;
+    return "Regular";
+  })();
+  const modalState = { ...(locationState || {}), queryType: resolvedQueryType };
 
   const [colOrder, setColOrder] = useState([]);
   const [dragOverCol, setDragOverCol] = useState(null);
@@ -548,6 +560,16 @@ export function BusinessFooter() {
     }
   };
 
+  const isFirstComplexQueryVersion = useRef(true);
+  useEffect(() => {
+    if (complexQueryVersion === 0) return; // skip initial mount
+    if (isFirstComplexQueryVersion.current) {
+      isFirstComplexQueryVersion.current = false;
+      return;
+    }
+    handleClick();
+  }, [complexQueryVersion]);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const toggleModal = () => setIsModalOpen(prev => !prev);
 
@@ -642,7 +664,7 @@ export function BusinessFooter() {
 
   return (
     <>
-      {preview && (
+      {preview && !hideBusinessPreview && (
         <>
           <div className="text-black mt-2 mb-2 ml-2 font-semibold">Output Preview</div>
           <div className="bg-white shadow overflow-hidden h-[32%] z-50 flex flex-col">
