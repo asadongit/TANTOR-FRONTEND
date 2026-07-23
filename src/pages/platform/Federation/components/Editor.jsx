@@ -219,6 +219,7 @@ export default function Editor() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editViewName, setEditViewName] = useState("");
   const [editOriginalPayload, setEditOriginalPayload] = useState(null);
+  const [executedQuery, setExecutedQuery] = useState("");
 
   useEffect(() => {
     const editModeStr = sessionStorage.getItem("editMode");
@@ -232,8 +233,8 @@ export default function Editor() {
           setIsEditMode(true);
           setEditViewName(editName);
           setEditOriginalPayload(payload);
-          if (payload.view_definition) {
-            setQuery(payload.view_definition);
+          if (payload.raw_query) {
+            setQuery(payload.raw_query);
           }
         }
       } catch (err) {
@@ -711,6 +712,7 @@ export default function Editor() {
 
       if (!append) {
         setQuerySuccess(true);
+        setExecutedQuery(newQuery);
         await fetch(`${hostnameV1}/save_query`, {
           method: "POST",
           headers: { accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -1248,7 +1250,7 @@ export default function Editor() {
       <EditorSaveViewModal
         isOpen={isSaveViewModalOpen}
         onClose={() => setIsSaveViewModalOpen(false)}
-        query={query}
+        query={executedQuery}
         securedQuery={securedQuery}
         project={project}
         policyIds={policyIds}
