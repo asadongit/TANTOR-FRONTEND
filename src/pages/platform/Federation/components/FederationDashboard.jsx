@@ -222,7 +222,7 @@ const FederationDashBoard = () => {
       try {
         const username = decodedToken?.preferred_username || "sanitycheck";
         const keyResponse = await fetch(
-          `${KongAPI}/consumers/${username}/key-auth`,
+          `${hostnameV1}/kong/key-auth/${username}`,
           { method: "GET" }
         );
         if (keyResponse.ok) {
