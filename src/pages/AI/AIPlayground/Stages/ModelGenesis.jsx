@@ -793,9 +793,6 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
               {validationError && !isValidated && (
                 <p className="text-sm text-[#EF4D5F] mt-2">{validationError}</p>
               )}
-              {hasError && config.targetFeature && (
-                <p className="text-sm text-[#EF4D5F] mt-2">{errorMessage}</p>
-              )}
             </div>
           </div>
         </div>

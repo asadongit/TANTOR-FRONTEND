@@ -453,7 +453,7 @@ function XAI() {
           workflow_id: activeWorkflowId,
           run_name: selectedModel,
           run_shap: true,
-          run_pdp: false,
+          run_pdp: true,
           run_feature_flip: false,
           run_counterfactuals: true,
           run_lime: true,
