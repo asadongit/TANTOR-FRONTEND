@@ -9,6 +9,7 @@ export default function SplitterConfig({ data, update }) {
         hint="The key in state/context that contains the array (e.g., 'items')."
       >
         <Input
+          stripBraces
           value={data.split_field || "items"}
           onChange={(v) => update({ split_field: v })}
           placeholder="e.g. items"
@@ -30,6 +31,7 @@ export default function SplitterConfig({ data, update }) {
         hint="The context key where the current item will be stored (default: 'item')."
       >
         <Input
+          stripBraces
           value={data.destination_field || "item"}
           onChange={(v) => update({ destination_field: v })}
           placeholder="item"
@@ -58,6 +60,7 @@ export default function SplitterConfig({ data, update }) {
           hint="Comma-separated prefix patterns (e.g. 'cd_output_') to gather extra keys from state and inject them into each split iteration's context."
         >
           <Input
+            stripBraces
             value={data.discovery_keys || ""}
             onChange={(v) => update({ discovery_keys: v })}
             placeholder="cd_output_, ocr_like_results"

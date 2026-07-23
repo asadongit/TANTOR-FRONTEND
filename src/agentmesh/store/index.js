@@ -122,6 +122,18 @@ const NODE_DEFAULTS = {
     audio_speed: 1.0,
     mute_audio: false,
     audio_input_text: ''
+  },
+  vision_intelligence: {
+    label: 'Vision Intelligence',
+    vision_mode: 'face_verification',
+    vision_face_match_threshold: 0.65,
+    vision_quality_min_score: 0.70,
+    vision_quality_blur_threshold: 100,
+    vision_quality_min_contrast: 0.10,
+    vision_quality_max_contrast: 0.45,
+    vision_id_image_key: 'latest_file_path',
+    vision_selfie_image_key: 'vcip_capture_path',
+    vision_output_key: 'vision_result'
   }
 };
 
@@ -205,6 +217,15 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
           weightage_cross_rules: n.weightage_cross_rules || n.data?.weightage_cross_rules || [],
           extractor_input_key: n.extractor_input_key || n.data?.extractor_input_key || 'latest_file_path',
           extractor_output_key: n.extractor_output_key || n.data?.extractor_output_key || 'extracted_elements',
+          vision_mode: n.vision_mode || n.data?.vision_mode || 'face_verification',
+          vision_face_match_threshold: n.vision_face_match_threshold ?? n.data?.vision_face_match_threshold ?? 0.65,
+          vision_quality_min_score: n.vision_quality_min_score ?? n.data?.vision_quality_min_score ?? 0.70,
+          vision_quality_blur_threshold: n.vision_quality_blur_threshold ?? n.data?.vision_quality_blur_threshold ?? 100,
+          vision_quality_min_contrast: n.vision_quality_min_contrast ?? n.data?.vision_quality_min_contrast ?? 0.10,
+          vision_quality_max_contrast: n.vision_quality_max_contrast ?? n.data?.vision_quality_max_contrast ?? 0.45,
+          vision_id_image_key: n.vision_id_image_key || n.data?.vision_id_image_key || 'latest_file_path',
+          vision_selfie_image_key: n.vision_selfie_image_key || n.data?.vision_selfie_image_key || 'vcip_capture_path',
+          vision_output_key: n.vision_output_key || n.data?.vision_output_key || 'vision_result',
         },
       };
     });
@@ -1098,7 +1119,11 @@ export const useWorkflowStore = create((set, get) => ({
           'email_auth_method', 'email_tenant_id', 'email_client_id', 'email_client_secret',
           'email_google_service_account_json', 'email_google_delegated_user',
           // STT Configs
-          'auto_start', 'auto_stop', 'silence_delay', 'stt_lang'
+          'auto_start', 'auto_stop', 'silence_delay', 'stt_lang',
+          // Vision Intelligence
+          'vision_mode', 'vision_face_match_threshold', 'vision_quality_min_score',
+          'vision_quality_blur_threshold', 'vision_quality_min_contrast', 'vision_quality_max_contrast',
+          'vision_id_image_key', 'vision_selfie_image_key', 'vision_output_key'
         ];
 
         const nodeConfig = {};

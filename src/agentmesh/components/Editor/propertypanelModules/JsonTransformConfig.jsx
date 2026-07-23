@@ -16,6 +16,7 @@ export default function JsonTransformConfig({ data, update }) {
         hint="Context key to read data from (supports dot notation, e.g. latest_api_result.data). Defaults to latest_api_result."
       >
         <Input
+          stripBraces
           value={data.jt_input_key ?? "latest_api_result"}
           onChange={(v) => update({ jt_input_key: v })}
           placeholder="latest_api_result"
@@ -27,6 +28,7 @@ export default function JsonTransformConfig({ data, update }) {
         hint="Context key where the transformed data will be saved. Defaults to transformed_data."
       >
         <Input
+          stripBraces
           value={data.jt_output_key ?? "transformed_data"}
           onChange={(v) => update({ jt_output_key: v })}
           placeholder="transformed_data"

@@ -208,6 +208,7 @@ export default function PollingConfig({
         hint="The context key where the retrieved data list will be saved (default: 'payload')."
       >
         <Input
+          stripBraces
           value={data.destination_key || "payload"}
           onChange={(v) => update({ destination_key: v })}
           placeholder="payload"

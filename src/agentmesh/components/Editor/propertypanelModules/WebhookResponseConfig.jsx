@@ -28,6 +28,7 @@ export default function WebhookResponseConfig({ data, update }) {
         hint="Select a context key to use as the response body. If empty, returns the full context."
       >
         <Input
+          stripBraces
           value={data.response_body_key || ""}
           onChange={(v) => update({ response_body_key: v })}
           placeholder="e.g. final_report"

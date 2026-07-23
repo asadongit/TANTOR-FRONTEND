@@ -175,6 +175,7 @@ export default function BankingEnrichmentConfig({ data, update }) {
           hint="Key where canonical transaction data resides."
         >
           <Input
+            stripBraces
             value={data.source_key ?? "canonical_transaction"}
             onChange={(v) => update({ source_key: v })}
             placeholder="canonical_transaction"
@@ -185,6 +186,7 @@ export default function BankingEnrichmentConfig({ data, update }) {
           hint="Key to store the resulting enriched payload."
         >
           <Input
+            stripBraces
             value={data.destination_key ?? "enriched_transaction"}
             onChange={(v) => update({ destination_key: v })}
             placeholder="enriched_transaction"

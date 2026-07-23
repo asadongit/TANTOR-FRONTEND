@@ -103,6 +103,7 @@ export default function DataCleaningConfig({ data, update }) {
           hint="Specify the context key where the input JSON string/dictionary is stored."
         >
           <Input
+            stripBraces
             value={data.data_cleaning_input_key || ""}
             onChange={(v) => update({ data_cleaning_input_key: v })}
             placeholder="e.g. raw_input_json"
@@ -115,6 +116,7 @@ export default function DataCleaningConfig({ data, update }) {
         hint="The context key where the cleaned dataset (dict or list) and execution metrics will be saved."
       >
         <Input
+          stripBraces
           value={data.data_cleaning_output_key || "cleaned_data"}
           onChange={(v) => update({ data_cleaning_output_key: v })}
           placeholder="cleaned_data"

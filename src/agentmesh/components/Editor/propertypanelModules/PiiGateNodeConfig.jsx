@@ -9,6 +9,7 @@ export default function PiiGateNodeConfig({ data, update }) {
         hint="Context key containing the OCR extraction results."
       >
         <Input
+          stripBraces
           value={data.input_key || "latest_ocr_output"}
           onChange={(v) => update({ input_key: v })}
           placeholder="latest_ocr_output"

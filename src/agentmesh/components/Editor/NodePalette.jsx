@@ -92,6 +92,7 @@ export const NODE_TYPES = [
 
   // Media Services
   { type: 'textToAudio', icon: FiVolume2,   label: 'Text to Speech', desc: 'Converts text passages into natural speech audio.', detailedDesc: 'Utilizes text-to-speech audio synthesis models to generate audio files (.mp3/.wav) from written scripts or AI messages.', bg: '#FFE4E1', color: '#C71585', category: 'Media Services' },
+  { type: 'vision_intelligence', icon: FiEye, label: 'Vision Intelligence', desc: 'Unified AI vision engine for face verification, signature/stamp detection, and quality gates.', detailedDesc: 'Comprehensive Computer Vision engine that unifies InsightFace biometric face match (1:1 verification), signature/stamp extraction, and document quality gates in a single node.', bg: '#F3E8FF', color: '#7E22CE', category: 'Media Services' },
 
   // Visual Organizers
   { type: 'cardboard',   icon: FiLayers,    label: 'Sticky Note',     desc: 'Sticky notes to add visual documentation on the canvas.', detailedDesc: 'Visual layout containers that allow developers to group nodes, add comments, and document canvas flows without affecting runtime execution.', bg: '#F1F5F9', color: '#64748B', category: 'Visual Organizers' },

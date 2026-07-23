@@ -230,6 +230,7 @@ export default function PatternExtractConfig({ data, update }) {
         hint="Context variable containing the flat dictionary to scan."
       >
         <Input
+          stripBraces
           value={data.extract_input_key || "transformed_json"}
           onChange={(v) => update({ extract_input_key: v })}
           placeholder="transformed_json"
@@ -241,6 +242,7 @@ export default function PatternExtractConfig({ data, update }) {
         hint="Context variable where extraction results are stored."
       >
         <Input
+          stripBraces
           value={
             data.extract_output_key ||
             ((data.extract_mode || "identifier") === "identifier"
@@ -260,6 +262,7 @@ export default function PatternExtractConfig({ data, update }) {
           hint="Context variable containing previously extracted identifiers (for merging)."
         >
           <Input
+            stripBraces
             value={data.identifiers_input_key || "extracted_identifiers"}
             onChange={(v) => update({ identifiers_input_key: v })}
             placeholder="extracted_identifiers"

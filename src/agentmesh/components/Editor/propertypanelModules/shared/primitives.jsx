@@ -117,7 +117,9 @@ export const Field = memo(function Field({ label, hint, action, children }) {
   );
 });
 
-export const Input = memo(function Input({ value, onChange, placeholder, type = 'text', style: extra, disabled, debounceMs, noVariablePicker = false }) {
+const _stripBraces = (s) => typeof s === 'string' ? s.replace(/^\{\{/, '').replace(/\}\}$/, '') : s;
+
+export const Input = memo(function Input({ value, onChange, placeholder, type = 'text', style: extra, disabled, debounceMs, noVariablePicker = false, stripBraces = false }) {
   const [localValue, setLocalValue] = useState(value ?? '');
   const [showPicker, setShowPicker] = useState(false);
   const dropdownRef = useRef(null);
@@ -157,6 +159,7 @@ export const Input = memo(function Input({ value, onChange, placeholder, type = 
       if (rawVar) text = `{{${rawVar}}}`;
     }
     if (text) {
+      if (stripBraces) text = _stripBraces(text);
       e.preventDefault();
       const target = e.target;
       const start = target.selectionStart ?? (localValue || '').length;
@@ -245,7 +248,8 @@ export const Input = memo(function Input({ value, onChange, placeholder, type = 
               key={k.value}
               type="button"
               onClick={() => {
-                const newVal = (localValue || '') + k.value;
+                const val = stripBraces ? _stripBraces(k.value) : k.value;
+                const newVal = (localValue || '') + val;
                 setLocalValue(newVal);
                 onChange(newVal);
                 setShowPicker(false);
@@ -261,7 +265,9 @@ export const Input = memo(function Input({ value, onChange, placeholder, type = 
   );
 });
 
-export const Textarea = memo(function Textarea({ value, onChange, placeholder, rows = 4, disabled, style: extra, debounceMs, noVariablePicker = false }) {
+export const Textarea
+
+export const Textarea = memo(function Textarea({ value, onChange, placeholder, rows = 4, disabled, style: extra, debounceMs, noVariablePicker = false, stripBraces = false }) {
   const [localValue, setLocalValue] = useState(value ?? '');
   const [showPicker, setShowPicker] = useState(false);
   const dropdownRef = useRef(null);
@@ -301,6 +307,7 @@ export const Textarea = memo(function Textarea({ value, onChange, placeholder, r
       if (rawVar) text = `{{${rawVar}}}`;
     }
     if (text) {
+      if (stripBraces) text = _stripBraces(text);
       e.preventDefault();
       const target = e.target;
       const start = target.selectionStart ?? (localValue || '').length;
@@ -389,7 +396,8 @@ export const Textarea = memo(function Textarea({ value, onChange, placeholder, r
               key={k.value}
               type="button"
               onClick={() => {
-                const newVal = (localValue || '') + k.value;
+                const val = stripBraces ? _stripBraces(k.value) : k.value;
+                const newVal = (localValue || '') + val;
                 setLocalValue(newVal);
                 onChange(newVal);
                 setShowPicker(false);
@@ -589,6 +597,43 @@ export const MiniatureToggle = memo(function MiniatureToggle({ checked, onChange
         className="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all duration-200 shadow"
         style={{ left: checked ? 14 : 2 }}
       />
+    </div>
+  );
+});
+
+export const Slider = memo(function Slider({ value, onChange, min = 0, max = 1, step = 0.05, unit = "" }) {
+  const numValue = typeof value === 'number' ? value : Number.parseFloat(value) || min;
+  
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={numValue}
+        onChange={(e) => onChange(Number.parseFloat(e.target.value))}
+        style={{
+          flex: 1,
+          accentColor: 'var(--theme-primary, #7E22CE)',
+          cursor: 'pointer',
+          height: 6
+        }}
+      />
+      <div style={{
+        minWidth: 54,
+        padding: '3px 8px',
+        background: 'var(--bg-secondary, #F1F5F9)',
+        border: '1px solid var(--border)',
+        borderRadius: 6,
+        textAlign: 'center',
+        fontSize: 12,
+        fontWeight: 700,
+        fontFamily: FONT,
+        color: 'var(--text-primary)'
+      }}>
+        {numValue}{unit}
+      </div>
     </div>
   );
 });

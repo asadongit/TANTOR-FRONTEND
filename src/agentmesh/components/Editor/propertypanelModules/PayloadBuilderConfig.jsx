@@ -32,6 +32,7 @@ export default function PayloadBuilderConfig({ data, update }) {
         hint="The context key where the built payload will be stored."
       >
         <Input
+          stripBraces
           value={data.payload_destination_key || "webhook_payload"}
           onChange={(v) => update({ payload_destination_key: v })}
           placeholder="webhook_payload"

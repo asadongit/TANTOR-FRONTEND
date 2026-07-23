@@ -13,6 +13,7 @@ export default function SignatureStampExtractorConfig({ data, update }) {
         hint="Context key containing the file path or list of file paths to extract from (e.g. latest_file_path)."
       >
         <Input
+          stripBraces
           value={data.extractor_input_key || "latest_file_path"}
           onChange={(v) => update({ extractor_input_key: v })}
           placeholder="latest_file_path"
@@ -24,6 +25,7 @@ export default function SignatureStampExtractorConfig({ data, update }) {
         hint="Context key where the extracted signatures and stamps list will be saved."
       >
         <Input
+          stripBraces
           value={data.extractor_output_key || "extracted_elements"}
           onChange={(v) => update({ extractor_output_key: v })}
           placeholder="extracted_elements"

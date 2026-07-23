@@ -90,6 +90,7 @@ export default function NetworkGraphConfig({ data, update }) {
           hint="Context key containing transaction details to ingest."
         >
           <Input
+            stripBraces
             value={data.graph_target_key ?? "latest_message"}
             onChange={(v) => update({ graph_target_key: v })}
             placeholder="latest_message"

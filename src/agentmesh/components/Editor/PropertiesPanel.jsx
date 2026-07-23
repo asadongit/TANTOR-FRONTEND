@@ -112,6 +112,9 @@ const LAZY_CONFIGS = {
   ),
   rag_node: lazy(() => import("./propertypanelModules/RagNodeConfig")),
   ocr_node: lazy(() => import("./propertypanelModules/OcrNodeConfig")),
+  vision_intelligence: lazy(
+    () => import("./propertypanelModules/VisionIntelligenceConfig")
+  ),
   json_transform_va: lazy(
     () => import("./propertypanelModules/JsonTransformVaConfig"),
   ),
@@ -745,6 +748,7 @@ export default function PropertiesPanel() {
             "swarm",
             "tool_node",
             "textToAudio",
+            "vision_intelligence",
           ];
           const hasInternalAdvanced =
             canHaveHitl && NODES_WITH_INTERNAL_ADVANCED.includes(data.type);

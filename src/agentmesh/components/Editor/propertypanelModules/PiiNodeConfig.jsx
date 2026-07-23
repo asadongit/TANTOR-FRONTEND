@@ -117,6 +117,7 @@ export default function PiiNodeConfig({ data, update }) {
           hint="Specific context variable to mask. Leave empty to mask entire context."
         >
           <Input
+            stripBraces
             value={data.context_variable_key || ""}
             onChange={(v) => update({ context_variable_key: v })}
             placeholder="e.g. user_input or leave empty for all"
@@ -136,6 +137,7 @@ export default function PiiNodeConfig({ data, update }) {
                 hint="Context key containing extracted identifiers array."
               >
                 <Input
+                  stripBraces
                   value={data.identifiers_input_key || "extracted_identifiers"}
                   onChange={(v) => update({ identifiers_input_key: v })}
                   placeholder="extracted_identifiers"
@@ -148,6 +150,7 @@ export default function PiiNodeConfig({ data, update }) {
                 hint="Context key containing the text/summaries where values will be masked."
               >
                 <Input
+                  stripBraces
                   value={data.rendered_input_key || "ocr_like_results"}
                   onChange={(v) => update({ rendered_input_key: v })}
                   placeholder="ocr_like_results"

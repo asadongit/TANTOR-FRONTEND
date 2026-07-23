@@ -26,6 +26,7 @@ export default function FileStoreConfig({ data, update }) {
 
       <Field label="Data Source Key" hint="Optional: Specify a key in the context to save. If empty, saves the latest API result or last message.">
         <Input
+          stripBraces
           value={data.file_data_key || ''}
           onChange={(v) => update({ file_data_key: v })}
           placeholder="e.g. scraped_items"
