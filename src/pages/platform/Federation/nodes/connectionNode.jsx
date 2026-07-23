@@ -105,7 +105,7 @@ const SearchableSelect = ({ id, openDropdownId, setOpenDropdownId, options, valu
 export function ConnectionNode({ id, data, onSave }) {
   const { showToast } = useToast();
   const { token, hostnameV1 } = useAuth();
-  const { handleConnectionPayload, connectionPayload, setColumnSettings, columnSettings, complexCheck, finalPayload, handleFinalPayload, incrementNodeCount, decrementNodeCount, setNodes } = useStateContext("");
+  const { handleConnectionPayload, connectionPayload, setColumnSettings, columnSettings, complexCheck, finalPayload, handleFinalPayload, incrementNodeCount, decrementNodeCount, setNodes, notifyComplexQuerySaved, setHideBusinessPreview } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [connections, setConnections] = useState([]);
@@ -126,10 +126,22 @@ export function ConnectionNode({ id, data, onSave }) {
 
   const [columnSearchTerm, setColumnSearchTerm] = useState("");
 
-  const modalState = useLocation().state || {
-    queryType: "Regular",
-    viewType: "Business",
-  };
+  const locationState = useLocation().state;
+  const resolvedQueryType = (() => {
+    if (locationState?.queryType) return locationState.queryType;
+    const editPayloadStr = sessionStorage.getItem("editOriginalPayload");
+    if (editPayloadStr) {
+      try {
+        const p = JSON.parse(editPayloadStr);
+        const cq = p?.extra_info?.complex_query ?? p?.complex_query;
+        if (cq) return "Complex";
+      } catch (_) {}
+    }
+    const createQueryType = sessionStorage.getItem("createQueryType");
+    if (createQueryType) return createQueryType;
+    return "Regular";
+  })();
+  const modalState = { ...(locationState || {}), queryType: resolvedQueryType };
 
   useEffect(() => {
     handleFinalPayload((prevData) => ({
@@ -467,7 +479,10 @@ export function ConnectionNode({ id, data, onSave }) {
   const toggleModal = (value) => setIsModalOpen(value);
 
   const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
-  const toggleEditorModal = (value) => setIsEditorModalOpen(value);
+  const toggleEditorModal = (value) => {
+    setIsEditorModalOpen(value);
+    setHideBusinessPreview(value);
+  };
 
   const updateNodeInternals = useUpdateNodeInternals();
 
@@ -639,7 +654,12 @@ export function ConnectionNode({ id, data, onSave }) {
       </Modal>
       <Modal open={isEditorModalOpen} onClose={() => toggleEditorModal(false)} BackdropProps={{ style: { backgroundColor: "transparent" } }}>
         <div className="absolute top-0 right-0 h-full">
-          <ComplexQueryEditor setShowQueryEditor={toggleEditorModal} />
+        <ComplexQueryEditor
+          setShowQueryEditor={toggleEditorModal}
+          onQuerySave={(savedQuery) => {
+            notifyComplexQuerySaved();
+          }}
+        />
         </div>
       </Modal>
     </>

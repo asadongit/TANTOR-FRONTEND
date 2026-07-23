@@ -11,6 +11,7 @@ const CreateViewDialog = ({ isModalOpen, toggleModal, modalState, setModalState 
     sessionStorage.removeItem("editViewName");
     sessionStorage.removeItem("editFlowData");
     sessionStorage.removeItem("editOriginalPayload");
+    sessionStorage.setItem("createQueryType", modalState.queryType);
     
     if (modalState.viewType === "Source" && (modalState.queryType === "Regular" || modalState.queryType === "Complex")) {
       navigate("/federation/view/source", {
