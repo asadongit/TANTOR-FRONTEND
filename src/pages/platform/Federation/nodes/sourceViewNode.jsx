@@ -3,7 +3,6 @@ import React, { useEffect, useState, useRef } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position, useUpdateNodeInternals } from "reactflow";
 import { SquareKanban, X, ChevronDown, ChevronUp, Pencil, Search, FileCode, RefreshCw } from "lucide-react";
-import { SquareKanban, X, ChevronDown, ChevronUp, Pencil, Search, FileCode, RefreshCw } from "lucide-react";
 import { useStateContext } from "../context/contextViewProvider";
 import { Modal } from "@mui/material";
 import { Columns } from "../BusinessView/Columns";
@@ -108,7 +107,6 @@ const SearchableSelect = ({ id, openDropdownId, setOpenDropdownId, options, valu
 };
 
 export function SourceViewNode({ id, data, onSave }) {
-export function SourceViewNode({ id, data, onSave }) {
   const encodedToken = window._env_?.VITE_FEDERATION_ACCESS_TOKEN;
   const { viewPayload, handleViewPayload, setColumnSettings, columnSettings, finalPayload, handleFinalPayload, incrementNodeCount, decrementNodeCount, setNodes, notifyComplexQuerySaved, setHideBusinessPreview } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -116,14 +114,8 @@ export function SourceViewNode({ id, data, onSave }) {
   const [selectedView, setSelectedView] = useState(data?.selectedView || "");
   const [selectedColumns, setSelectedColumns] = useState(data?.selectedColumns || []);
   const [apiViews, setApiViews] = useState([])
-  const [openDropdownId, setOpenDropdownId] = useState(null);
-  const [selectedView, setSelectedView] = useState(data?.selectedView || "");
-  const [selectedColumns, setSelectedColumns] = useState(data?.selectedColumns || []);
-  const [apiViews, setApiViews] = useState([])
   const [columnsForViews, setColumnsForViews] = useState({});
   const [selectedColumn, setSelectedColumn] = useState("");
-  const [apiColumns, setApiColumns] = useState([])
-  const [allowedColumns, setAllowedColumns] = useState([])
   const [apiColumns, setApiColumns] = useState([])
   const [allowedColumns, setAllowedColumns] = useState([])
   const [showQueryEditor, setShowQueryEditor] = useState(false);
