@@ -265,8 +265,6 @@ export const Input = memo(function Input({ value, onChange, placeholder, type = 
   );
 });
 
-export const Textarea
-
 export const Textarea = memo(function Textarea({ value, onChange, placeholder, rows = 4, disabled, style: extra, debounceMs, noVariablePicker = false, stripBraces = false }) {
   const [localValue, setLocalValue] = useState(value ?? '');
   const [showPicker, setShowPicker] = useState(false);
