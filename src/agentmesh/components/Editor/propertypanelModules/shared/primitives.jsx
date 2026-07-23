@@ -15,7 +15,7 @@ export const MODELS = {
     'meta-llama/llama-4-scout-17b-16e-instruct',
     'llama-3.3-70b-versatile',
     'llama-3.1-8b-instant',
-    'qwen/qwen3-32b',
+    'qwen/qwen3.6-27b',
     'moonshotai/kimi-k2-instruct-0905',
     'openai/gpt-oss-20b'
   ],

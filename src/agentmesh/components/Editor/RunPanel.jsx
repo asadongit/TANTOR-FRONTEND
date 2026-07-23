@@ -240,14 +240,19 @@ export default function RunPanel({ onClose }) {
           }
         }
 
-        const pausedOriginalNodeId = res.next_node?.replace(/^(gate_|pre_gate_|post_gate_)/, '') || res.next_node;
+        const isBp = Boolean(res.is_breakpoint || res.pause_type === 'breakpoint' || res.next_node?.startsWith('bp_gate_'));
 
         const storeNodes = useWorkflowStore.getState().nodes;
-        const { nodeType, nodeConfig } = resolvePauseConfig(res, storeNodes, pausedOriginalNodeId);
-        
-        const enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
+        let pausedOriginalNodeId = res.next_node?.replace(/^(gate_|pre_gate_|post_gate_)/, '') || res.next_node;
+        if (isBp && res.next_node?.startsWith('bp_gate_')) {
+          const matchedTargetNode = storeNodes.find(n => res.next_node.endsWith(n.id) || res.next_node.includes(`_${n.id}`));
+          if (matchedTargetNode) {
+            pausedOriginalNodeId = matchedTargetNode.id;
+          }
+        }
 
-        const isBp = Boolean(res.is_breakpoint || res.pause_type === 'breakpoint');
+        const { nodeType, nodeConfig } = resolvePauseConfig(res, storeNodes, pausedOriginalNodeId);
+        const enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
 
         setPausedInfo({
           isPaused: true,
@@ -261,6 +266,7 @@ export default function RunPanel({ onClose }) {
           nodeConfig: nodeConfig,
           context: res.context || {}
         });
+
 
       }
 
@@ -438,25 +444,35 @@ export default function RunPanel({ onClose }) {
           }
         }
 
-        const resumeOriginalNodeId = res.next_node?.replace(/^(gate_|pre_gate_|post_gate_)/, '') || res.next_node;
-        
+        const isBp = Boolean(res.is_breakpoint || res.pause_type === 'breakpoint' || res.next_node?.startsWith('bp_gate_'));
+
         const storeNodes = useWorkflowStore.getState().nodes;
+        let resumeOriginalNodeId = res.next_node?.replace(/^(gate_|pre_gate_|post_gate_)/, '') || res.next_node;
+        if (isBp && res.next_node?.startsWith('bp_gate_')) {
+          const matchedTargetNode = storeNodes.find(n => res.next_node.endsWith(n.id) || res.next_node.includes(`_${n.id}`));
+          if (matchedTargetNode) {
+            resumeOriginalNodeId = matchedTargetNode.id;
+          }
+        }
+
         const { nodeType, nodeConfig } = resolvePauseConfig(res, storeNodes, resumeOriginalNodeId);
-        
         const enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
         
         setPausedInfo({
           isPaused: true,
+          isBreakpoint: isBp,
           nextNode: resumeOriginalNodeId,
           gateNodeId: res.next_node,
           pausedNodeOutput: pausedOutput,
           threadId: threadId,
           enabledActions: enabledActions,
           showReworkForm: false,
-          nodeType: nodeType,
+          nodeType: isBp ? 'breakpoint' : nodeType,
           nodeConfig: nodeConfig,
           context: res.context || {}
         });
+
+
       } else if (res.status === 'rejected') {
         setPausedInfo({ isPaused: false, nextNode: null, pausedNodeOutput: null, showReworkForm: false });
         setReworkFeedback('');
@@ -916,11 +932,12 @@ export default function RunPanel({ onClose }) {
               }}
             >
               <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 500, letterSpacing: '0.01em' }}>
-                <span style={{ color: THEME_TEXT, fontWeight: 800, marginRight: 8, textTransform: 'uppercase', fontSize: 11 }}>
-                  SYSTEM INTERRUPT: {pausedInfo.nextNode === 'human_gate' ? 'Tool Approval Required' : (nodes.find(n => n.id === pausedInfo.nextNode)?.data?.label || pausedInfo.nextNode || 'AWAITING RESPONSE')}
+                <span style={{ color: (pausedInfo.isBreakpoint || pausedInfo.nodeType === 'breakpoint' || pausedInfo.gateNodeId?.startsWith('bp_gate_')) ? '#DC2626' : THEME_TEXT, fontWeight: 800, marginRight: 8, textTransform: 'uppercase', fontSize: 11 }}>
+                  {(pausedInfo.isBreakpoint || pausedInfo.nodeType === 'breakpoint' || pausedInfo.gateNodeId?.startsWith('bp_gate_')) ? '🛑 WIRE BREAKPOINT HIT' : `SYSTEM INTERRUPT: ${pausedInfo.nextNode === 'human_gate' ? 'Tool Approval Required' : (nodes.find(n => n.id === pausedInfo.nextNode)?.data?.label || pausedInfo.nextNode || 'AWAITING RESPONSE')}`}
                 </span>
-                The workflow context requires a human decision to proceed.
+                {(pausedInfo.isBreakpoint || pausedInfo.nodeType === 'breakpoint' || pausedInfo.gateNodeId?.startsWith('bp_gate_')) ? `Flow execution paused before running target node '${nodes.find(n => n.id === pausedInfo.nextNode)?.data?.label || pausedInfo.nextNode}'.` : 'The workflow context requires a human decision to proceed.'}
               </div>
+
             </motion.div>
           )}
         </div>
@@ -1071,16 +1088,17 @@ export default function RunPanel({ onClose }) {
                 )}
               </AnimatePresence>
               {pausedInfo.nodeType !== 'followup_selection' && (
-                (pausedInfo.isBreakpoint || pausedInfo.nodeType === 'breakpoint') ? (
+                (pausedInfo.isBreakpoint || pausedInfo.nodeType === 'breakpoint' || pausedInfo.gateNodeId?.startsWith('bp_gate_')) ? (
+
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    background: 'linear-gradient(135deg, #FEF2F2 0%, #FFF5F5 100%)',
-                    border: '1.5px solid #FCA5A5',
+                    background: 'linear-gradient(135deg, #FFF5F5 0%, #FEF2F2 100%)',
+                    border: '1.5px solid #FECACA',
                     borderRadius: 20,
                     padding: '12px 20px',
-                    boxShadow: '0 8px 30px rgba(239, 68, 68, 0.15)',
+                    boxShadow: '0 8px 30px rgba(239, 68, 68, 0.06)',
                     width: '100%',
                     backdropFilter: 'blur(10px)',
                   }}>
@@ -1089,13 +1107,13 @@ export default function RunPanel({ onClose }) {
                         width: 34,
                         height: 34,
                         borderRadius: '50%',
-                        backgroundColor: '#EF4444',
+                        backgroundColor: '#F87171',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         color: '#FFF',
                         fontSize: 16,
-                        boxShadow: '0 0 12px rgba(239, 68, 68, 0.5)',
+                        boxShadow: '0 0 12px rgba(248, 113, 113, 0.35)',
                       }}>🛑</div>
                       <div>
                         <div style={{ fontWeight: 700, color: '#991B1B', fontSize: 14, letterSpacing: '-0.2px' }}>
@@ -1113,7 +1131,7 @@ export default function RunPanel({ onClose }) {
                         display: 'flex',
                         alignItems: 'center',
                         gap: 8,
-                        background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+                        background: 'linear-gradient(135deg, #F87171 0%, #EF4444 100%)',
                         color: '#FFFFFF',
                         border: 'none',
                         borderRadius: 12,
@@ -1121,7 +1139,7 @@ export default function RunPanel({ onClose }) {
                         fontWeight: 600,
                         fontSize: 13,
                         cursor: running ? 'not-allowed' : 'pointer',
-                        boxShadow: '0 4px 14px rgba(239, 68, 68, 0.4)',
+                        boxShadow: '0 4px 14px rgba(239, 68, 68, 0.2)',
                         transition: 'all 0.15s ease',
                       }}
                     >

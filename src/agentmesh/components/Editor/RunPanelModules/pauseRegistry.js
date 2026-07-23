@@ -15,7 +15,10 @@ export const PAUSE_NODE_TYPES = {
   stt_trigger:         { hidesInput: true,  showsHitl: false, isStartingTrigger: true,  autoInject: true  },
   followup_form:       { hidesInput: true,  showsHitl: false, isStartingTrigger: false, autoInject: false },
   followup_selection:  { hidesInput: false, showsHitl: false, isStartingTrigger: false, autoInject: false },
+  breakpoint:          { hidesInput: false, showsHitl: true,  isStartingTrigger: false, autoInject: false },
 };
+
+
 
 /** Starting trigger node types (connected to START, pre-chat UI) */
 export const STARTING_TRIGGER_TYPES = Object.entries(PAUSE_NODE_TYPES)
