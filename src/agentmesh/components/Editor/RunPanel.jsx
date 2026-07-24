@@ -83,8 +83,10 @@ export default function RunPanel({ onClose }) {
   const hasStartingCameraNode = (startingNodes['camera'] || []).length > 0;
 
   const hasOcrNodes = useMemo(() => {
-    return nodes.some(n => n.data?.type === 'ocr_node' || n.data?.type === 'signature_stamp_extractor');
-  }, [nodes]);
+    const startingOcr = findStartingTriggers(nodes, edges, 'ocr_node');
+    const startingSig = findStartingTriggers(nodes, edges, 'signature_stamp_extractor');
+    return (startingOcr.length > 0) || (startingSig.length > 0);
+  }, [nodes, edges]);
 
   const isChatStarted = useMemo(() => {
     return streamEvents.some(e => ['node_start', 'token', 'user_message'].includes(e.type));
@@ -342,6 +344,12 @@ export default function RunPanel({ onClose }) {
     history, startRun, addEvent, finishRun, setError, reset, setPausedInfo, addToHistory,
     playAudio
   ]);
+
+  useEffect(() => {
+    window.__agentmesh_onSend = (input, context, targetId) => {
+      onSend(input || 'Auto Start', context, targetId, true);
+    };
+  }, [onSend]);
 
   // 🚀 AUTO-TRIGGER LOGIC: If we arrived here via a "Quick Run" button on a card
   useEffect(() => {
@@ -689,7 +697,7 @@ export default function RunPanel({ onClose }) {
         display: 'flex',
         alignItems: 'center',
         gap: 12,
-        zIndex: 100,
+        zIndex: 10001,
         position: 'sticky',
         top: 0
       }}>

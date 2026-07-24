@@ -46,7 +46,7 @@ const NODE_DEFAULTS = {
   json_transform: {
     label: 'JSON Transform',
     transform_operation: 'flatten', transform_separator: '_', transform_pick_fields: [], transform_rename_map: {}, transform_omit_keys: [], transform_input_key: 'api_response', transform_output_key: 'flattened_json',
-    jt_input_key: 'latest_api_result',
+    jt_input_key: '',
     jt_output_key: 'transformed_data',
     jt_mode: 'jmespath',
     jt_query: '',
@@ -201,7 +201,7 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
           classification_input_field: n.classification_input_field || n.data?.classification_input_field || '',
           use_curl: n.use_curl ?? n.data?.use_curl ?? false,
           curl_command: n.curl_command || n.data?.curl_command || '',
-          jt_input_key: n.jt_input_key || n.data?.jt_input_key || 'latest_api_result',
+          jt_input_key: n.jt_input_key ?? n.data?.jt_input_key ?? '',
           jt_output_key: n.jt_output_key || n.data?.jt_output_key || 'transformed_data',
           jt_mode: n.jt_mode || n.data?.jt_mode || 'jmespath',
           jt_query: n.jt_query || n.data?.jt_query || '',
