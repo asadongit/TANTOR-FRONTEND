@@ -29,6 +29,7 @@ import Breadcrumb from "../../../../components/Breadcrumb";
 import CardGrid from "../../../../components/CardGrid";
 import DataTable from "../../../../components/DataTable";
 import { useFederationDashboardData, useFederationPolicyIds } from "../../../../hooks/platform/federation";
+import { usePersonaStatuses } from "../../../../hooks/dataGovernance/Users/auth";
 
 const FederationDashBoard = () => {
   const navigate = useNavigate();
@@ -48,8 +49,11 @@ const FederationDashBoard = () => {
   };
 
   const { token, decodedToken, hostnameV1 } = useAuth();
+  const { personaStatuses } = usePersonaStatuses();
   const ExternalAPI = window._env_?.VITE_EXTERNAL_API;
   const KongAPI = window._env_?.VITE_KONG_API;
+
+  const isViewManager = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'persona:view manager') && personaStatuses?.['persona:view manager'] === true;
 
   const [isApiModalOpen, setIsApiModalOpen] = useState(false);
   const [apiModalData, setApiModalData] = useState({
@@ -385,17 +389,19 @@ const FederationDashBoard = () => {
     {
       label: "Refresh MV",
       icon: <RotateCw size={16} />,
-      show: (row) => row.materalized,
+      show: (row) => row.materalized && isViewManager,
       onClick: (row) => handleRefreshMV(row.view_name)
     },
     {
       label: "Delete",
       icon: <Trash2 size={16} />,
+      show: (row) => row.materalized ? isViewManager : true,
       onClick: (row) => handleDeleteView(row)
     },
     {
       label: "Edit",
       icon: <Pencil size={16} />,
+      show: (row) => row.materalized ? isViewManager : true,
       onClick: (row) => handleEditView(row)
     }
   ];
