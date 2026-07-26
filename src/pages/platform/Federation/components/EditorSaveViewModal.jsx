@@ -2,12 +2,16 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "../../../../context/AuthContext";
 import CircularProgress from "@mui/material/CircularProgress";
 import { useNavigate } from "react-router-dom";
+import { usePersonaStatuses } from "../../../../hooks/dataGovernance/Users/auth";
 
 import { Lock } from "lucide-react";
 
 const EditorSaveViewModal = ({ isOpen, onClose, query, securedQuery, project, policyIds, onSaveSuccess, isEditMode, editViewName, editOriginalPayload }) => {
   const { hostnameV2, token, decodedToken } = useAuth();
   const navigate = useNavigate();
+  const { personaStatuses } = usePersonaStatuses();
+
+  const isViewManager = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'persona:view manager') && personaStatuses?.['persona:view manager'] === true;
 
   const [viewName, setViewName] = useState("");
   const [isMaterializedView, setIsMaterializedView] = useState(false);
@@ -154,7 +158,7 @@ const EditorSaveViewModal = ({ isOpen, onClose, query, securedQuery, project, po
 
         <div className="space-y-4">
           <div className="flex flex-wrap text-black items-center gap-3 pb-2 border-b border-gray-100">
-            {!isCaching && (
+            {(!isCaching && isViewManager) && (
               <label className="inline-flex items-center space-x-2 cursor-pointer select-none">
                 <input
                   type="checkbox"

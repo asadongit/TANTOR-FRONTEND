@@ -2,9 +2,15 @@ import React, { useEffect, useState } from "react";
 import { useStateContext } from "../context/contextViewProvider";
 import { Lock } from "lucide-react";
 import CircularProgress from "@mui/material/CircularProgress";
+import { useAuth } from "../../../../context/AuthContext";
+import { usePersonaStatuses } from "../../../../hooks/dataGovernance/Users/auth";
 
 const SaveViewModal = ({ toggleModal, handleSaveView }) => {
   const { finalPayload, handleFinalPayload, isEditMode, editViewName } = useStateContext("");
+  const { decodedToken } = useAuth();
+  const { personaStatuses } = usePersonaStatuses();
+
+  const isViewManager = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'persona:view manager') && personaStatuses?.['persona:view manager'] === true;
 
   const [newViewName, setNewViewName] = useState(
     isEditMode ? editViewName : (finalPayload?.view_name || "")
@@ -89,7 +95,7 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
           {/* MV / Caching toggles — only for Integrated Views */}
           {finalPayload?.view_type === "Integrated View" && (
             <div className="flex flex-wrap text-black items-center gap-3 pb-2 border-b border-gray-100">
-              {!isCaching && (
+              {(!isCaching && isViewManager) && (
                 <label className="inline-flex items-center space-x-2 cursor-pointer select-none">
                   <input
                     type="checkbox"
