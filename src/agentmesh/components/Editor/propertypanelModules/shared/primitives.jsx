@@ -5,7 +5,7 @@ import { useRunStore, useWorkflowStore } from '../../../../store';
 export const FONT = "'Google Sans','Roboto',sans-serif";
 
 export const PROVIDERS = [
-  'groq', 'openai', 'anthropic', 'google', 'ollama', 'together', 'mistral', 'huggingface',
+  'groq', 'openai', 'anthropic', 'google', 'ollama', 'sglang', 'together', 'mistral', 'huggingface',
   'deepseek', 'cohere', 'perplexity', 'openrouter', 'azure', 'bedrock', 'vllm'
 ];
 
@@ -15,7 +15,7 @@ export const MODELS = {
     'meta-llama/llama-4-scout-17b-16e-instruct',
     'llama-3.3-70b-versatile',
     'llama-3.1-8b-instant',
-    'qwen/qwen3-32b',
+    'qwen/qwen3.6-27b',
     'moonshotai/kimi-k2-instruct-0905',
     'openai/gpt-oss-20b'
   ],
@@ -23,6 +23,7 @@ export const MODELS = {
   anthropic: ['claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307', 'claude-opus-4'],
   google: ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
   ollama: ['gemma3:1b', 'granite4:1b', 'deepseek-coder-v2:16b', 'qwen2.5:7b', 'gemma4:e2b'],
+  sglang: ['meta-llama/Llama-3.1-8B-Instruct', 'deepseek-ai/DeepSeek-R1-Distill-Qwen-14B', 'custom-model'],
   together: ['mistralai/Mixtral-8x7B-Instruct-v0.1', 'meta-llama/Llama-3-70b-chat-hf', 'togethercomputer/llama-2-70b-chat'],
   mistral: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest', 'open-mixtral-8x22b', 'codestral-latest'],
   huggingface: ['meta-llama/Meta-Llama-3-8B-Instruct', 'mistralai/Mistral-7B-Instruct-v0.2', 'microsoft/Phi-3-mini-4k-instruct'],
@@ -116,7 +117,9 @@ export const Field = memo(function Field({ label, hint, action, children }) {
   );
 });
 
-export const Input = memo(function Input({ value, onChange, placeholder, type = 'text', style: extra, disabled, debounceMs, noVariablePicker = false }) {
+const _stripBraces = (s) => typeof s === 'string' ? s.replace(/^\{\{/, '').replace(/\}\}$/, '') : s;
+
+export const Input = memo(function Input({ value, onChange, placeholder, type = 'text', style: extra, disabled, debounceMs, noVariablePicker = false, stripBraces = false }) {
   const [localValue, setLocalValue] = useState(value ?? '');
   const [showPicker, setShowPicker] = useState(false);
   const dropdownRef = useRef(null);
@@ -156,6 +159,7 @@ export const Input = memo(function Input({ value, onChange, placeholder, type = 
       if (rawVar) text = `{{${rawVar}}}`;
     }
     if (text) {
+      if (stripBraces) text = _stripBraces(text);
       e.preventDefault();
       const target = e.target;
       const start = target.selectionStart ?? (localValue || '').length;
@@ -244,7 +248,8 @@ export const Input = memo(function Input({ value, onChange, placeholder, type = 
               key={k.value}
               type="button"
               onClick={() => {
-                const newVal = (localValue || '') + k.value;
+                const val = stripBraces ? _stripBraces(k.value) : k.value;
+                const newVal = (localValue || '') + val;
                 setLocalValue(newVal);
                 onChange(newVal);
                 setShowPicker(false);
@@ -260,7 +265,7 @@ export const Input = memo(function Input({ value, onChange, placeholder, type = 
   );
 });
 
-export const Textarea = memo(function Textarea({ value, onChange, placeholder, rows = 4, disabled, style: extra, debounceMs, noVariablePicker = false }) {
+export const Textarea = memo(function Textarea({ value, onChange, placeholder, rows = 4, disabled, style: extra, debounceMs, noVariablePicker = false, stripBraces = false }) {
   const [localValue, setLocalValue] = useState(value ?? '');
   const [showPicker, setShowPicker] = useState(false);
   const dropdownRef = useRef(null);
@@ -300,6 +305,7 @@ export const Textarea = memo(function Textarea({ value, onChange, placeholder, r
       if (rawVar) text = `{{${rawVar}}}`;
     }
     if (text) {
+      if (stripBraces) text = _stripBraces(text);
       e.preventDefault();
       const target = e.target;
       const start = target.selectionStart ?? (localValue || '').length;
@@ -388,7 +394,8 @@ export const Textarea = memo(function Textarea({ value, onChange, placeholder, r
               key={k.value}
               type="button"
               onClick={() => {
-                const newVal = (localValue || '') + k.value;
+                const val = stripBraces ? _stripBraces(k.value) : k.value;
+                const newVal = (localValue || '') + val;
                 setLocalValue(newVal);
                 onChange(newVal);
                 setShowPicker(false);
@@ -588,6 +595,43 @@ export const MiniatureToggle = memo(function MiniatureToggle({ checked, onChange
         className="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all duration-200 shadow"
         style={{ left: checked ? 14 : 2 }}
       />
+    </div>
+  );
+});
+
+export const Slider = memo(function Slider({ value, onChange, min = 0, max = 1, step = 0.05, unit = "" }) {
+  const numValue = typeof value === 'number' ? value : Number.parseFloat(value) || min;
+  
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={numValue}
+        onChange={(e) => onChange(Number.parseFloat(e.target.value))}
+        style={{
+          flex: 1,
+          accentColor: 'var(--theme-primary, #7E22CE)',
+          cursor: 'pointer',
+          height: 6
+        }}
+      />
+      <div style={{
+        minWidth: 54,
+        padding: '3px 8px',
+        background: 'var(--bg-secondary, #F1F5F9)',
+        border: '1px solid var(--border)',
+        borderRadius: 6,
+        textAlign: 'center',
+        fontSize: 12,
+        fontWeight: 700,
+        fontFamily: FONT,
+        color: 'var(--text-primary)'
+      }}>
+        {numValue}{unit}
+      </div>
     </div>
   );
 });

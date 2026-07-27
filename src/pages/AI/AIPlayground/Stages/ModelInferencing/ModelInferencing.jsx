@@ -106,7 +106,13 @@ const ModelInferencing = () => {
   const rawClassificationType = modelGenesisConfig?.modelling_type ?? modelGenesisConfig?.classification;
   const classificationType = typeof rawClassificationType === 'string' ? rawClassificationType.trim() : '';
   const isRegressionModel = classificationType !== '' && classificationType.toLowerCase() === 'regression';
-
+  
+  const predictionType =modelGenesisConfig?.prediction_type ||modelGenesisConfig?.predictionType || modelGenesisConfig?.modelling_type || '';
+  const isTimeSeriesModel =
+    String(predictionType).trim().toLowerCase() === 'time series' ||
+    String(predictionType).trim().toLowerCase() === 'timeseries' ||
+    String(predictionType).trim().toLowerCase() === 'univariate_timeseries' ||
+    String(predictionType).trim().toLowerCase() === 'multivariate_timeseries';
   const completedJobsResponse = workflowState?.completedJobs?.apiResponse;
 
   const allTasks = useMemo(() => {
@@ -239,9 +245,20 @@ const regressionMetricMap = {
   huber_loss: 'train_huber_loss',
 };
 
-const metricNameMap = isRegressionModel
-  ? regressionMetricMap
-  : classificationMetricMap;
+const timeseriesMetricMap = {
+  mae: 'train_mae',
+  rmse: 'train_rmse',
+  mape: 'train_mape',
+  smape: 'train_smape',
+  wmape: 'train_wmape',
+  mase: 'train_mase',
+};
+
+const metricNameMap = isTimeSeriesModel
+  ? timeseriesMetricMap
+  : isRegressionModel
+    ? regressionMetricMap
+    : classificationMetricMap;
 
     const classificationDisplayMap = {
   train_accuracy: 'Accuracy',
@@ -259,13 +276,27 @@ const regressionDisplayMap = {
   train_quantile_loss: 'Quantile Loss',
   train_huber_loss: 'Huber Loss',
 };
+const timeseriesDisplayMap = {
+  train_mae: 'MAE',
+  train_rmse: 'RMSE',
+  train_mape: 'MAPE',
+  train_smape: 'SMAPE',
+  train_wmape: 'WMAPE',
+  train_mase: 'MASE',
+};
 
-const metricDisplayNameMap = isRegressionModel
-  ? regressionDisplayMap
-  : classificationDisplayMap;
+const metricDisplayNameMap = isTimeSeriesModel
+  ? timeseriesDisplayMap
+  : isRegressionModel
+    ? regressionDisplayMap
+    : classificationDisplayMap;
 
     const fallbackBest = () => {
-  const defaultMetric = isRegressionModel ? 'train_r2' : 'train_accuracy';
+  const defaultMetric = isTimeSeriesModel
+  ? 'train_rmse'
+  : isRegressionModel
+    ? 'train_r2'
+    : 'train_accuracy';
 
   const best = apiResults.reduce((prev, curr) => {
     return (curr.metrics?.[defaultMetric] || 0) >
@@ -295,7 +326,9 @@ const metricDisplayNameMap = isRegressionModel
           const prevValue = prev.metrics?.[metricKey] ?? 0;
           const currValue = current.metrics?.[metricKey] ?? 0;
           // Metrics to minimize (lower is better): log_loss, mse, rmse, mae, mape
-          const shouldMinimize = ['train_log_loss', 'train_mse', 'train_rmse', 'train_mae', 'train_mape'].includes(metricKey);
+          const shouldMinimize = ['train_log_loss', 'train_mse', 'train_rmse', 'train_mae', 'train_mape','train_smape',
+'train_wmape',
+'train_mase'].includes(metricKey);
           if (shouldMinimize) {
             if (currValue < prevValue) return current;
             if (currValue > prevValue) return prev;
@@ -308,7 +341,7 @@ const metricDisplayNameMap = isRegressionModel
       });
       const firstMetricKey = orderedMetricKeys[0];
       const bestValue = best.metrics?.[firstMetricKey] ?? 0;
-      const shouldMinimize = ['train_log_loss', 'train_mse', 'train_rmse', 'train_mae', 'train_mape'].includes(firstMetricKey);
+      const shouldMinimize = ['train_log_loss', 'train_mse', 'train_rmse', 'train_mae', 'train_mape','train_smape','train_wmape','train_mase'].includes(firstMetricKey);
       const shouldFormat = ['train_r2', 'train_accuracy', 'train_precision', 'train_recall', 'train_f1', 'train_mape'].includes(firstMetricKey);
       
       return {
@@ -333,8 +366,24 @@ const metricDisplayNameMap = isRegressionModel
       fullName: result.run_name,
       displayName: truncateName(result.run_name, legendTruncateLength),
 
-      ...(isRegressionModel
-        ? {
+      ...(isTimeSeriesModel
+  ? {
+      testMAE: metrics.test_mae?.toFixed(3) ?? 'N/A',
+      testRMSE: metrics.test_rmse?.toFixed(3) ?? 'N/A',
+      testMAPE: metrics.test_mape?.toFixed(3) ?? 'N/A',
+      testSMAPE: metrics.test_smape?.toFixed(3) ?? 'N/A',
+      testWMAPE: metrics.test_wmape?.toFixed(3) ?? 'N/A',
+      testMASE: metrics.test_mase?.toFixed(3) ?? 'N/A',
+
+      trainMAE: metrics.train_mae?.toFixed(3) ?? 'N/A',
+      trainRMSE: metrics.train_rmse?.toFixed(3) ?? 'N/A',
+      trainMAPE: metrics.train_mape?.toFixed(3) ?? 'N/A',
+      trainSMAPE: metrics.train_smape?.toFixed(3) ?? 'N/A',
+      trainWMAPE: metrics.train_wmape?.toFixed(3) ?? 'N/A',
+      trainMASE: metrics.train_mase?.toFixed(3) ?? 'N/A',
+    }
+  : isRegressionModel
+  ? {
             testMAE: metrics.test_mae?.toFixed(3) ?? 'N/A',
 testRMSE: metrics.test_rmse?.toFixed(3) ?? 'N/A',
 testR2: metrics.test_r2?.toFixed(3) ?? 'N/A',
@@ -367,11 +416,26 @@ trainHuberLoss: metrics.train_huber_loss?.toFixed(3) ?? 'N/A',
           }),
     };
   });
-}, [apiResults, legendTruncateLength, isRegressionModel, truncateName]);
+}, [apiResults, legendTruncateLength, isRegressionModel,isTimeSeriesModel, truncateName]);
 
   const availableMetrics = useMemo(() => {
     if (apiResults.length === 0) return [];
     const metrics = apiResults[0].metrics || {};
+
+    if (isTimeSeriesModel) {
+      return [
+        { name: 'MAE', key: 'mae' },
+        { name: 'RMSE', key: 'rmse' },
+        { name: 'MAPE', key: 'mape' },
+        { name: 'SMAPE', key: 'smape' },
+        { name: 'WMAPE', key: 'wmape' },
+        { name: 'MASE', key: 'mase' },
+      ].filter(
+        m =>
+          metrics.hasOwnProperty(`train_${m.key}`) ||
+          metrics.hasOwnProperty(`test_${m.key}`)
+      );
+    }
 
     if (isRegressionModel) {
       // For regression models, show regression-specific metrics
@@ -394,7 +458,7 @@ trainHuberLoss: metrics.train_huber_loss?.toFixed(3) ?? 'N/A',
         { name: 'Log Loss', key: 'log_loss' },
       ].filter(m => metrics.hasOwnProperty(`train_${m.key}`) || metrics.hasOwnProperty(`test_${m.key}`));
     }
-  }, [apiResults, isRegressionModel]);
+  }, [apiResults, isRegressionModel, isTimeSeriesModel]);
 
   const metricsData = useMemo(() => {
     if (availableMetrics.length === 0) return [];
@@ -581,25 +645,30 @@ trainHuberLoss: metrics.train_huber_loss?.toFixed(3) ?? 'N/A',
               >
                 Performance
               </button>
-              <button
-                onClick={() => setActiveTab('fairness')}
-                className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === 'fairness'
-                  ? 'border-[#8e78b7] text-[#8e78b7]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                Fairness
-              </button>
-              <button
-                onClick={() => setActiveTab('charts')}
-                className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === 'charts'
-                  ? 'border-[#8e78b7] text-[#8e78b7]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                Charts
-              </button>
-              {!isRegressionModel && (
+              
+              {!isTimeSeriesModel && (
+                <button
+                  onClick={() => setActiveTab('fairness')}
+                  className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === 'fairness'
+                    ? 'border-[#8e78b7] text-[#8e78b7]'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                >
+                  Fairness
+                </button>
+              )}
+              {!isTimeSeriesModel && (
+                <button
+                  onClick={() => setActiveTab('charts')}
+                  className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === 'charts'
+                    ? 'border-[#8e78b7] text-[#8e78b7]'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                >
+                  Charts
+                </button>
+              )}
+              {!isRegressionModel && !isTimeSeriesModel && (
                 <button
                   onClick={() => setActiveTab('confusion_matrix')}
                   className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === 'confusion_matrix'
@@ -616,7 +685,7 @@ trainHuberLoss: metrics.train_huber_loss?.toFixed(3) ?? 'N/A',
           {activeTab === 'performance' && (
             <PerformanceTab algorithmData={algorithmData} isRegressionModel={isRegressionModel} />
           )}
-          {activeTab === 'fairness' && (
+          {!isTimeSeriesModel && activeTab === 'fairness' && (
             <FairnessTab
               apiResults={apiResults}
               selectedFairnessModel={selectedFairnessModel}
@@ -624,7 +693,7 @@ trainHuberLoss: metrics.train_huber_loss?.toFixed(3) ?? 'N/A',
               selectedModelFairnessData={selectedModelFairnessData}
             />
           )}
-          {activeTab === 'charts' && (
+          {!isTimeSeriesModel && activeTab === 'charts' && (
             <ChartsTab
               apiResults={apiResults}
               selectedChartsModel={selectedChartsModel}

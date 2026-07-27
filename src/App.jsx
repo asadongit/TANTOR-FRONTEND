@@ -85,11 +85,9 @@ function MainLayout({ isSidebarCollapsed, toggleSidebar }) {
               toggleSidebar={toggleSidebar}
             />
             <main
-              className={`flex-1 transition-all duration-300 h-full min-h-0 ${
-                isSidebarCollapsed ? 'ml-16' : 'ml-64'
-              } ${
-                isAgentMesh ? 'overflow-hidden' : 'overflow-y-auto'
-              }`}
+              className={`flex-1 transition-all duration-300 h-full min-h-0 ${isSidebarCollapsed ? 'ml-16' : 'ml-64'
+                } ${isAgentMesh ? 'overflow-hidden' : 'overflow-y-auto'
+                }`}
             >
               {fromMarketplace && (
                 <div style={{
@@ -173,10 +171,44 @@ function App() {
               <Route
                 path="/*"
                 element={
-                  <MainLayout
-                    isSidebarCollapsed={isSidebarCollapsed}
-                    toggleSidebar={toggleSidebar}
-                  />
+                  <DatabotProvider>
+                    <AIPlaygroundProvider>
+                      <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
+                        <Header
+                          activeSection={activeSection}
+                        />
+                        <Chatbot />
+                        <div className="flex flex-1 min-h-0">
+                          <Sidebar
+                            activeSection={activeSection}
+                            isCollapsed={isSidebarCollapsed}
+                            toggleSidebar={toggleSidebar}
+                            setIsSidebarCollapsed={setIsSidebarCollapsed}
+                          />
+                          <main
+                            className={`flex-1 transition-all duration-300 overflow-y-auto h-full min-h-0 ${isSidebarCollapsed ? "ml-16" : "ml-64"
+                              }`}
+                          >
+                            <Routes>
+                              <Route path="/datagovernance" element={<Navigate to="/" replace />} />
+                              <Route
+                                path="/dashboard"
+                                element={
+                                  <Dashboard
+                                    activeSection={activeSection}
+                                    setActiveSection={setActiveSection}
+                                  />
+                                }
+                              />
+                              <Route path="/*" element={<PlatformRoutes />} />
+                              {DataGovernanceRoutes}
+                              {AIRoutes}
+                            </Routes>
+                          </main>
+                        </div>
+                      </div>
+                    </AIPlaygroundProvider>
+                  </DatabotProvider>
                 }
               />
 

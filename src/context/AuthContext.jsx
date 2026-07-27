@@ -20,6 +20,7 @@ const AuthContext = createContext({
   decodedToken: null,
   login: async () => false,
   logout: () => {},
+  changePassword: () => {},
   loginString: "",
   project: "default",
   setSelectedProject: () => {},
@@ -313,6 +314,19 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const changePassword = async () => {
+    try {
+      const kc = getKeycloak();
+      await kc.login({
+        action: "UPDATE_PASSWORD",
+        prompt: "login",
+        redirectUri: `${window.location.origin}/dashboard`,
+      });
+    } catch (error) {
+      console.error("Keycloak change password redirect failed:", error);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -321,6 +335,7 @@ export const AuthProvider = ({ children }) => {
         decodedToken,
         login,
         logout,
+        changePassword,
         loginString,
         setLoginString,
         project,

@@ -14,7 +14,7 @@ const AddRole = ({ show, onClose, onSave }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const { token } = useAuth();
+  const { token, decodedToken } = useAuth();
 
   
   useEffect(() => {
@@ -44,7 +44,8 @@ const AddRole = ({ show, onClose, onSave }) => {
           name: formData.name,
           description: formData.description,
           startDate: formData.duration.from,
-          endDate: formData.duration.to
+          endDate: formData.duration.to,
+          created_by: decodedToken?.preferred_username
         })
       });
 

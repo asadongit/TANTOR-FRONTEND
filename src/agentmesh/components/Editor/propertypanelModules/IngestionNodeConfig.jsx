@@ -65,6 +65,7 @@ export default function IngestionNodeConfig({ data, update }) {
         hint="Leave empty to ingest the latest chat message."
       >
         <Input
+          stripBraces
           value={data.ingestion_source_key || ""}
           onChange={(v) => update({ ingestion_source_key: v })}
           placeholder="e.g. latest_ocr_output"

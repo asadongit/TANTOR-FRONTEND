@@ -7,7 +7,10 @@ import { connectorConfig } from "./connectorConfig";
 import Modal from "../../cdc/components/Modal";
 import { useAllConnectionData } from "../../../../hooks/platform/connection";
 import KafkaTopicManager from "./KafkaTopicManager";
-import JSZip from 'jszip';
+import KafkaTopicSelector from "./KafkaTopicSelector";
+import ClouderaHiveTableSelector from "./ClouderaHiveTableSelector";
+import ElasticsearchIndexSelector from "./ElasticsearchIndexSelector";
+import JSZip from "jszip";
 
 const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
   /*
@@ -40,6 +43,11 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
   const [fileObjects, setFileObjects] = useState({});
   const [customFiles, setCustomFiles] = useState([]);
   const [removedTopics, setRemovedTopics] = useState([]);
+  const [selectedKafkaTopics, setSelectedKafkaTopics] = useState([]);
+  const [clouderaHiveTables, setClouderaHiveTables] = useState([]);
+  const [selectedClouderaHiveTables, setSelectedClouderaHiveTables] = useState([]);
+  const [elasticsearchIndices, setElasticsearchIndices] = useState([]);
+  const [selectedElasticsearchIndices, setSelectedElasticsearchIndices] = useState([]);
 
   const defaultFormData = {
     created_by: decodedToken.preferred_username,
@@ -77,6 +85,14 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
   const regexValidName =
     /^(?!_)(?!.*_$)[A-Za-z][A-Za-z0-9]*(_[A-Za-z0-9]+)*$/i;
 
+  const kafkaType = formData.extra_info?.type;
+  const isKafkaRawOrAvro =
+    selectedConnector === "kafka" &&
+    (kafkaType === "raw" || kafkaType === "avro");
+  const isClouderaHive = selectedConnector === "clouderahive";
+  const isHiveConnector = isClouderaHive;
+  const isElasticsearchConnector = selectedConnector === "elasticsearch";
+
   useEffect(() => {
     if (isEditMode && editConnectionData) {
       const extra_info = editConnectionData.extra_info || {};
@@ -91,6 +107,30 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       setSelectedConnector(editConnectionData.connection_type);
       setErrors({});
       setTouchedFields({});
+
+      if (
+        extra_info.topics &&
+        Array.isArray(extra_info.topics) &&
+        extra_info.topics.length > 0
+      ) {
+        setSelectedKafkaTopics(extra_info.topics);
+      }
+
+      if (
+        extra_info.tables &&
+        Array.isArray(extra_info.tables) &&
+        extra_info.tables.length > 0
+      ) {
+        setSelectedClouderaHiveTables(extra_info.tables);
+      }
+
+      if (
+        extra_info.indices &&
+        Array.isArray(extra_info.indices) &&
+        extra_info.indices.length > 0
+      ) {
+        setSelectedElasticsearchIndices(extra_info.indices);
+      }
     }
   }, [isEditMode, editConnectionData]);
 
@@ -104,10 +144,10 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     return connectorConfig[connectorType].fields;
   };
 
-
   const isFieldVisible = (field) => {
     if (!field.conditionalOn) return true;
-    const { field: condField, value: condValue, values: condValues } = field.conditionalOn;
+    const { field: condField, value: condValue, values: condValues } =
+      field.conditionalOn;
 
     const currentValue = condField.startsWith("extra_info.")
       ? formData.extra_info?.[condField.split(".")[1]]
@@ -117,12 +157,43 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     return currentValue === condValue;
   };
 
+  const isFieldRequired = (field) => {
+    if (field.required) return true;
+    if (!field.requiredOn) return false;
+    const { field: condField, value: condValue } = field.requiredOn;
+    const currentValue = condField.startsWith("extra_info.")
+      ? formData.extra_info?.[condField.split(".")[1]]
+      : formData[condField];
+    return currentValue === condValue;
+  };
+
+  const originalKafkaType = isEditMode
+    ? editConnectionData?.extra_info?.type
+    : null;
+
+  const isKafkaCustomOriginal =
+    selectedConnector === "kafka" &&
+    isEditMode &&
+    originalKafkaType === "custom" &&
+    formData.extra_info?.type === "custom";
+
+  const isKafkaCustomNew =
+    selectedConnector === "kafka" &&
+    isEditMode &&
+    originalKafkaType !== "custom" &&
+    formData.extra_info?.type === "custom";
+
   const isKafkaCustom =
-    selectedConnector === "kafka" && formData.extra_info?.type === "custom";
+    selectedConnector === "kafka" &&
+    !isEditMode &&
+    formData.extra_info?.type === "custom";
 
   const getTruststoreFile = () => fileObjects["truststore_location"] || null;
+  const getKeytabFile = () => fileObjects["keytab_location"] || null;
+  const getCoreSiteFile = () => fileObjects["core_site_location"] || null;
+  const getHdfsSiteFile = () => fileObjects["hdfs_site_location"] || null;
 
-  const buildTestPayload = (data) => {
+  const buildTestPayload = async (data) => {
     const excludedKeys = [
       "created_by",
       "pool_type",
@@ -139,9 +210,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     const filteredData = Object.fromEntries(
       Object.entries(data).filter(
         ([key, value]) =>
-          !excludedKeys.includes(key) &&
-          value !== null &&
-          value !== undefined
+          !excludedKeys.includes(key) && value !== null && value !== undefined
       )
     );
 
@@ -153,11 +222,54 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       };
     }
 
+    const keytabFile = getKeytabFile();
+    if (keytabFile && filteredData.extra_info) {
+      filteredData.extra_info = {
+        ...filteredData.extra_info,
+        keytab_location: "",
+      };
+    }
+    const coreSiteFile = getCoreSiteFile();
+    if (coreSiteFile && filteredData.extra_info) {
+      filteredData.extra_info = {
+        ...filteredData.extra_info,
+        core_site_location: "",
+      };
+    }
+    const hdfsSiteFile = getHdfsSiteFile();
+    if (hdfsSiteFile && filteredData.extra_info) {
+      filteredData.extra_info = {
+        ...filteredData.extra_info,
+        hdfs_site_location: "",
+      };
+    }
+
     const payload = new FormData();
     payload.append("connection_info", JSON.stringify(filteredData));
     if (truststoreFile) {
       payload.append("truststore_file", truststoreFile);
     }
+
+    if (isHiveConnector) {
+      const hiveFiles = [keytabFile, coreSiteFile, hdfsSiteFile].filter(Boolean);
+      if (hiveFiles.length > 0) {
+        const zip = new JSZip();
+        if (keytabFile) zip.file(keytabFile.name, keytabFile);
+        if (coreSiteFile) zip.file("core-site.xml", coreSiteFile);
+        if (hdfsSiteFile) zip.file("hdfs-site.xml", hdfsSiteFile);
+        const zipBlob = await zip.generateAsync({
+          type: "blob",
+          compression: "DEFLATE",
+          compressionOptions: { level: 1 },
+        });
+        payload.append("hive_files_zip", zipBlob, "hive_files.zip");
+      }
+    } else {
+      if (keytabFile) {
+        payload.append("keytab_file", keytabFile);
+      }
+    }
+
     return payload;
   };
 
@@ -188,6 +300,67 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       };
     }
 
+    const keytabFile = getKeytabFile();
+    if (keytabFile && filteredData.extra_info) {
+      filteredData = {
+        ...filteredData,
+        extra_info: {
+          ...filteredData.extra_info,
+          keytab_location: `${data.connection_name}_${keytabFile.name}`,
+        },
+      };
+    }
+    const coreSiteFile = getCoreSiteFile();
+    if (coreSiteFile && filteredData.extra_info) {
+      filteredData = {
+        ...filteredData,
+        extra_info: {
+          ...filteredData.extra_info,
+          core_site_location: `${data.connection_name}_${coreSiteFile.name}`,
+        },
+      };
+    }
+    const hdfsSiteFile = getHdfsSiteFile();
+    if (hdfsSiteFile && filteredData.extra_info) {
+      filteredData = {
+        ...filteredData,
+        extra_info: {
+          ...filteredData.extra_info,
+          hdfs_site_location: `${data.connection_name}_${hdfsSiteFile.name}`,
+        },
+      };
+    }
+
+    if (isKafkaRawOrAvro && selectedKafkaTopics.length > 0) {
+      filteredData = {
+        ...filteredData,
+        extra_info: {
+          ...filteredData.extra_info,
+          topics: selectedKafkaTopics,
+        },
+      };
+    }
+
+    if (isHiveConnector && selectedClouderaHiveTables.length > 0) {
+      filteredData = {
+        ...filteredData,
+        extra_info: {
+          ...filteredData.extra_info,
+          tables: selectedClouderaHiveTables,
+        },
+      };
+    }
+
+    if (isElasticsearchConnector && selectedElasticsearchIndices.length > 0) {
+      filteredData = {
+        ...filteredData,
+        extra_info: {
+          ...filteredData.extra_info,
+          indices: selectedElasticsearchIndices,
+        },
+      };
+    }
+
     if (isEditMode && removedTopics.length > 0) {
       filteredData = {
         ...filteredData,
@@ -204,10 +377,41 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       payload.append("truststore_file", truststoreFile);
     }
 
+    if (isHiveConnector) {
+      const hiveFiles = [keytabFile, coreSiteFile, hdfsSiteFile].filter(Boolean);
+      if (hiveFiles.length > 0) {
+        const zip = new JSZip();
+        if (keytabFile) zip.file(keytabFile.name, keytabFile);
+        if (coreSiteFile) zip.file("core-site.xml", coreSiteFile);
+        if (hdfsSiteFile) zip.file("hdfs-site.xml", hdfsSiteFile);
+        let zipBlob;
+        try {
+          zipBlob = await zip.generateAsync({
+            type: "blob",
+            compression: "DEFLATE",
+            compressionOptions: { level: 1 },
+          });
+        } catch (err) {
+          throw new Error(
+            "One or more files could not be read. Please re-select them and try again."
+          );
+        }
+        payload.append("hive_files_zip", zipBlob, "hive_files.zip");
+      }
+    } else {
+      if (keytabFile) {
+        payload.append("keytab_file", keytabFile);
+      }
+    }
+
     if (customFiles.length > 0) {
       const zip = new JSZip();
       customFiles.forEach((f) => zip.file(f.name, f));
-      const zipBlob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 1 } });
+      const zipBlob = await zip.generateAsync({
+        type: "blob",
+        compression: "DEFLATE",
+        compressionOptions: { level: 1 },
+      });
       payload.append("custom_files_zip", zipBlob, "topics.zip");
     }
 
@@ -216,56 +420,72 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
 
 
   const validateField = (name, value) => {
-    let newErrors = { ...errors };
+    setErrors((prevErrors) => {
+      const newErrors = { ...prevErrors };
 
-    if (name === "connection_name") {
-      if (!value) {
-        newErrors[name] = "Connection name is required";
-      } else if (!regexValidName.test(value)) {
-        newErrors.connection_name =
-          "Connection names must start with a letter, end with a letter or digit, and contain only letters, numbers, and underscores. No leading or trailing underscores allowed.";
-      } else if (
-        !isEditMode &&
-        connectionNames.includes(value.toLowerCase())
-      ) {
-        newErrors[name] = "Connection name already exists";
-      } else if (
-        isEditMode &&
-        value.toLowerCase() !==
-        editConnectionData.connection_name.toLowerCase() &&
-        connectionNames.includes(value.toLowerCase())
-      ) {
-        newErrors[name] = "Connection name already exists";
+      if (name === "connection_name") {
+        if (!value) {
+          newErrors.connection_name = "Connection name is required";
+        } else if (!regexValidName.test(value)) {
+          newErrors.connection_name =
+            "Connection names must start with a letter, end with a letter or digit, and contain only letters, numbers, and underscores. No leading or trailing underscores allowed.";
+        } else if (
+          !isEditMode &&
+          connectionNames.includes(value.toLowerCase())
+        ) {
+          newErrors.connection_name = "Connection name already exists";
+        } else if (
+          isEditMode &&
+          value.toLowerCase() !==
+            editConnectionData.connection_name.toLowerCase() &&
+          connectionNames.includes(value.toLowerCase())
+        ) {
+          newErrors.connection_name = "Connection name already exists";
+        } else {
+          delete newErrors.connection_name;
+        }
+      } else if (name === "description") {
+        if (!value?.trim()) {
+          newErrors.description = "Description is required";
+        } else {
+          delete newErrors.description;
+        }
+      } else if (name === "pool_type") {
+        if (!value) {
+          newErrors.pool_type = "Behaviour is required";
+        } else {
+          delete newErrors.pool_type;
+        }
       } else {
-        delete newErrors[name];
-      }
-    } else if (name === "description" && !value) {
-      newErrors[name] = "Description is required";
-    } else if (name === "pool_type" && !value) {
-      newErrors[name] = "Behaviour is required";
-    } else {
-      const field = getConnectorFields(selectedConnector).find(
-        (f) => f.name === name
-      );
-      if (field) {
-        if (field.type === "file") {
-          const key = name.split(".")[1];
-          const existingValue = formData.extra_info?.[key];
-          if (field.required && isFieldVisible(field) && !fileObjects[key] && !existingValue) {
+        const field = getConnectorFields(selectedConnector).find(
+          (f) => f.name === name
+        );
+
+        if (field) {
+          if (field.type === "file") {
+            const key = name.split(".")[1];
+            const existingValue = formData.extra_info?.[key];
+
+            if (
+              isFieldRequired(field) &&
+              isFieldVisible(field) &&
+              !fileObjects[key] &&
+              !existingValue
+            ) {
+              newErrors[name] = `${field.label} is required`;
+            } else {
+              delete newErrors[name];
+            }
+          } else if (isFieldRequired(field) && isFieldVisible(field) && !value) {
             newErrors[name] = `${field.label} is required`;
           } else {
             delete newErrors[name];
           }
-        } else if (field.required && isFieldVisible(field) && !value) {
-          newErrors[name] = `${field.label} is required`;
-        } else {
-          delete newErrors[name];
         }
       }
-    }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+      return newErrors;
+    });
   };
 
   const validateForm = () => {
@@ -286,7 +506,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     } else if (
       isEditMode &&
       formData.connection_name.toLowerCase() !==
-      editConnectionData.connection_name.toLowerCase() &&
+        editConnectionData.connection_name.toLowerCase() &&
       connectionNames.includes(formData.connection_name.toLowerCase())
     ) {
       newErrors.connection_name = "Connection name already exists";
@@ -307,7 +527,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     const connectorFields = getConnectorFields(selectedConnector);
     connectorFields.forEach((field) => {
       if (field.type === "file") {
-        if (field.required && isFieldVisible(field)) {
+        if (isFieldRequired(field) && isFieldVisible(field)) {
           const key = field.name.split(".")[1];
           const existingValue = formData.extra_info?.[key];
           if (!fileObjects[key] && !existingValue) {
@@ -318,7 +538,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
         return;
       }
 
-      if (field.required && isFieldVisible(field)) {
+      if (isFieldRequired(field) && isFieldVisible(field)) {
         let value;
         if (field.name.startsWith("extra_info.")) {
           const key = field.name.split(".")[1];
@@ -333,51 +553,83 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       }
     });
 
-    if (!isEditMode && isKafkaCustom && customFiles.length === 0) {
-      newErrors["custom_files"] = "At least one custom file is required";
+    if (isKafkaCustom && customFiles.length === 0) {
+      newErrors["custom_files"] = "At least one topic JSON file is required";
       allTouched["custom_files"] = true;
     }
+
+    if (isKafkaCustomOriginal && customFiles.length === 0 && removedTopics.length > 0) {
+      newErrors["custom_files"] = "At least one topic JSON file is required";
+      allTouched["custom_files"] = true;
+    }
+
+
 
     setErrors(newErrors);
     setTouchedFields((prev) => ({ ...prev, ...allTouched }));
     return Object.keys(newErrors).length === 0;
   };
-  
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
 
     setIsTestSuccessful(false);
-    setTouchedFields((prev) => ({ ...prev, [name]: true }));
+
+    setTouchedFields((prev) => ({
+      ...prev,
+      [name]: true,
+    }));
 
     if (name.startsWith("extra_info.")) {
       const key = name.split(".")[1];
 
       setFormData((prev) => {
-        const updatedExtraInfo = { ...prev.extra_info, [key]: value };
+        const updatedExtraInfo = {
+          ...prev.extra_info,
+          [key]: value,
+        };
 
         if (key === "type" && value === "raw") {
           delete updatedExtraInfo.schema_registery_url;
 
           setErrors((prevErrors) => {
-            const { "extra_info.schema_registery_url": _url, ...rest } = prevErrors;
+            const {
+              "extra_info.schema_registery_url": _url,
+              ...rest
+            } = prevErrors;
             return rest;
           });
+
           setTouchedFields((prevTouched) => {
-            const { "extra_info.schema_registery_url": _url, ...rest } = prevTouched;
+            const {
+              "extra_info.schema_registery_url": _url,
+              ...rest
+            } = prevTouched;
+            return rest;
+          });
+        }
+
+        if (key === "type" && value !== "raw" && value !== "avro") {
+          setSelectedKafkaTopics([]);
+          setErrors((prevErrors) => {
+            const { kafka_topics: _kt, ...rest } = prevErrors;
             return rest;
           });
         }
 
         if (key === "type" && value !== "custom") {
           setCustomFiles([]);
+
           setErrors((prevErrors) => {
             const { custom_files: _cf, ...rest } = prevErrors;
             return rest;
           });
         }
 
-        if (key === "security_protocol" && !["SSL", "SASL_SSL"].includes(value)) {
+        if (
+          key === "security_protocol" &&
+          !["SSL", "SASL_SSL"].includes(value)
+        ) {
           delete updatedExtraInfo.truststore_location;
           delete updatedExtraInfo.truststore_password;
           delete updatedExtraInfo.truststore_type;
@@ -396,6 +648,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
             } = prevErrors;
             return rest;
           });
+
           setTouchedFields((prevTouched) => {
             const {
               "extra_info.truststore_location": _l,
@@ -407,7 +660,10 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
           });
         }
 
-        if (key === "security_protocol" && ["PLAINTEXT", "SSL"].includes(value)) {
+        if (
+          key === "security_protocol" &&
+          ["PLAINTEXT", "SSL"].includes(value)
+        ) {
           delete updatedExtraInfo.sasl_mechanism;
 
           setErrors((prevErrors) => {
@@ -419,6 +675,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
             } = prevErrors;
             return rest;
           });
+
           setTouchedFields((prevTouched) => {
             const {
               "extra_info.sasl_mechanism": _m,
@@ -437,10 +694,73 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
           };
         }
 
-        return { ...prev, extra_info: updatedExtraInfo };
+        if (
+          key === "security" &&
+          value !== "Secured"
+        ) {
+          delete updatedExtraInfo.truststore_location;
+          delete updatedExtraInfo.truststore_password;
+          delete updatedExtraInfo.truststore_path;
+          delete updatedExtraInfo.truststore_type;
+
+          setFileObjects((prev) => {
+            const { truststore_location, ...rest } = prev;
+            return rest;
+          });
+
+          setErrors((prevErrors) => {
+            const {
+              "extra_info.truststore_location": _l,
+              "extra_info.truststore_password": _tp,
+              "extra_info.truststore_path": _tpath,
+              ...rest
+            } = prevErrors;
+            return rest;
+          });
+
+          setTouchedFields((prevTouched) => {
+            const {
+              "extra_info.truststore_location": _l,
+              "extra_info.truststore_password": _tp,
+              "extra_info.truststore_path": _tpath,
+              ...rest
+            } = prevTouched;
+            return rest;
+          });
+        }
+
+        return {
+          ...prev,
+          extra_info: updatedExtraInfo,
+        };
       });
     } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+
+      setErrors((prevErrors) => {
+        const newErrors = { ...prevErrors };
+
+        if (name === "description") {
+          if (value.trim()) {
+            delete newErrors.description;
+          }
+        }
+
+        if (name === "pool_type") {
+          if (value) {
+            delete newErrors.pool_type;
+          }
+        }
+
+        if (name === "connection_name") {
+          delete newErrors.connection_name;
+        }
+
+        return newErrors;
+      });
     }
 
     validateField(name, value);
@@ -483,9 +803,41 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       return;
     }
 
-    const payload = buildTestPayload(formData);
+    let updatedFormData = { ...formData };
+    let extraInfoChanged = false;
+    let newExtraInfo = { ...updatedFormData.extra_info };
+    
+    if (fileObjects["truststore_location"]) {
+       newExtraInfo.truststore_location = `${updatedFormData.connection_name}_${fileObjects["truststore_location"].name}`;
+       extraInfoChanged = true;
+    }
+    if (fileObjects["keytab_location"]) {
+       newExtraInfo.keytab_location = `${updatedFormData.connection_name}_${fileObjects["keytab_location"].name}`;
+       extraInfoChanged = true;
+    }
+    if (fileObjects["core_site_location"]) {
+       newExtraInfo.core_site_location = `${updatedFormData.connection_name}_${fileObjects["core_site_location"].name}`;
+       extraInfoChanged = true;
+    }
+    if (fileObjects["hdfs_site_location"]) {
+       newExtraInfo.hdfs_site_location = `${updatedFormData.connection_name}_${fileObjects["hdfs_site_location"].name}`;
+       extraInfoChanged = true;
+    }
+
+    if (extraInfoChanged) {
+       updatedFormData.extra_info = newExtraInfo;
+       setFormData(updatedFormData);
+    }
+
+    const payload = await buildTestPayload(updatedFormData);
 
     setIsTesting(true);
+    if (isHiveConnector) {
+      setClouderaHiveTables([]);
+    }
+    if (isElasticsearchConnector) {
+      setElasticsearchIndices([]);
+    }
     try {
       const response = await fetch(`${hostnameV1}/test-connection`, {
         method: "POST",
@@ -496,11 +848,26 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       });
 
       if (response.ok) {
+        const responseData = await response.json();
         setIsTestSuccessful(true);
         toast.success("Connection test successful");
+
+        if (isHiveConnector) {
+          const tableList = Array.isArray(responseData.tables)
+            ? responseData.tables
+            : [];
+          setClouderaHiveTables(tableList);
+        }
+        if (isElasticsearchConnector) {
+          const indexList = Array.isArray(responseData.indices)
+            ? responseData.indices
+            : [];
+          setElasticsearchIndices(indexList);
+        }
       } else {
         const errorData = await response.json();
-        const errorMsg = errorData.detail || errorData.message || "Unknown error";
+        const errorMsg =
+          errorData.detail || errorData.message || "Unknown error";
         toast.error(errorMsg, {
           duration: 6000,
           style: {
@@ -529,13 +896,43 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       return;
     }
 
+    if (isKafkaRawOrAvro && selectedKafkaTopics.length === 0) {
+      setErrors((prev) => ({
+        ...prev,
+        kafka_topics: "At least one topic must be selected",
+      }));
+      setTouchedFields((prev) => ({ ...prev, kafka_topics: true }));
+      toast.error("Please select at least one Kafka topic");
+      return;
+    }
+
+    if (isHiveConnector && selectedClouderaHiveTables.length === 0) {
+      setErrors((prev) => ({
+        ...prev,
+        cloudera_tables: "At least one table must be selected",
+      }));
+      setTouchedFields((prev) => ({ ...prev, cloudera_tables: true }));
+      toast.error("Please select at least one Hive table");
+      return;
+    }
+
+    if (isElasticsearchConnector && selectedElasticsearchIndices.length === 0) {
+      setErrors((prev) => ({
+        ...prev,
+        elasticsearch_indices: "At least one index must be selected",
+      }));
+      setTouchedFields((prev) => ({ ...prev, elasticsearch_indices: true }));
+      toast.error("Please select at least one Elasticsearch index");
+      return;
+    }
+
     const isDuplicate =
       !isEditMode &&
       connectionNames.includes(formData.connection_name.toLowerCase());
     const isNameChanged =
       isEditMode &&
       formData.connection_name.toLowerCase() !==
-      editConnectionData.connection_name.toLowerCase();
+        editConnectionData.connection_name.toLowerCase();
     const isDuplicateOnEdit =
       isNameChanged &&
       connectionNames.includes(formData.connection_name.toLowerCase());
@@ -550,11 +947,10 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       return;
     }
 
-
     setIsLoading(true);
     try {
       const payload = await buildSavePayload(formData);
-      
+
       const endpoint = isEditMode
         ? `${hostnameV1}/connection-saves/${editConnectionData.connection_id}`
         : `${hostnameV1}/create-connection`;
@@ -580,6 +976,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
           setIsTestSuccessful(false);
           setErrors({});
           setTouchedFields({});
+          setSelectedKafkaTopics([]);
         }
         setCustomFiles([]);
         setRemovedTopics([]);
@@ -587,7 +984,10 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
         refetchConnections();
       } else {
         const errorData = await response.json();
-        const errorMsg = errorData.detail || errorData.message || "Failed to create connection";
+        const errorMsg =
+          errorData.detail ||
+          errorData.message ||
+          "Failed to create connection";
         toast.error(`${errorMsg}`, {
           duration: 6000,
           style: {
@@ -661,9 +1061,10 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
               <div
                 key={card.title}
                 className={`p-4 rounded-lg shadow-sm border flex items-center justify-center cursor-pointer transition-all duration-300 ease-in-out transform
-                  ${selectedConnector === card.title
-                    ? "border-2 border-[#8e78b7] scale-105 bg-[#f3f0fa] shadow-md"
-                    : "border-gray-200 hover:shadow-md hover:scale-105"
+                  ${
+                    selectedConnector === card.title
+                      ? "border-2 border-[#8e78b7] scale-105 bg-[#f3f0fa] shadow-md"
+                      : "border-gray-200 hover:shadow-md hover:scale-105"
                   }`}
                 onClick={() => setSelectedConnector(card.title)}
               >
@@ -718,7 +1119,8 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       : formData[fieldName] || "";
     const hasError = touchedFields[fieldName] && errors[fieldName];
 
-    const baseInputClass = `w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 ${hasError
+    const baseInputClass = `w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 ${
+      hasError
         ? "border-red-500 focus:border-red-500 focus:ring-red-500"
         : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
     }`;
@@ -727,7 +1129,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       <div key={fieldName}>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           {field.label}
-          {field.required && <span className="text-red-500">*</span>}
+          {isFieldRequired(field) && <span className="text-red-500">*</span>}
         </label>
 
         {/* ── File field ── */}
@@ -748,29 +1150,68 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
                 ? displayName
                 : "No file chosen";
 
+              const hasFile = hasNewFile || (isEditMode && !!displayName);
+
+              const handleClearFile = () => {
+                setFileObjects((prev) => {
+                  const updated = { ...prev };
+                  delete updated[key];
+                  return updated;
+                });
+                setFormData((prev) => ({
+                  ...prev,
+                  extra_info: { ...prev.extra_info, [key]: "" },
+                }));
+                setIsTestSuccessful(false);
+                setTouchedFields((prev) => ({ ...prev, [fieldName]: true }));
+                if (isFieldRequired(field)) {
+                  setErrors((prev) => ({
+                    ...prev,
+                    [fieldName]: `${field.label} is required`,
+                  }));
+                }
+              };
+
               return (
                 <label
                   className={`flex items-center w-full border rounded-lg overflow-hidden cursor-pointer h-[46px]
-                    ${hasError
-                      ? "border-red-500 focus-within:ring-1 focus-within:ring-red-500"
-                      : "border-gray-300 focus-within:ring-1 focus-within:ring-[#8e78b7] focus-within:border-[#8e78b7]"
+                    ${
+                      hasError
+                        ? "border-red-500 focus-within:ring-1 focus-within:ring-red-500"
+                        : "border-gray-300 focus-within:ring-1 focus-within:ring-[#8e78b7] focus-within:border-[#8e78b7]"
                     }`}
                 >
                   <span className="h-full flex items-center px-3 bg-[#f3f0fa] text-[#8e78b7] text-sm font-medium border-r border-gray-300 whitespace-nowrap hover:bg-[#8e78b7] hover:text-white transition-colors">
                     Choose File
                   </span>
                   <span
-                    className={`h-full flex items-center px-3 text-sm truncate ${shownName === "No file chosen"
-                      ? "text-gray-400"
-                      : "text-gray-700"
-                      }`}
+                    className={`h-full flex items-center px-3 text-sm truncate flex-1 ${
+                      shownName === "No file chosen"
+                        ? "text-gray-400"
+                        : "text-gray-700"
+                    }`}
                   >
                     {shownName}
                   </span>
+
+                  {hasFile && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleClearFile();
+                      }}
+                      title="Remove file"
+                      className="flex-shrink-0 flex items-center justify-center w-5 h-5 mr-2 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+
                   <input
                     type="file"
                     name={fieldName}
-                    accept=".p12"
+                    accept={field.accept || ".p12"}
                     className="sr-only"
                     onChange={(e) => {
                       const file = e.target.files[0];
@@ -778,39 +1219,41 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
 
                       setIsTestSuccessful(false);
 
-                      if (file && !file.name.toLowerCase().endsWith(".p12")) {
-                        toast.error("Only .p12 format is allowed");
-
-                        e.target.value = "";
-
-                        setFileObjects((prev) => {
-                          const updated = { ...prev };
-                          delete updated[key];
-                          return updated;
-                        });
-
-                        setFormData((prev) => ({
-                          ...prev,
-                          extra_info: {
-                            ...prev.extra_info,
-                            [key]: "",
-                          },
-                        }));
-
-                        setTouchedFields((prev) => ({ ...prev, [fieldName]: true }));
-                        setErrors((prev) => ({
-                          ...prev,
-                          [fieldName]: field.required
-                            ? `${field.label} is required`
-                            : undefined,
-                        }));
-
-                        return;
+                      if (file && field.accept) {
+                        const allowedExts = field.accept
+                          .split(",")
+                          .map((ext) => ext.trim().toLowerCase());
+                        const fileExt = `.${file.name.split(".").pop().toLowerCase()}`;
+                        if (!allowedExts.includes(fileExt)) {
+                          toast.error(
+                            `Only ${allowedExts.join(", ")} format${allowedExts.length > 1 ? "s are" : " is"} allowed`
+                          );
+                          e.target.value = "";
+                          setFileObjects((prev) => {
+                            const updated = { ...prev };
+                            delete updated[key];
+                            return updated;
+                          });
+                          setFormData((prev) => ({
+                            ...prev,
+                            extra_info: { ...prev.extra_info, [key]: "" },
+                          }));
+                          setTouchedFields((prev) => ({
+                            ...prev,
+                            [fieldName]: true,
+                          }));
+                          setErrors((prev) => ({
+                            ...prev,
+                            [fieldName]: isFieldRequired(field)
+                              ? `${field.label} is required`
+                              : undefined,
+                          }));
+                          return;
+                        }
                       }
 
                       if (file) {
                         setFileObjects((prev) => ({ ...prev, [key]: file }));
-
                         const displayName = `${formData.connection_name}_${file.name}`;
                         setFormData((prev) => ({
                           ...prev,
@@ -819,7 +1262,6 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
                             [key]: displayName,
                           },
                         }));
-
                         setErrors((prev) => {
                           const updated = { ...prev };
                           delete updated[fieldName];
@@ -831,16 +1273,11 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
                           delete updated[key];
                           return updated;
                         });
-
                         setFormData((prev) => ({
                           ...prev,
-                          extra_info: {
-                            ...prev.extra_info,
-                            [key]: "",
-                          },
+                          extra_info: { ...prev.extra_info, [key]: "" },
                         }));
-
-                        if (field.required) {
+                        if (isFieldRequired(field)) {
                           setErrors((prev) => ({
                             ...prev,
                             [fieldName]: `${field.label} is required`,
@@ -848,10 +1285,11 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
                         }
                       }
 
-                      setTouchedFields((prev) => ({ ...prev, [fieldName]: true }));
-                      if (!file) {
-                        validateField(fieldName, "");
-                      }
+                      setTouchedFields((prev) => ({
+                        ...prev,
+                        [fieldName]: true,
+                      }));
+                      if (!file) validateField(fieldName, "");
                     }}
                   />
                 </label>
@@ -868,11 +1306,15 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
               className={`${baseInputClass} appearance-none bg-white`}
             >
               <option value="">Select {field.label}</option>
-              {field.options.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
+              {field.options.map((opt) => {
+                const optValue = typeof opt === "string" ? opt : opt.value;
+                const optLabel = typeof opt === "string" ? opt : opt.label;
+                return (
+                  <option key={optValue} value={optValue}>
+                    {optLabel}
+                  </option>
+                );
+              })}
             </select>
             <ChevronDown
               className="absolute right-3 top-3 pointer-events-none text-gray-500"
@@ -931,13 +1373,12 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
         <div
           onClick={() => !isEditMode && openModal("selection")}
           title={
-            isEditMode
-              ? "Connector cannot be changed"
-              : "Click to change"
+            isEditMode ? "Connector cannot be changed" : "Click to change"
           }
-          className={`bg-white rounded-lg shadow-sm border-gray-200 border w-[196px] h-[46px] flex items-center overflow-hidden ${isEditMode
-            ? "cursor-not-allowed"
-            : "hover:shadow-md transition-all cursor-pointer"
+          className={`bg-white rounded-lg shadow-sm border-gray-200 border w-[196px] h-[46px] flex items-center overflow-hidden ${
+            isEditMode
+              ? "cursor-not-allowed"
+              : "hover:shadow-md transition-all cursor-pointer"
           }`}
         >
           <img
@@ -967,8 +1408,11 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
               type="text"
               placeholder="Connection name"
               readOnly={isEditMode}
-              title={isEditMode ? "Connection name cannot be changed" : undefined}
-              className={`w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 ${isEditMode
+              title={
+                isEditMode ? "Connection name cannot be changed" : undefined
+              }
+              className={`w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 ${
+                isEditMode
                   ? "bg-gray-50 text-gray-500 cursor-not-allowed border-gray-200"
                   : touchedFields.connection_name && errors.connection_name
                   ? "border-red-500 focus:border-red-500 focus:ring-red-500"
@@ -993,7 +1437,8 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
               onChange={handleInputChange}
               type="text"
               placeholder="Short description"
-              className={`w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 ${touchedFields.description && errors.description
+              className={`w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 ${
+                touchedFields.description && errors.description
                   ? "border-red-500 focus:border-red-500 focus:ring-red-500"
                   : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
               }`}
@@ -1013,15 +1458,16 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
                 name="pool_type"
                 value={formData.pool_type || ""}
                 onChange={handleInputChange}
-                className={`w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 appearance-none bg-white ${touchedFields.pool_type && errors.pool_type
+                className={`w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 appearance-none bg-white ${
+                  touchedFields.pool_type && errors.pool_type
                     ? "border-red-500 focus:border-red-500 focus:ring-red-500"
                     : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
                 }`}
               >
                 <option value="">Select behaviour</option>
-                <option value="source">Source</option>
-                <option value="target">Target</option>
-                <option value="both">Both</option>
+                      <option value="source">Source</option>
+                      <option value="target">Target</option>
+                      <option value="both">Both</option>
               </select>
               <ChevronDown
                 className="absolute right-3 top-10 pointer-events-none text-gray-500"
@@ -1043,7 +1489,8 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
             .filter((field) => isFieldVisible(field))
             .map((field) => renderField(field))}
 
-          {isKafkaCustom && !isEditMode && (
+          {/* ── Custom type: new connection or switching to custom ── */}
+          {(isKafkaCustom || isKafkaCustomNew) && (
             <KafkaTopicManager
               isEditMode={false}
               customFiles={customFiles}
@@ -1051,24 +1498,116 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
                 setCustomFiles(files);
                 setIsTestSuccessful(false);
                 if (files.length > 0) {
-                  setErrors((prev) => { const { custom_files: _cf, ...rest } = prev; return rest; });
+                  setErrors((prev) => {
+                    const { custom_files: _cf, ...rest } = prev;
+                    return rest;
+                  });
                 }
               }}
-              customFilesError={touchedFields.custom_files && !!errors.custom_files}
+              customFilesError={
+                touchedFields.custom_files && !!errors.custom_files
+              }
+            />
+          )}
+
+          {isKafkaRawOrAvro && (
+            <KafkaTopicSelector
+              formData={formData}
+              keytabFile={getKeytabFile()}
+              hostnameV1={hostnameV1}
+              token={token}
+              isTestSuccessful={isTestSuccessful}
+              selectedTopics={selectedKafkaTopics}
+              onSelectedTopicsChange={(topics) => {
+                setSelectedKafkaTopics(topics);
+                if (topics.length > 0) {
+                  setErrors((prev) => {
+                    const { kafka_topics: _kt, ...rest } = prev;
+                    return rest;
+                  });
+                }
+              }}
+              hasError={
+                touchedFields.kafka_topics && !!errors.kafka_topics
+              }
+              isEditMode={isEditMode}
+            />
+          )}
+
+          {isHiveConnector && (
+            <ClouderaHiveTableSelector
+              isTestSuccessful={isTestSuccessful}
+              tables={clouderaHiveTables}
+              isLoadingTables={isTesting}
+              selectedTables={selectedClouderaHiveTables}
+              onSelectedTablesChange={(tables) => {
+                setSelectedClouderaHiveTables(tables);
+                if (tables.length > 0) {
+                  setErrors((prev) => {
+                    const { cloudera_tables: _ct, ...rest } = prev;
+                    return rest;
+                  });
+                }
+              }}
+              hasError={
+                touchedFields.cloudera_tables && !!errors.cloudera_tables
+              }
+            />
+          )}
+
+          {isElasticsearchConnector && (
+            <ElasticsearchIndexSelector
+              isTestSuccessful={isTestSuccessful}
+              indices={elasticsearchIndices}
+              isLoadingIndices={isTesting}
+              selectedIndices={selectedElasticsearchIndices}
+              onSelectedIndicesChange={(indices) => {
+                setSelectedElasticsearchIndices(indices);
+                if (indices.length > 0) {
+                  setErrors((prev) => {
+                    const { elasticsearch_indices: _ei, ...rest } = prev;
+                    return rest;
+                  });
+                }
+              }}
+              hasError={
+                touchedFields.elasticsearch_indices && !!errors.elasticsearch_indices
+              }
             />
           )}
         </div>
 
-        {isKafkaCustom && isEditMode && (
+        {isKafkaCustomOriginal && (
           <KafkaTopicManager
             isEditMode={true}
             connectionName={formData.connection_name}
             hostnameV1={hostnameV1}
             token={token}
             customFiles={customFiles}
-            onCustomFilesChange={setCustomFiles}
+            onCustomFilesChange={(files) => {
+              setCustomFiles(files);
+              setIsTestSuccessful(false);
+              if (files.length > 0) {
+                setErrors((prev) => {
+                  const { custom_files: _cf, ...rest } = prev;
+                  return rest;
+                });
+              }
+            }}
             removedTopics={removedTopics}
-            onRemovedTopicsChange={setRemovedTopics}
+            onRemovedTopicsChange={(topics) => {
+              setRemovedTopics(topics);
+              if (customFiles.length > 0 || topics.length === 0) {
+                setErrors((prev) => {
+                  const { custom_files: _cf, ...rest } = prev;
+                  return rest;
+                });
+              }
+            }}
+            customFilesError={
+              touchedFields.custom_files && !!errors.custom_files
+            }
+            customFilesErrorMessage={errors.custom_files}
           />
         )}
 
@@ -1077,7 +1616,8 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
           <button
             onClick={testConnection}
             disabled={isTesting}
-            className={`px-4 py-2 rounded-lg transition-colors flex items-center justify-center ${isTesting
+            className={`px-4 py-2 rounded-lg transition-colors flex items-center justify-center ${
+              isTesting
                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                 : "bg-gray-100 hover:bg-[#8e78b7] hover:text-white text-gray-800"
             }`}
@@ -1087,7 +1627,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
                 <span className="h-4 w-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
                 Testing...
               </div>
-            ) : (
+                        ) : (
               "Test Connection"
             )}
           </button>
@@ -1095,7 +1635,8 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
           <button
             onClick={saveConnection}
             disabled={isLoading}
-            className={`px-4 py-2 rounded-lg transition-colors flex items-center justify-center ${!isTestSuccessful
+            className={`px-4 py-2 rounded-lg transition-colors flex items-center justify-center ${
+              !isTestSuccessful
                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                 : "bg-[#8e78b7] hover:bg-gray-400 text-white"
             }`}

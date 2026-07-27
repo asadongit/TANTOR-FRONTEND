@@ -9,7 +9,7 @@ function AddGroup({ showModal, setShowModal, onGroupAdded }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const { token } = useAuth();
+  const { token, decodedToken } = useAuth();
 
   // Add useEffect to reset form when modal is closed
   useEffect(() => {
@@ -42,6 +42,7 @@ function AddGroup({ showModal, setShowModal, onGroupAdded }) {
         body: JSON.stringify({
           name: formData.groupname,
           description: formData.description,
+          created_by: decodedToken?.preferred_username
         }),
       });
 

@@ -230,6 +230,7 @@ const DirectToolConfig = memo(function DirectToolConfig({
         hint="The context key where the tool result will be saved (default: 'tool_result_{node_id}')."
       >
         <Input
+          stripBraces
           value={data.destination_key || ""}
           onChange={(v) => update({ destination_key: v })}
           placeholder={`tool_result_${selectedNodeId}`}

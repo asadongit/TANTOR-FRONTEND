@@ -24,13 +24,22 @@ import {
   FiSliders,
   FiCompass,
 } from "react-icons/fi";
-import { motion, AnimatePresence } from "framer-motion";
+import { VscVariableGroup } from "react-icons/vsc";
+
 import ContextMenu from "./ContextMenu";
 import VariableExplorer from "./VariableExplorer";
 import NodeSearch from "./NodeSearch";
 import PilotPanel from "./PilotPanel";
+import BreakpointEdge from "./Edges/BreakpointEdge";
+
+const edgeTypes = {
+  default: BreakpointEdge,
+  smoothstep: BreakpointEdge,
+  bezier: BreakpointEdge,
+};
 
 const NON_DIRTY_CHANGE_TYPES = new Set(["select", "dimensions", "reset"]);
+
 
 // Helper to calculate distance from point p to line segment ab
 const getDistanceToSegment = (p, a, b) => {
@@ -174,6 +183,7 @@ export default function WorkflowCanvas() {
     previewGroupOriginalNode,
     groupNodes,
     ungroupNode,
+    isLoadingWorkflow,
   } = useWorkflowStore();
   const {
     selectedNodeId,
@@ -191,6 +201,7 @@ export default function WorkflowCanvas() {
     canvasEdgeWidth,
     canvasConnectionRadius,
     canvasSnapGrid,
+    showVariableExplorer,
   } = useUIStore();
 
   const reactFlowWrapper = useRef(null);
@@ -640,11 +651,30 @@ export default function WorkflowCanvas() {
   }, [setSelectedNode, setSelectedEdge]);
 
   const onEdgeClick = useCallback(
-    (_, edge) => {
-      setSelectedEdge(edge.id);
+    (event, edge) => {
+      if (event && event.altKey) {
+        useWorkflowStore.getState().takeHistorySnapshot();
+        const updatedEdges = edges.map((e) => {
+          if (e.id === edge.id) {
+            const currentBp = Boolean(e.data?.isBreakpoint);
+            return {
+              ...e,
+              data: {
+                ...(e.data || {}),
+                isBreakpoint: !currentBp,
+              },
+            };
+          }
+          return e;
+        });
+        setEdgesDirty(updatedEdges);
+      } else {
+        setSelectedEdge(edge.id);
+      }
     },
-    [setSelectedEdge],
+    [edges, setEdgesDirty, setSelectedEdge],
   );
+
 
   const isValidConnection = useCallback(
     (connection) => {
@@ -834,8 +864,17 @@ export default function WorkflowCanvas() {
 
       if (e.key === "Delete" || e.key === "Backspace") {
         const currentEdges = storeState.edges;
-        const selectedNodes = currentNodes.filter(n => n.selected);
-        const selectedEdges = currentEdges.filter(e => e.selected);
+        let selectedNodes = currentNodes.filter(n => n.selected);
+        if (selectedNodes.length === 0 && currentSelectedNodeId) {
+          const matchedNode = currentNodes.find(n => n.id === currentSelectedNodeId);
+          if (matchedNode) selectedNodes = [matchedNode];
+        }
+
+        let selectedEdges = currentEdges.filter(e => e.selected);
+        if (selectedEdges.length === 0 && uiState.selectedEdgeId) {
+          const matchedEdge = currentEdges.find(e => e.id === uiState.selectedEdgeId);
+          if (matchedEdge) selectedEdges = [matchedEdge];
+        }
 
         const hasSelectedNodes = selectedNodes.length > 0;
         const hasSelectedEdges = selectedEdges.length > 0;
@@ -987,21 +1026,50 @@ export default function WorkflowCanvas() {
         position: "relative",
       }}
     >
-      {/* ── Left Palette Panel (Now on the left) ── */}
-      {paletteOpen && !selectedNodeId && (
-        <div
-          style={{
-            width: 260,
-            borderRight: "1px solid var(--border)",
-            background: "white",
-            flexShrink: 0,
-            overflow: "hidden",
-            animation: "paletteIn 0.2s ease-out",
-          }}
-        >
-          <NodePalette onClose={() => setPaletteOpen(false)} />
+      {isLoadingWorkflow && (
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(255, 255, 255, 0.85)",
+          backdropFilter: "blur(6px)",
+          zIndex: 1000,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 16
+        }}>
+          <div style={{
+            width: 44,
+            height: 44,
+            borderRadius: "50%",
+            border: "3.5px solid #F3F4F6",
+            borderTopColor: "var(--theme-primary, #8e77bb)",
+            animation: "canvasSpin 1s linear infinite"
+          }} />
+          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--theme-primary, #8e77bb)" }}>Loading workflow configuration...</span>
+          <style>{`
+            @keyframes canvasSpin {
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
         </div>
       )}
+      {/* ── Left Palette Panel ── */}
+      <div
+        style={{
+          width: paletteOpen && !selectedNodeId ? 260 : 0,
+          flexShrink: 0,
+          overflow: "hidden",
+          borderRight: "1px solid var(--border)",
+          background: "white",
+          transition: "width 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+        }}
+      >
+        <div style={{ width: 260, height: "100%" }}>
+          <NodePalette onClose={() => setPaletteOpen(false)} />
+        </div>
+      </div>
 
       {/* ── Canvas ── */}
       <div ref={reactFlowWrapper} style={{ flex: 1, position: "relative" }}>
@@ -1056,6 +1124,7 @@ export default function WorkflowCanvas() {
         {/* Top-left: Add node toggle */}
         <div style={{ position: "absolute", top: 16, left: 16, zIndex: 10 }}>
           <button
+            data-tour="canvas-add-node-btn"
             onClick={() => {
               setPaletteOpen((v) => !v);
               setSelectedNode(null);
@@ -1083,11 +1152,13 @@ export default function WorkflowCanvas() {
             }}
             title={paletteOpen ? "Close Library" : "Add node"}
           >
-            {paletteOpen ? (
-              <FiArrowLeftCircle size={22} />
-            ) : (
-              <FiPlus size={22} />
-            )}
+            <FiPlus
+              size={22}
+              style={{
+                transform: paletteOpen ? "rotate(45deg)" : "none",
+                transition: "transform 0.2s ease",
+              }}
+            />
           </button>
         </div>
 
@@ -1103,6 +1174,7 @@ export default function WorkflowCanvas() {
           }}
         >
           <button
+            data-tour="canvas-pilot-btn"
             onClick={() => setShowPilotPanel(!showPilotPanel)}
             style={{
               display: "flex",
@@ -1131,6 +1203,7 @@ export default function WorkflowCanvas() {
           </button>
 
           <button
+            data-tour="canvas-variables-btn"
             onClick={() =>
               useVariablesStore
                 .getState()
@@ -1161,10 +1234,11 @@ export default function WorkflowCanvas() {
             }}
             title="Workflow Variables"
           >
-            <FiSliders size={20} />
+            <VscVariableGroup size={20} />
           </button>
 
           <button
+            data-tour="canvas-data-explorer-btn"
             onClick={() =>
               useUIStore
                 .getState()
@@ -1362,6 +1436,8 @@ export default function WorkflowCanvas() {
             }}
             onPaneContextMenu={onPaneContextMenu}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+
             defaultEdgeOptions={{
               type: canvasWireStyle === "curve" ? "default" : "smoothstep",
               animated: false,
@@ -1369,6 +1445,8 @@ export default function WorkflowCanvas() {
             }}
             fitView
             fitViewOptions={{ padding: 0.4 }}
+            minZoom={0.05}
+            maxZoom={4}
             snapToGrid={canvasSnapGrid > 0}
             snapGrid={canvasSnapGrid > 0 ? [canvasSnapGrid, canvasSnapGrid] : [20, 20]}
             connectionRadius={canvasConnectionRadius}
@@ -1500,109 +1578,97 @@ export default function WorkflowCanvas() {
       </div>
 
       {/* ── Right side panels ── */}
-      <AnimatePresence>
-        {(selectedNodeId || selectedEdgeId) && (
-          <motion.div
-            key="properties-panel"
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: propertiesWidth, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={
-              isResizingProperties
-                ? { duration: 0 }
-                : { duration: 0.2, ease: "easeOut" }
-            }
+      <div
+        style={{
+          width: selectedNodeId || selectedEdgeId ? propertiesWidth : 0,
+          flexShrink: 0,
+          overflow: "hidden",
+          borderLeft: "1px solid var(--border)",
+          background: "white",
+          height: "100%",
+          position: "relative",
+          transition: isResizingProperties
+            ? "none"
+            : "width 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+        }}
+      >
+        <div style={{ width: propertiesWidth, height: "100%", position: "relative" }}>
+          {/* Resizable drag handle on the left edge */}
+          <div
+            onMouseDown={startResizingProperties}
             style={{
-              borderLeft: "1px solid var(--border)",
-              background: "white",
-              flexShrink: 0,
-              overflow: "hidden",
-              height: "100%",
-              position: "relative",
+              position: "absolute",
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: "6px",
+              cursor: "col-resize",
+              zIndex: 100,
+              background: isResizingProperties
+                ? "var(--theme-primary, #4285F4)"
+                : "transparent",
+              transition: "background 0.2s",
             }}
-          >
-            {/* Resizable drag handle on the left edge */}
-            <div
-              onMouseDown={startResizingProperties}
-              style={{
-                position: "absolute",
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: "6px",
-                cursor: "col-resize",
-                zIndex: 100,
-                background: isResizingProperties
-                  ? "var(--theme-primary, #4285F4)"
-                  : "transparent",
-                transition: "background 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                if (!isResizingProperties)
-                  e.currentTarget.style.background = "rgba(66, 133, 244, 0.3)";
-              }}
-              onMouseLeave={(e) => {
-                if (!isResizingProperties)
-                  e.currentTarget.style.background = "transparent";
-              }}
-            />
-            <PropertiesPanel />
-          </motion.div>
-        )}
+            onMouseEnter={(e) => {
+              if (!isResizingProperties)
+                e.currentTarget.style.background = "rgba(66, 133, 244, 0.3)";
+            }}
+            onMouseLeave={(e) => {
+              if (!isResizingProperties)
+                e.currentTarget.style.background = "transparent";
+            }}
+          />
+          <PropertiesPanel />
+        </div>
+      </div>
 
-        {useUIStore((s) => s.showVariableExplorer) && (
-          <motion.div
-            key="variable-explorer"
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: explorerWidth, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={
-              isResizingExplorer
-                ? { duration: 0 }
-                : { duration: 0.2, ease: "easeOut" }
-            }
+      <div
+        style={{
+          width: showVariableExplorer ? explorerWidth : 0,
+          flexShrink: 0,
+          overflow: "hidden",
+          borderLeft: "1px solid var(--border)",
+          background: "white",
+          height: "100%",
+          position: "relative",
+          transition: isResizingExplorer
+            ? "none"
+            : "width 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+        }}
+      >
+        <div style={{ width: explorerWidth, height: "100%", position: "relative" }}>
+          {/* Resizable drag handle on the left edge */}
+          <div
+            onMouseDown={startResizingExplorer}
             style={{
-              borderLeft: "1px solid var(--border)",
-              background: "white",
-              flexShrink: 0,
-              overflow: "hidden",
-              height: "100%",
-              position: "relative",
+              position: "absolute",
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: "6px",
+              cursor: "col-resize",
+              zIndex: 100,
+              background: isResizingExplorer
+                ? "var(--theme-primary, #4285F4)"
+                : "transparent",
+              transition: "background 0.2s",
             }}
-          >
-            {/* Resizable drag handle on the left edge */}
-            <div
-              onMouseDown={startResizingExplorer}
-              style={{
-                position: "absolute",
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: "6px",
-                cursor: "col-resize",
-                zIndex: 100,
-                background: isResizingExplorer
-                  ? "var(--theme-primary, #4285F4)"
-                  : "transparent",
-                transition: "background 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                if (!isResizingExplorer)
-                  e.currentTarget.style.background = "rgba(66, 133, 244, 0.3)";
-              }}
-              onMouseLeave={(e) => {
-                if (!isResizingExplorer)
-                  e.currentTarget.style.background = "transparent";
-              }}
-            />
-            <VariableExplorer
-              onClose={() =>
-                useUIStore.getState().setShowVariableExplorer(false)
-              }
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+            onMouseEnter={(e) => {
+              if (!isResizingExplorer)
+                e.currentTarget.style.background = "rgba(66, 133, 244, 0.3)";
+            }}
+            onMouseLeave={(e) => {
+              if (!isResizingExplorer)
+                e.currentTarget.style.background = "transparent";
+            }}
+          />
+          <VariableExplorer
+            onClose={() =>
+              useUIStore.getState().setShowVariableExplorer(false)
+            }
+          />
+        </div>
+      </div>
 
       {showPilotPanel && (
         <PilotPanel onClose={() => setShowPilotPanel(false)} />
@@ -1614,10 +1680,6 @@ export default function WorkflowCanvas() {
           border: 1.5px dashed var(--theme-primary, #8e77bb) !important;
           border-radius: 6px !important;
           box-shadow: 0 0 10px rgba(142, 119, 187, 0.15) !important;
-        }
-        @keyframes paletteIn {
-          from { opacity: 0; transform: translateX(-20px); }
-          to { opacity: 1; transform: translateX(0); }
         }
         @keyframes slideInRight {
           from { opacity: 0; transform: translateX(20px); }

@@ -1,6 +1,7 @@
 import React, { memo, useState } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { useUIStore, useWorkflowStore } from '../../../store';
+import { AUTO_INJECT_TYPES } from '../RunPanelModules/pauseRegistry';
 import {
   FiPlay, FiSquare, FiCpu, FiBox, FiGitMerge,
   FiTarget, FiShare2, FiBookOpen, FiLink, FiZap,
@@ -31,6 +32,7 @@ const NODE_CONFIGS = {
   beneficiary_risk: { bg: '#FEF2F2', color: '#EF4444', icon: FiGitBranch, round: 14 },
   ocr_node: { bg: '#FDF2F8', color: '#DB2777', icon: FiEye, round: 14 },
   signature_stamp_extractor: { bg: '#FDF2F8', color: '#DB2777', icon: FiEdit, round: 14 },
+  vision_intelligence: { bg: '#F3E8FF', color: '#7E22CE', icon: FiEye, round: 14 },
   subgraph: { bg: '#F0FDFA', color: '#14B8A6', icon: FiLink, round: 14 },
   guardrail: { bg: '#FEFCE8', color: '#EAB308', icon: FiSearch, round: 14 },
   webhook: { bg: '#E0F2FE', color: '#0EA5E9', icon: FiGlobe, round: 14 },
@@ -538,18 +540,18 @@ function AgentNode({ id, data, selected }) {
       )}
 
       {/* 3. HITL Interrupts */}
-      {data.interrupt_before && (
+      {(data.interrupt_before || AUTO_INJECT_TYPES.includes(actualType)) && (
         <div style={{
           position: 'absolute', top: -12, left: -12, width: 24, height: 24, borderRadius: 8,
           background: 'var(--theme-primary)', border: '2px solid white',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)', zIndex: 150,
           animation: 'pulse 2s infinite'
-        }} title="Interrupt BEFORE execution (HITL)">
+        }} title={AUTO_INJECT_TYPES.includes(actualType) ? "Pauses for user input (auto)" : "Interrupt BEFORE execution (HITL)"}>
           <FiUser size={12} color="#FFFFFF" />
         </div>
       )}
-      {data.interrupt_after && (
+      {data.interrupt_after && !AUTO_INJECT_TYPES.includes(actualType) && (
         <div style={{
           position: 'absolute', top: -12, right: -12, width: 24, height: 24, borderRadius: 8,
           background: 'var(--theme-primary)', border: '2px solid white',

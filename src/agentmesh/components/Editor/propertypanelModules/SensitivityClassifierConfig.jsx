@@ -222,6 +222,7 @@ export default function SensitivityClassifierConfig({ data, update }) {
               hint="Context key that holds the text to scan. Defaults to latest_ocr_output."
             >
               <Input
+                stripBraces
                 value={data.classification_input_key ?? "latest_ocr_output"}
                 onChange={(v) => update({ classification_input_key: v })}
                 placeholder="e.g. latest_ocr_output"
@@ -232,6 +233,7 @@ export default function SensitivityClassifierConfig({ data, update }) {
               hint="Where to store the result dict. Leave blank to auto-name it."
             >
               <Input
+                stripBraces
                 value={data.classification_output_key ?? ""}
                 onChange={(v) => update({ classification_output_key: v })}
                 placeholder="e.g. sensitivity_result"

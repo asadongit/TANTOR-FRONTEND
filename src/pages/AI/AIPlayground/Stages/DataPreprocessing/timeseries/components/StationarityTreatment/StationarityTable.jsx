@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import ToggleSwitch from '../TimeSeriesDataCleaning/ToggleSwitch';
 import InfoButton from '../../../../../components/InfoButton';
 import DataTable from '../../../../../../../../components/DataTable';
+import { Info } from 'lucide-react';
 
 /**
  * =========================================================
@@ -33,54 +34,18 @@ import DataTable from '../../../../../../../../components/DataTable';
  */
 
 function StationarityTable({
-  /**
-   * Toggle state for stationarity treatment
-   */
   isToggled,
-
-  /**
-   * Expanded/collapsed section state
-   */
   isExpanded,
-
-  /**
-   * Function to toggle stationarity treatment switch
-   */
   onToggle,
-
-  /**
-   * Function to expand/collapse section
-   */
   onExpand,
-
-  /**
-   * Readonly mode
-   */
   readonly,
-
-  /**
-   * Loading state during API call
-   */
   isLoading,
-
-  /**
-   * Stationarity analysis report data from backend
-   */
   stationarityReport,
-
-  /**
-   * Section descriptions for info tooltip
-   */
-  sectionDescriptions
+  sectionDescriptions,
+  stationarityAnalysisEnabled,
+  noStationarityReport
 }) {
 
-  /**
-   * =========================================================
-   * Define Table Columns
-   * =========================================================
-   *
-   * Display only the specific required columns
-   */
 
   const columns = [
     {
@@ -144,23 +109,17 @@ function StationarityTable({
     : [];
 
   return (
-
     <div className="rounded-lg transition-all bg-[#FAFAFA]">
-
       {/* =====================================================
           Section Header
       ===================================================== */}
-
       <div className="p-4 flex items-center justify-between">
-
         {/* Left Side */}
         <div className="flex-1">
           <div className="flex items-center gap-2">
-
             <h4 className="text-sm font-medium text-gray-900">
               Stationarity Treatment
             </h4>
-
             {/* Info Tooltip */}
             <InfoButton
               sectionDescriptions={sectionDescriptions}
@@ -194,11 +153,27 @@ function StationarityTable({
           )}
         </div>
       </div>
+      {!stationarityAnalysisEnabled && (
+        <div className="mx-4 mb-3 flex items-center gap-2 rounded-md border border-[#B69AD9] bg-[#F8F5FC] px-3 py-2 text-xs text-[#8C6BB1]">
+          <Info size={14} className="flex-shrink-0" />
+          <span>
+            Stationarity Treatment is disabled because Stationarity Analysis was not selected in the previous step.
+          </span>
+        </div>
+      )}
 
+      {stationarityAnalysisEnabled && noStationarityReport && (
+        <div className="mx-4 mb-3 flex items-center gap-2 rounded-md border border-[#B69AD9] bg-[#F8F5FC] px-3 py-2 text-xs text-[#8C6BB1]">
+          <Info size={14} className="flex-shrink-0" />
+          <span>
+            No stationarity report available. Stationarity Treatment cannot be applied.
+          </span>
+        </div>
+      )}
       {/* =====================================================
           Expanded Section Content
       ===================================================== */}
-
+      
       {isToggled && isExpanded && stationarityReport.length > 0 && (
 
         <div className="px-4 pb-4 border-t border-gray-100">

@@ -1,0 +1,160 @@
+{
+  "GRU": {
+    "category": "Deep Learning",
+    "backend_key": "GRU",
+    "info": "Gated Recurrent Unit is a recurrent neural network architecture designed to capture temporal dependencies while reducing computational complexity compared to LSTMs.",
+    "hyperparameters": {
+      "units": { "low": "32", "high": "512" },
+      "layers": { "low": "1", "high": "5" },
+      "dropout": { "low": "0.0", "high": "0.5" }
+    }
+  },
+
+  "LSTM": {
+    "category": "Deep Learning",
+    "backend_key": "LSTM",
+    "info": "Long Short-Term Memory network is a recurrent neural network architecture capable of learning long-term temporal dependencies in sequential data.",
+    "hyperparameters": {
+      "units": { "low": "32", "high": "512" },
+      "layers": { "low": "1", "high": "5" },
+      "dropout": { "low": "0.0", "high": "0.5" }
+    }
+  },
+
+  "Bidirectional LSTM": {
+    "category": "Deep Learning",
+    "backend_key": "BiLSTM",
+    "info": "Bidirectional LSTM processes sequence data in both forward and backward directions, allowing the model to learn context from past and future observations.",
+    "hyperparameters": {
+      "units": { "low": "32", "high": "512" },
+      "merge_mode": "concat, sum, mul, ave",
+      "dropout": { "low": "0.0", "high": "0.5" }
+    }
+  },
+
+  "CNN-LSTM": {
+    "category": "Deep Learning",
+    "backend_key": "CNN_LSTM",
+    "info": "Hybrid architecture that combines convolutional layers for feature extraction with LSTM layers for temporal sequence modeling.",
+    "hyperparameters": {
+      "filters": { "low": "16", "high": "256" },
+      "kernel_size": { "low": "2", "high": "10" },
+      "lstm_units": { "low": "32", "high": "512" }
+    }
+  },
+
+  "Attention LSTM": {
+    "category": "Deep Learning",
+    "backend_key": "AttentionLSTM",
+    "info": "LSTM architecture enhanced with an attention mechanism that enables the model to focus on the most relevant time steps during prediction.",
+    "hyperparameters": {
+      "units": { "low": "32", "high": "512" },
+      "attention_units": { "low": "16", "high": "256" },
+      "dropout": { "low": "0.0", "high": "0.5" }
+    }
+  },
+
+  "Encoder-Decoder LSTM": {
+    "category": "Deep Learning",
+    "backend_key": "EncoderDecoderLSTM",
+    "info": "Sequence-to-sequence architecture consisting of encoder and decoder LSTM networks, commonly used for multi-step forecasting tasks.",
+    "hyperparameters": {
+       "encoder_decoder units": {
+      "low": "32",
+      "high": "512"
+    },
+      "attention": "true, false"
+    }
+  },
+
+  "TCN": {
+    "category": "Temporal Convolutional",
+    "backend_key": "TCN",
+    "info": "Temporal Convolutional Network uses causal and dilated convolutions to model long-range temporal dependencies efficiently.",
+    "hyperparameters": {
+      "nb_filters": { "low": "16", "high": "256" },
+      "kernel_size": { "low": "2", "high": "10" },
+      "dilations": { "low": "1", "high": "64" }
+    }
+  },
+
+  "WaveNet": {
+    "category": "Temporal Convolutional",
+    "backend_key": "WaveNet",
+    "info": "WaveNet is a deep generative architecture that leverages stacked dilated causal convolutions for modeling sequential and time-series data.",
+    "hyperparameters": {
+      "nb_filters": { "low": "16", "high": "256" },
+      "kernel_size": { "low": "2", "high": "10" },
+      "nb_stacks": { "low": "1", "high": "10" }
+    }
+  },
+
+  "Transformer": {
+    "category": "Transformer-based",
+    "backend_key": "Transformer",
+    "info": "Transformer architecture relies on self-attention mechanisms to capture long-range dependencies and relationships within sequential data.",
+    "hyperparameters": {
+      "d_model": { "low": "32", "high": "512", "warning": "d_model must be exactly divisible by nhead." },
+      "nhead": { "low": "1", "high": "16" },
+      "num_layers": { "low": "1", "high": "12" }
+    }
+  },
+
+  "Informer": {
+    "category": "Transformer-based",
+    "backend_key": "Informer",
+    "info": "Informer is an efficient Transformer variant specifically designed for long-sequence time-series forecasting using ProbSparse attention.",
+    "hyperparameters": {
+      "d_model": { "low": "32", "high": "512", "warning": "d_model must be exactly divisible by n_heads." },
+      "n_heads": { "low": "1", "high": "16" },
+      "e_layers": { "low": "1", "high": "6" }
+    }
+  },
+
+  "FEDformer": {
+    "category": "Transformer-based",
+    "backend_key": "FEDformer",
+    "info": "Frequency Enhanced Decomposed Transformer improves long-term forecasting by combining decomposition methods with frequency-domain attention.",
+    "hyperparameters": {
+      "d_model": { "low": "32", "high": "512", "warning": "d_model must be exactly divisible by n_heads." },
+      "n_heads": { "low": "1", "high": "16" },
+      "modes": { "low": "8", "high": "128" }
+    }
+  },
+
+  "ARIMAX": {
+    "category": "Statistical",
+    "backend_key": "ARIMAX",
+    "info": "Autoregressive Integrated Moving Average with Exogenous Variables extends ARIMA by incorporating external predictors into the forecasting process.",
+    "hyperparameters": {
+      "order": {
+        "p": { "low": "0", "high": "5" },
+        "d": { "low": "0", "high": "2" },
+        "q": { "low": "0", "high": "5" }
+      },
+      "exog": "true, false",
+      "trend": "n, c, t, ct"
+    }
+  },
+
+  "SARIMAX": {
+    "category": "Statistical",
+    "backend_key": "SARIMAX",
+    "info": "Seasonal ARIMAX extends ARIMAX by modeling both seasonal and non-seasonal patterns while supporting exogenous variables.",
+    "hyperparameters": {
+      "order": {
+        "p": { "low": "0", "high": "5" },
+        "d": { "low": "0", "high": "2" },
+        "q": { "low": "0", "high": "5" }
+      },
+      "seasonal_order": {
+        "P": { "low": "0", "high": "3" },
+        "D": { "low": "0", "high": "2" },
+        "Q": { "low": "0", "high": "3" },
+        "s": { "low": "2", "high": "24" }
+      },
+      "exog": "true, false",
+      "trend": "n, c, t, ct"
+    }
+  }
+}

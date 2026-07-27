@@ -24,6 +24,7 @@ export default function DebugNodeConfig({ data, update }) {
           hint="The specific context key you want to inspect."
         >
           <Input
+            stripBraces
             value={data.debug_key || ""}
             onChange={(v) => update({ debug_key: v })}
             placeholder="e.g. results"

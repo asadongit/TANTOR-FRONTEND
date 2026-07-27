@@ -7,13 +7,13 @@ export default function CameraRenderer({ config, context, threadId, isLoading, o
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [imageCaptured, setImageCaptured] = useState(null);
-  const [stream, setStream] = useState(null);
+  const streamRef = useRef(null);
 
   useEffect(() => {
     startCamera();
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
       }
     };
   }, []);
@@ -21,7 +21,7 @@ export default function CameraRenderer({ config, context, threadId, isLoading, o
   const startCamera = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
-      setStream(mediaStream);
+      streamRef.current = mediaStream;
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
       }
@@ -57,8 +57,9 @@ export default function CameraRenderer({ config, context, threadId, isLoading, o
       const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
       setImageCaptured(dataUrl);
       
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
       }
     }
   };
@@ -71,50 +72,49 @@ export default function CameraRenderer({ config, context, threadId, isLoading, o
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const handleSubmit = async () => {
-    if (imageCaptured && onSubmit) {
-      setIsSubmitted(true);
-      
-      // 1. Capture Device Fingerprint (User Agent)
-      const userAgent = navigator.userAgent;
-      
-      // 2. Capture Public IP Address
-      let userIp = "Unknown";
-      try {
-        const ipResponse = await fetch('https://api.ipify.org?format=json');
-        const ipData = await ipResponse.json();
-        userIp = ipData.ip;
-      } catch (err) {
-        console.error("Failed to fetch IP address:", err);
-      }
+    if (isSubmitted || !imageCaptured || !onSubmit) return;
+    setIsSubmitted(true);
 
-      try {
-        const responseBlob = await fetch(imageCaptured);
-        const blob = await responseBlob.blob();
-        
-        const formData = new FormData();
-        const safeThreadId = threadId || context?.thread_id || 'default_thread';
-        formData.append('file', blob, `camera_capture_${Date.now()}.jpg`);
-        formData.append('thread_id', safeThreadId);
-        
-        const uploadRes = await uploadTempFile(formData);
-        
-        if (uploadRes?.vfs_path) {
-          onSubmit({
-            vcip_capture_path: uploadRes.vfs_path,
-            user_ip: userIp,
-            device_fingerprint: userAgent
-          });
-        } else {
-          throw new Error("Invalid response from upload-temp");
-        }
-      } catch (uploadErr) {
-        console.error("Upload failed, falling back to base64 submit:", uploadErr);
-        onSubmit({ 
-          vcip_image_base64: imageCaptured,
+    // 1. Capture Device Fingerprint (User Agent)
+    const userAgent = navigator.userAgent;
+
+    // 2. Capture Public IP Address
+    let userIp = "Unknown";
+    try {
+      const ipResponse = await fetch('https://api.ipify.org?format=json');
+      const ipData = await ipResponse.json();
+      userIp = ipData.ip;
+    } catch (err) {
+      console.error("Failed to fetch IP address:", err);
+    }
+
+    try {
+      const responseBlob = await fetch(imageCaptured);
+      const blob = await responseBlob.blob();
+
+      const formData = new FormData();
+      const safeThreadId = threadId || context?.thread_id || 'default_thread';
+      formData.append('file', blob, `camera_capture_${Date.now()}.jpg`);
+      formData.append('thread_id', safeThreadId);
+
+      const uploadRes = await uploadTempFile(formData);
+
+      if (uploadRes?.vfs_path) {
+        onSubmit({
+          vcip_capture_path: uploadRes.vfs_path,
           user_ip: userIp,
           device_fingerprint: userAgent
         });
+      } else {
+        throw new Error("Invalid response from upload-temp");
       }
+    } catch (uploadErr) {
+      console.error("Upload failed, falling back to base64 submit:", uploadErr);
+      onSubmit({
+        vcip_image_base64: imageCaptured,
+        user_ip: userIp,
+        device_fingerprint: userAgent
+      });
     }
   };
 

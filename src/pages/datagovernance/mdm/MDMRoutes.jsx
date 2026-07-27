@@ -17,6 +17,7 @@ import MyTasksHomepage from './StewardshipConsole/MyTasks/MyTasksHomepage';
 import TaskQueueHomepage from './StewardshipConsole/TaskQueue/TaskQueueHomepage';
 import ReviewHistoryHomepage from './StewardshipConsole/ReviewHistory/ReviewHistoryHomepage';
 import SLADashboard from './StewardshipConsole/SlaDashboard/SLADashboard';
+import ProcessingCenterHomepage from './ProcessingCenter/ProcessingCenterHomepage';
 const PREFIX = '/datagovernance/mdm';
 
 export const MDMRoutes = (
@@ -58,6 +59,8 @@ export const MDMRoutes = (
     {/* <Route path={`${PREFIX}/data-sync/conflict-resolution`} element={<ConflictResolution />} /> */}
     {/* <Route path={`${PREFIX}/data-sync/api-gateway`} element={<APIGateway />} /> */}
 
+    {/* Processing Center */}
+    <Route path={`${PREFIX}/processing-center`} element={<ProcessingCenterHomepage />} />
     {/* Agent Mesh */}
     <Route path={`${PREFIX}/agent-mesh/agent-dashboard`} element={<AgentDashboard />} />
     <Route path={`${PREFIX}/agent-mesh/agent-catalog`} element={<AgentCatalog/>} />

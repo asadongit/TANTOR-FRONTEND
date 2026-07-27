@@ -212,6 +212,7 @@ const LLMAgentConfig = memo(function LLMAgentConfig({
                 hint="The context key containing the array to filter."
               >
                 <Input
+                  stripBraces
                   value={
                     data.subscription_input_key !== undefined
                       ? data.subscription_input_key
@@ -228,6 +229,7 @@ const LLMAgentConfig = memo(function LLMAgentConfig({
                 hint="Where the matched data is stored for the prompt."
               >
                 <Input
+                  stripBraces
                   value={data.subscription_output_key || ""}
                   onChange={(v) => update({ subscription_output_key: v })}
                   placeholder="latest_ocr_output"
@@ -269,6 +271,7 @@ const LLMAgentConfig = memo(function LLMAgentConfig({
             hint="Optional: Save the agent's output into this state key (e.g. 'intent') to determine the next path in conditional edges."
           >
             <Input
+              stripBraces
               value={data.routing_key || ""}
               onChange={(v) => update({ routing_key: v })}
               placeholder="e.g. intent"

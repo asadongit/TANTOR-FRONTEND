@@ -243,6 +243,7 @@ const DeepAgentConfig = memo(function DeepAgentConfig({
             hint="Optional key for conditional branching."
           >
             <Input
+              stripBraces
               value={data.routing_key || ""}
               onChange={(v) => update({ routing_key: v })}
               placeholder="e.g. intent"

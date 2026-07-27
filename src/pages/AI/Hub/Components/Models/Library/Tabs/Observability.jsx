@@ -22,6 +22,7 @@ function Observability({ modelData }) {
 
     const featureImportance = data?.data?.feature_importance?.data || {};
     const isMulticlass = data?.data?.feature_importance?.multiclass;
+    const isFeatureImportanceAvailable = data?.data?.feature_importance?.available !== false;
 
     // Set default selectedClass to first key if multiclass and not set
     useEffect(() => {
@@ -78,14 +79,16 @@ function Observability({ modelData }) {
     const dataDrift = dataDriftRaw !== null
         ? Number(dataDriftRaw.toExponential(2).split('e')[0])
         : null;
-    console.log("data frift", dataDrift);
     const modelDrift = data.data?.model_drift?.avg_metrics_shift ?? null;
     const predictionsCount = data.data?.predictions?.predictions_count ?? 0;
     const avgLatency = data.data?.latency?.average_latency_interval ?? 0;
     const avgLatencyMin = avgLatency ? (Number(avgLatency) / 60000).toFixed(2) : '0.00';
-    
+
     // Check if model is regression
-    const isRegressionModel = modelData.modeling_type === 'regression' || (avgPerf.r2 !== undefined && avgPerf.rmse !== undefined);
+    const isRegressionModel = modelData.modeling_type === 'regression' || (avgPerf.r2 != null && avgPerf.rmse != null);
+
+    // Data/model drift is not computed for timeseries models
+    const isTimeseries = modelData.modeling_type === 'univariate_timeseries' || modelData.modeling_type === 'multivariate_timeseries';
 
     const dataDriftData = Object.entries(data.data?.data_drift_over_time || {}).map(([date, val]) => ({
         date,
@@ -110,8 +113,8 @@ function Observability({ modelData }) {
         let arr = [];
         if (isMulticlass && selectedClass && featureImportance[selectedClass]) {
             arr = toArray(featureImportance[selectedClass]);
-        } else if (!isMulticlass && featureImportance.global_importance) {
-            arr = toArray(featureImportance.global_importance);
+        } else if (!isMulticlass && (featureImportance.global_importance || featureImportance.feature_importance)) {
+            arr = toArray(featureImportance.global_importance || featureImportance.feature_importance);
         }
 
         // sort desc, keep top 7 (like the provided image), and add rank + label
@@ -150,11 +153,7 @@ function Observability({ modelData }) {
                         <span
                             className="text-[19px]"
                             style={{
-                                display: 'inline-block',
-                                width: 'auto',
-                                height: '27px',
-                                lineHeight: '27px',
-                                opacity: 1,
+                                display: 'inline-block', width: 'auto', height: '27px', lineHeight: '27px', opacity: 1,
                             }}
                         >
                             {value}
@@ -193,26 +192,59 @@ function Observability({ modelData }) {
 
             <div className={`${aithemestyle.statsCardGradient270} rounded-xl p-4`}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    {isRegressionModel ? (
+                    {isTimeseries ? (
                         <>
                             <StatsCard
-                                label="R² Score"
-                                value={avgPerf.r2 !== undefined ? `${(avgPerf.r2).toFixed(3)}` : 'N/A'}
-                                icon={Target}
-                            />
-                            <StatsCard
                                 label="MAE"
-                                value={avgPerf.mae !== undefined ? `${(avgPerf.mae).toFixed(2)}` : 'N/A'}
+                                value={avgPerf.mae != null ? `${(avgPerf.mae).toFixed(2)}` : 'N/A'}
                                 icon={TrendingUp}
                             />
                             <StatsCard
                                 label="RMSE"
-                                value={avgPerf.rmse !== undefined ? `${(avgPerf.rmse).toFixed(2)}` : 'N/A'}
+                                value={avgPerf.rmse != null ? `${(avgPerf.rmse).toFixed(2)}` : 'N/A'}
                                 icon={Activity}
                             />
                             <StatsCard
                                 label="MAPE"
-                                value={avgPerf.mape !== undefined ? `${(avgPerf.mape * 100).toFixed(2)}%` : 'N/A'}
+                                value={avgPerf.mape != null ? `${(avgPerf.mape).toFixed(2)}%` : 'N/A'}
+                                icon={Zap}
+                            />
+                            <StatsCard
+                                label="SMAPE"
+                                value={avgPerf.smape != null ? `${(avgPerf.smape).toFixed(2)}%` : 'N/A'}
+                                icon={Target}
+                            />
+                            <StatsCard
+                                label="WMAPE"
+                                value={avgPerf.wmape != null ? `${(avgPerf.wmape).toFixed(2)}%` : 'N/A'}
+                                icon={Gauge}
+                            />
+                            <StatsCard
+                                label="MASE"
+                                value={avgPerf.mase != null ? `${(avgPerf.mase).toFixed(2)}` : 'N/A'}
+                                icon={BookOpen}
+                            />
+                        </>
+                    ) : isRegressionModel ? (
+                        <>
+                            <StatsCard
+                                label="R² Score"
+                                value={avgPerf.r2 != null ? `${(avgPerf.r2).toFixed(3)}` : 'N/A'}
+                                icon={Target}
+                            />
+                            <StatsCard
+                                label="MAE"
+                                value={avgPerf.mae != null ? `${(avgPerf.mae).toFixed(2)}` : 'N/A'}
+                                icon={TrendingUp}
+                            />
+                            <StatsCard
+                                label="RMSE"
+                                value={avgPerf.rmse != null ? `${(avgPerf.rmse).toFixed(2)}` : 'N/A'}
+                                icon={Activity}
+                            />
+                            <StatsCard
+                                label="MAPE"
+                                value={avgPerf.mape != null ? `${(avgPerf.mape * 100).toFixed(2)}%` : 'N/A'}
                                 icon={Zap}
                             />
                         </>
@@ -240,16 +272,20 @@ function Observability({ modelData }) {
                             />
                         </>
                     )}
-                    <StatsCard
-                        label="Model Drift"
-                        value={modelDrift != null ? `${(modelDrift * 100).toFixed(1)}%` : 'N/A'}
-                        icon={BookOpen}
-                    />
-                    <StatsCard
-                        label="Data Drift (PSI)"
-                        value={dataDrift != null ? dataDrift.toFixed(2) : 'N/A'}
-                        icon={Gauge}
-                    />
+                    {!isTimeseries && (
+                        <>
+                            <StatsCard
+                                label="Model Drift"
+                                value={modelDrift != null ? `${(modelDrift * 100).toFixed(1)}%` : 'N/A'}
+                                icon={BookOpen}
+                            />
+                            <StatsCard
+                                label="Data Drift (PSI)"
+                                value={dataDrift != null ? dataDrift.toFixed(2) : 'N/A'}
+                                icon={Gauge}
+                            />
+                        </>
+                    )}
                     <StatsCard
                         label="Predictions Count"
                         value={predictionsCount}
@@ -263,69 +299,71 @@ function Observability({ modelData }) {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white border border-gray-200 rounded-xl p-6">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-6">Data Drift Over Time</h3>
-                    <ResponsiveContainer width="100%" height={250}>
-                        <AreaChart data={dataDriftData}>
-                            <defs>
-                                <linearGradient id="colorDataDrift" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
-                                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1}/>
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#6b7280" />
-                            <YAxis tick={{ fontSize: 12 }} stroke="#6b7280" />
-                            <Tooltip
-                                formatter={(value) => (value == null ? 'N/A' : value)}
-                                contentStyle={{ fontSize: '12px', backgroundColor: '#fff', border: '1px solid #e5e7eb' }}
-                            />
-                            <Area
-                                type="monotone"
-                                dataKey="value"
-                                stroke="#ef4444"
-                                strokeWidth={2}
-                                fillOpacity={1}
-                                fill="url(#colorDataDrift)"
-                                connectNulls={false}
-                                name="Data Drift"
-                            />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </div>
+            {!isTimeseries && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="bg-white border border-gray-200 rounded-xl p-6">
+                        <h3 className="text-xl font-semibold text-gray-900 mb-6">Data Drift Over Time</h3>
+                        <ResponsiveContainer width="100%" height={250}>
+                            <AreaChart data={dataDriftData}>
+                                <defs>
+                                    <linearGradient id="colorDataDrift" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
+                                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#6b7280" />
+                                <YAxis tick={{ fontSize: 12 }} stroke="#6b7280" />
+                                <Tooltip
+                                    formatter={(value) => (value == null ? 'N/A' : value)}
+                                    contentStyle={{ fontSize: '12px', backgroundColor: '#fff', border: '1px solid #e5e7eb' }}
+                                />
+                                <Area
+                                    type="monotone"
+                                    dataKey="value"
+                                    stroke="#ef4444"
+                                    strokeWidth={2}
+                                    fillOpacity={1}
+                                    fill="url(#colorDataDrift)"
+                                    connectNulls={false}
+                                    name="Data Drift"
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
 
-                <div className="bg-white border border-gray-200 rounded-xl p-6">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-6">Prediction Drift Over Time</h3>
-                    <ResponsiveContainer width="100%" height={250}>
-                        <AreaChart data={predictionDriftData}>
-                            <defs>
-                                <linearGradient id="colorPredictionDrift" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#6b7280" />
-                            <YAxis tick={{ fontSize: 12 }} stroke="#6b7280" />
-                            <Tooltip
-                                formatter={(value) => (value == null ? 'N/A' : value)}
-                                contentStyle={{ fontSize: '12px', backgroundColor: '#fff', border: '1px solid #e5e7eb' }}
-                            />
-                            <Area
-                                type="monotone"
-                                dataKey="value"
-                                stroke="#3b82f6"
-                                strokeWidth={2}
-                                fillOpacity={1}
-                                fill="url(#colorPredictionDrift)"
-                                connectNulls={false}
-                                name="Prediction Drift"
-                            />
-                        </AreaChart>
-                    </ResponsiveContainer>
+                    <div className="bg-white border border-gray-200 rounded-xl p-6">
+                        <h3 className="text-xl font-semibold text-gray-900 mb-6">Prediction Drift Over Time</h3>
+                        <ResponsiveContainer width="100%" height={250}>
+                            <AreaChart data={predictionDriftData}>
+                                <defs>
+                                    <linearGradient id="colorPredictionDrift" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#6b7280" />
+                                <YAxis tick={{ fontSize: 12 }} stroke="#6b7280" />
+                                <Tooltip
+                                    formatter={(value) => (value == null ? 'N/A' : value)}
+                                    contentStyle={{ fontSize: '12px', backgroundColor: '#fff', border: '1px solid #e5e7eb' }}
+                                />
+                                <Area
+                                    type="monotone"
+                                    dataKey="value"
+                                    stroke="#3b82f6"
+                                    strokeWidth={2}
+                                    fillOpacity={1}
+                                    fill="url(#colorPredictionDrift)"
+                                    connectNulls={false}
+                                    name="Prediction Drift"
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
-            </div>
+            )}
 
             <div className="bg-white border border-gray-200 rounded-xl p-6">
                 <div className="flex items-start justify-between mb-6">
@@ -346,46 +384,52 @@ function Observability({ modelData }) {
                         </div>
                     )}
                 </div>
-                <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={featureData} layout="vertical" margin={{ top: 10, right: 60, left: 20, bottom: 10 }}>
-                        <defs>
-                            {/* preserve existing chart color */}
-                            <linearGradient id="featureImportanceGrad" x1="0" y1="0" x2="1" y2="0">
-                                <stop offset="0%" stopColor="#8e78b7" stopOpacity={1} />
-                                <stop offset="100%" stopColor="#8e78b7" stopOpacity={1} />
-                            </linearGradient>
-                        </defs>
+                {isFeatureImportanceAvailable ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={featureData} layout="vertical" margin={{ top: 10, right: 60, left: 20, bottom: 10 }}>
+                            <defs>
+                                {/* preserve existing chart color */}
+                                <linearGradient id="featureImportanceGrad" x1="0" y1="0" x2="1" y2="0">
+                                    <stop offset="0%" stopColor="#8e78b7" stopOpacity={1} />
+                                    <stop offset="100%" stopColor="#8e78b7" stopOpacity={1} />
+                                </linearGradient>
+                            </defs>
 
-                        <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                        <XAxis
-                            type="number"
-                            domain={[0, 1]}
-                            tick={{ fontSize: 12 }}
-                            stroke="#6b7280"
-                            allowDecimals={true}
-                        />
-                        <YAxis
-                            dataKey="featureLabel"
-                            type="category"
-                            tick={{ fontSize: 13, fill: '#374151' }}
-                            // remove the leading rank prefix like "#1 " so only feature name shows
-                            tickFormatter={(val) => String(val).replace(/^#\d+\s+/, '')}
-                            stroke="#6b7280"
-                            width={220}
-                        />
-                        <Tooltip
-                            formatter={(value) => (value == null ? 'N/A' : Number(value).toFixed(3))}
-                            contentStyle={{ fontSize: '12px', backgroundColor: '#fff', border: '1px solid #e5e7eb' }}
-                        />
-                        <Bar dataKey="importance" fill="url(#featureImportanceGrad)" barSize={18} radius={[6, 6, 6, 6]}>
-                            <LabelList
-                                dataKey="originalImportance"
-                                position="right"
-                                formatter={(val) => (val == null ? '' : Number(val).toFixed(3))}
+                            <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                            <XAxis
+                                type="number"
+                                domain={[0, 1]}
+                                tick={{ fontSize: 12 }}
+                                stroke="#6b7280"
+                                allowDecimals={true}
                             />
-                        </Bar>
-                    </BarChart>
-                </ResponsiveContainer>
+                            <YAxis
+                                dataKey="featureLabel"
+                                type="category"
+                                tick={{ fontSize: 13, fill: '#374151' }}
+                                // remove the leading rank prefix like "#1 " so only feature name shows
+                                tickFormatter={(val) => String(val).replace(/^#\d+\s+/, '')}
+                                stroke="#6b7280"
+                                width={220}
+                            />
+                            <Tooltip
+                                formatter={(value) => (value == null ? 'N/A' : Number(value).toFixed(3))}
+                                contentStyle={{ fontSize: '12px', backgroundColor: '#fff', border: '1px solid #e5e7eb' }}
+                            />
+                            <Bar dataKey="importance" fill="url(#featureImportanceGrad)" barSize={18} radius={[6, 6, 6, 6]}>
+                                <LabelList
+                                    dataKey="originalImportance"
+                                    position="right"
+                                    formatter={(val) => (val == null ? '' : Number(val).toFixed(3))}
+                                />
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                ) : (
+                    <div className="flex items-center justify-center h-[300px] text-gray-500 text-sm">
+                        Feature importance is not available for this model
+                    </div>
+                )}
             </div>
         </div>
     );

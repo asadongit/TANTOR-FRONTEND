@@ -32,6 +32,7 @@ export default function CodeExecutionConfig({ data, update }) {
 
       <Field label="Input Key" hint="Context key to read input data from. Available as 'input_data' in your code.">
         <Input
+          stripBraces
           value={data.ce_input_key || "latest_api_result"}
           onChange={(v) => update({ ce_input_key: v })}
           placeholder="latest_api_result"
@@ -40,6 +41,7 @@ export default function CodeExecutionConfig({ data, update }) {
 
       <Field label="Output Key" hint="Context key to write the result to. Also set as latest_code_result.">
         <Input
+          stripBraces
           value={data.ce_output_key || "code_result"}
           onChange={(v) => update({ ce_output_key: v })}
           placeholder="code_result"

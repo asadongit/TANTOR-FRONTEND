@@ -39,6 +39,7 @@ export default function OutputParserConfig({ data, update }) {
         hint="Key to store parsed result in context (default: parsed_output). Leave blank to use default."
       >
         <Input
+          stripBraces
           value={data.output_context_key || ""}
           onChange={(v) => update({ output_context_key: v || undefined })}
           placeholder="parsed_output"

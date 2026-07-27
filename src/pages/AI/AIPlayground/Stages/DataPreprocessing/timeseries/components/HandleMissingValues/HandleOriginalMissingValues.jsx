@@ -4,7 +4,7 @@ import { dataPreprocessingDescriptions } from '../../../../../../../../hooks/AI/
 import ColumnSearchableDropdown from './ColumnSearchableDropdown';
 import ToggleSwitch from './ToggleSwitch';
 import MethodParameterField from './MethodParameterField';
-
+import { Info } from 'lucide-react';
 /* Reusable chevron icon used for expand/collapse actions. */
 const ChevronSVG = () => (
   <svg
@@ -100,7 +100,8 @@ function HandleOriginalMissingValues({
     showFieldErrors && hasNumericMissing && !originalMissingConfig.numeric
       ? 'Select numeric imputation method'
       : '';
-
+  const missingTypeCount =(hasNumericMissing ? 1 : 0) +(hasCategoricalMissing ? 1 : 0) +(hasDatetimeMissing ? 1 : 0);
+  const singleTypeOnly = missingTypeCount === 1;
   /* Validation error shown when categorical method is not selected. */
   const categoricalError =
     showFieldErrors && hasCategoricalMissing && !originalMissingConfig.categorical
@@ -210,7 +211,15 @@ function HandleOriginalMissingValues({
           </button>
         </div>
       </div>
+<div className="mx-4 mb-3 flex items-center gap-2 rounded-md border border-[#B69AD9] bg-[#F8F5FC] px-3 py-2 text-xs text-[#8C6BB1]">
+  <Info size={14} className="flex-shrink-0" />
 
+  <span>
+    {checked
+      ? 'Handle Original Missing Values is required because missing values were detected in the dataset.'
+      : 'Handle Original Missing Values is not required because no missing values were detected in the dataset.'}
+  </span>
+</div>
       {/* ==================== CARD BODY ==================== */}
       {/* Render only when the section is expanded and enabled. */}
       {expanded && checked && (
@@ -234,7 +243,7 @@ function HandleOriginalMissingValues({
             {/* ==================== NUMERIC COLUMN SECTION ==================== */}
             {/* Dropdown for selecting numeric missing-value handling method. */}
             {hasNumericMissing && (
-              <div>
+              <div className={singleTypeOnly ? 'max-w-sm' : 'w-full'}>
                 <label className="block text-sm text-gray-600 mb-2">
                   Numeric Columns 
                 </label>
@@ -246,6 +255,9 @@ function HandleOriginalMissingValues({
                     setOriginalMissingConfig(prev => ({
                       ...prev,
                       numeric: value,
+                      // Clear previous submethod values
+                      polynomialDegree: '',
+                      splineOrder: '',
                     }))
                   }
 
@@ -318,7 +330,7 @@ function HandleOriginalMissingValues({
             {/* ==================== CATEGORICAL COLUMN SECTION ==================== */}
             {/* Dropdown for selecting categorical missing-value handling method. */}
             {hasCategoricalMissing && (
-              <div>
+              <div className={singleTypeOnly ? 'max-w-sm' : 'w-full'}>
                 <label className="block text-sm text-gray-600 mb-2">
                   Categorical Columns
                 </label>
@@ -331,6 +343,8 @@ function HandleOriginalMissingValues({
                     setOriginalMissingConfig(prev => ({
                       ...prev,
                       categorical: value,
+                      // Clear previous submethod value
+                      categoricalSeasonalOriginalPeriod: '',
                     }))
                   }
 
@@ -384,7 +398,7 @@ function HandleOriginalMissingValues({
             {/* ==================== DATETIME COLUMN SECTION ==================== */}
             {/* Dropdown for selecting datetime missing-value handling method. */}
             {hasDatetimeMissing && (
-              <div>
+              <div className={singleTypeOnly ? 'max-w-sm' : 'w-full'}>
                 <label className="block text-sm text-gray-600 mb-2">
                   Datetime Columns 
                 </label>

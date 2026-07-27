@@ -11,6 +11,7 @@ import { listTools, fixGrammar } from "../../api/agentmesh";
 import SkillGallery from "./SkillGallery";
 import { NODE_TYPES } from "./NodePalette";
 import SaveTemplateModal from "./SaveTemplateModal";
+import { AUTO_INJECT_TYPES } from "./RunPanelModules/pauseRegistry";
 
 import {
   FiTrash2,
@@ -111,6 +112,9 @@ const LAZY_CONFIGS = {
   ),
   rag_node: lazy(() => import("./propertypanelModules/RagNodeConfig")),
   ocr_node: lazy(() => import("./propertypanelModules/OcrNodeConfig")),
+  vision_intelligence: lazy(
+    () => import("./propertypanelModules/VisionIntelligenceConfig")
+  ),
   json_transform_va: lazy(
     () => import("./propertypanelModules/JsonTransformVaConfig"),
   ),
@@ -734,7 +738,8 @@ export default function PropertiesPanel() {
           const ConfigComp = getConfigComp(data?.type);
           const canHaveHitl =
             data?.type &&
-            !["start", "end", "chat_model", "memory"].includes(data.type);
+            !["start", "end", "chat_model", "memory", "cardboard", "group"].includes(data.type) &&
+            !AUTO_INJECT_TYPES.includes(data.type);
           const NODES_WITH_INTERNAL_ADVANCED = [
             "llm_agent",
             "deep_agent",
@@ -743,6 +748,7 @@ export default function PropertiesPanel() {
             "swarm",
             "tool_node",
             "textToAudio",
+            "vision_intelligence",
           ];
           const hasInternalAdvanced =
             canHaveHitl && NODES_WITH_INTERNAL_ADVANCED.includes(data.type);

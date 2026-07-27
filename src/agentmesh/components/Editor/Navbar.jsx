@@ -2,7 +2,7 @@ import React from 'react';
 import toast from 'react-hot-toast';
 import { useWorkflowStore, useUIStore, useRunStore } from '../../store';
 import { compileWorkflow, saveWorkflow, listWorkflowCategories, deleteWorkflow, explainWorkflow, getWorkflow, cloneWorkflow, fixGrammar, publishWorkflow, getMarketplaceUsecase } from '../../api/agentmesh';
-import { FiUpload, FiDownload, FiPlus, FiX, FiCheck, FiAlertTriangle, FiCopy, FiChevronDown, FiChevronUp, FiBookOpen, FiZap, FiLoader, FiTrash2, FiInfo, FiMaximize2, FiMinimize2, FiShare2, FiSave, FiCode, FiDatabase, FiSend, FiRotateCcw, FiCpu } from 'react-icons/fi';
+import { FiUpload, FiDownload, FiPlus, FiX, FiCheck, FiAlertTriangle, FiCopy, FiChevronDown, FiChevronUp, FiBookOpen, FiZap, FiLoader, FiTrash2, FiInfo, FiMaximize2, FiMinimize2, FiShare2, FiSave, FiCode, FiDatabase, FiSend, FiRotateCcw, FiCpu, FiCompass, FiGitCommit } from 'react-icons/fi';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { AiMagicIcon } from '@hugeicons/core-free-icons';
 import { formatMessage } from '../Common/messageFormatting';
@@ -11,6 +11,7 @@ import SaveWorkflowTemplateModal from './SaveWorkflowTemplateModal';
 import { copyToClipboard } from '../../utils/copyToClipboard';
 import ArchitectBot from './ArchitectBot';
 import ShortcutKeysCanvasModal from './shortcutKeysCanvasModal';
+import GuidedTour from './GuidedTour';
 
 function TooltipWrapper({ text, children }) {
   const [visible, setVisible] = React.useState(false);
@@ -66,13 +67,14 @@ export default function Navbar() {
     nodes, edges, listSearch, setListSearch, createdAt, updatedAt
   } = useWorkflowStore();
   const {
-    activePage,
+    activePage, setActivePage,
     managementSearch, setManagementSearch,
     managementWfFilter, setManagementWfFilter,
     triggerRefresh,
     showManagementModal, setShowManagementModal,
     isSyncing, setIsSyncing,
     showNotes, toggleNotes,
+    showFlowchart, toggleFlowchart,
     showNotifications, setShowNotifications, unreadCount,
     canvasNodeTheme
   } = useUIStore();
@@ -88,6 +90,8 @@ export default function Navbar() {
   const [activeSettingsTab, setActiveSettingsTab] = React.useState('general');
   const metaDropdownRef = React.useRef(null);
   const metaTriggerRef = React.useRef(null);
+  const [docsDropdownOpen, setDocsDropdownOpen] = React.useState(false);
+  const docsDropdownRef = React.useRef(null);
   const [showImport, setShowImport] = React.useState(false);
   const [importText, setImportText] = React.useState('');
   const [importErr, setImportErr] = React.useState(null);
@@ -99,6 +103,7 @@ export default function Navbar() {
   const ioDropdownRef = React.useRef(null);
   const ioTriggerRef = React.useRef(null);
   const [showApiConsole, setShowApiConsole] = React.useState(false);
+  const [showTour, setShowTour] = React.useState(false);
 
   const [showPublishModal, setShowPublishModal] = React.useState(false);
   const [showSaveTemplateModal, setShowSaveTemplateModal] = React.useState(false);
@@ -135,6 +140,16 @@ export default function Navbar() {
     if (workflowName) setCustomMarketplaceName(workflowName);
     if (workflowDescription) setCustomMarketplaceDesc(workflowDescription);
   }, [workflowName, workflowDescription]);
+
+  React.useEffect(() => {
+    function handleClickOutside(event) {
+      if (docsDropdownRef.current && !docsDropdownRef.current.contains(event.target)) {
+        setDocsDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handlePublish = async () => {
     if (!workflowId) return;
@@ -485,6 +500,7 @@ export default function Navbar() {
                   if (next) setActiveSettingsTab('general');
                   return next;
                 })}
+                data-tour="navbar-meta-btn"
                 style={{
                   display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: 0, margin: 0,
                   fontSize: 14, fontWeight: 500, color: 'var(--text-primary)',
@@ -536,6 +552,7 @@ export default function Navbar() {
                   useUIStore.getState().setSelectedNode(null);
                   useUIStore.getState().setSelectedEdge(null);
                 }}
+                data-tour="navbar-new-btn"
                 style={{ padding: '7px 14px', background: 'white', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 7, transition: 'background 0.15s' }}
                 onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
                 onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
@@ -543,28 +560,120 @@ export default function Navbar() {
                 <FiPlus size={14} /> New
               </button>
 
-              {/* Notes */}
-              <button
-                onClick={toggleNotes}
-                title="Workflow Notes"
-                style={{
-                  padding: '7px 14px', border: '1px solid var(--border)', borderRadius: 8,
-                  background: showNotes ? 'var(--theme-primary-glow)' : 'white',
-                  color: showNotes ? 'var(--theme-primary)' : 'var(--text-secondary)',
-                  fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
-                  display: 'flex', alignItems: 'center', gap: 7, transition: 'all 0.15s',
-                }}
-                onMouseEnter={(e) => { if (!showNotes) e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = showNotes ? 'var(--theme-primary-glow)' : 'white'; }}
-              >
-                <FiBookOpen size={14} /> Notes
-              </button>
+              {/* Notes & Flowchart Dropdown */}
+              <div ref={docsDropdownRef} style={{ position: 'relative', display: 'inline-block' }}>
+                <button
+                  onClick={() => setDocsDropdownOpen(prev => !prev)}
+                  data-tour="navbar-notes-btn"
+                  title="Workflow Documentation & Flowchart"
+                  style={{
+                    padding: '7px 14px',
+                    border: '1px solid var(--border)',
+                    borderRadius: 8,
+                    background: (showNotes || showFlowchart || docsDropdownOpen) ? 'var(--theme-primary-glow)' : 'white',
+                    color: (showNotes || showFlowchart || docsDropdownOpen) ? 'var(--theme-primary)' : 'var(--text-secondary)',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 7,
+                    transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!showNotes && !showFlowchart && !docsDropdownOpen) e.currentTarget.style.background = 'var(--bg-hover)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = (showNotes || showFlowchart || docsDropdownOpen) ? 'var(--theme-primary-glow)' : 'white';
+                  }}
+                >
+                  <FiBookOpen size={14} /> Space <FiChevronDown size={12} style={{ transition: 'transform 0.2s', transform: docsDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+                </button>
+
+                {docsDropdownOpen && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 6px)',
+                      left: 0,
+                      minWidth: 175,
+                      background: 'white',
+                      border: '1px solid var(--border)',
+                      borderRadius: 10,
+                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
+                      padding: '5px',
+                      zIndex: 1000,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 2,
+                    }}
+                  >
+                    <button
+                      onClick={() => {
+                        toggleNotes();
+                        setDocsDropdownOpen(false);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: 'none',
+                        borderRadius: 6,
+                        background: showNotes ? 'var(--theme-primary-glow, #EFF6FF)' : 'transparent',
+                        color: showNotes ? 'var(--theme-primary, #2563EB)' : '#334155',
+                        fontSize: 13,
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'background 0.12s',
+                      }}
+                      onMouseEnter={(e) => { if (!showNotes) e.currentTarget.style.background = '#F1F5F9'; }}
+                      onMouseLeave={(e) => { if (!showNotes) e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <FiBookOpen size={15} style={{ color: showNotes ? 'var(--theme-primary, #2563EB)' : '#64748B' }} />
+                      <span>Notes</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        toggleFlowchart();
+                        setDocsDropdownOpen(false);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: 'none',
+                        borderRadius: 6,
+                        background: showFlowchart ? 'var(--theme-primary-glow, #EFF6FF)' : 'transparent',
+                        color: showFlowchart ? 'var(--theme-primary, #2563EB)' : '#334155',
+                        fontSize: 13,
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'background 0.12s',
+                      }}
+                      onMouseEnter={(e) => { if (!showFlowchart) e.currentTarget.style.background = '#F1F5F9'; }}
+                      onMouseLeave={(e) => { if (!showFlowchart) e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <FiGitCommit size={15} style={{ color: showFlowchart ? 'var(--theme-primary, #2563EB)' : '#64748B' }} />
+                      <span>Flowchart</span>
+                    </button>
+                  </div>
+                )}
+              </div>
 
 
 
               {/* Architect */}
               <button
                 onClick={() => setShowArchitect(prev => !prev)}
+                data-tour="navbar-architect-btn"
                 title="Workflow Architect Explainer"
                 style={{
                   padding: '7px 14px', border: '1px solid var(--border)', borderRadius: 8,
@@ -584,6 +693,7 @@ export default function Navbar() {
                 <button
                   ref={ioTriggerRef}
                   onClick={() => setIoDropdownOpen(v => !v)}
+                  data-tour="canvas-actions-btn"
                   style={{
                     padding: '7px 14px',
                     background: 'white',
@@ -672,6 +782,9 @@ export default function Navbar() {
                     >
                       <FiDownload size={14} /> Export JSON
                     </button>
+
+                    <hr style={{ margin: '4px 8px', border: 'none', borderTop: '1px solid var(--border)' }} />
+
                     <button
                       onClick={() => {
                         if (hasNodes) {
@@ -753,6 +866,9 @@ export default function Navbar() {
                     >
                       <FiShare2 size={14} /> Publish Usecase
                     </button>
+
+                    <hr style={{ margin: '4px 8px', border: 'none', borderTop: '1px solid var(--border)' }} />
+
                     <button
                       onClick={() => {
                         setShowShortcutsModal(true);
@@ -777,6 +893,20 @@ export default function Navbar() {
                     >
                       <FiCpu size={14} /> Shortcut Keys
                     </button>
+
+                    <button
+                      onClick={() => { setShowTour(true); setIoDropdownOpen(false); }}
+                      style={{
+                        padding: '8px 12px', background: 'none', border: 'none',
+                        textAlign: 'left', cursor: 'pointer', fontSize: 13,
+                        color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8,
+                        transition: 'background 0.15s', width: '100%'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                    >
+                      <FiCompass size={14} /> Guide
+                    </button>
                   </div>
                 )}
               </div>
@@ -784,6 +914,7 @@ export default function Navbar() {
               {/* Compile */}
               <button
                 onClick={handleCompile}
+                data-tour="canvas-compile-btn"
                 disabled={compiling || saving || !hasNodes}
                 style={{
                   padding: '7px 20px',
@@ -1746,6 +1877,7 @@ export default function Navbar() {
         </div>
       )}
       <ShortcutKeysCanvasModal isOpen={showShortcutsModal} onClose={() => setShowShortcutsModal(false)} />
+      <GuidedTour isOpen={showTour} onClose={() => setShowTour(false)} />
     </>
   );
 }

@@ -2,7 +2,15 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
 import { tw } from '../../../../../components/themeContext';
 
-function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, readonly, disabled, hasEnabledMetrics, showValidation,metricFullFormMap }) {
+function SidePanel({ normalizeData,
+    setNormalizeData,
+    metrics,
+    setMetrics,
+    readonly,
+    disabled,
+    hasEnabledMetrics,
+    showValidation,
+    metricFullFormMap }) {
     const [metricsExpanded, setMetricsExpanded] = useState(true);
     const [draggedItem, setDraggedItem] = useState(null);
 
@@ -11,6 +19,7 @@ function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, reado
         const newMetrics = metrics.map((metric, i) =>
             i === index ? { ...metric, enabled: !metric.enabled } : metric
         );
+        // Keep enabled metrics at the top, disabled at the bottom
         const enabledMetrics = newMetrics.filter(m => m.enabled);
         const disabledMetrics = newMetrics.filter(m => !m.enabled);
         setMetrics([...enabledMetrics, ...disabledMetrics]);
@@ -26,6 +35,8 @@ function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, reado
         if (readonly || disabled) return;
         e.preventDefault();
         if (draggedItem === null || draggedItem === index) return;
+
+        // Reorder in place as the user drags, updating draggedItem to track the new position
         const newMetrics = [...metrics];
         const draggedMetric = newMetrics[draggedItem];
         newMetrics.splice(draggedItem, 1);
@@ -39,10 +50,11 @@ function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, reado
         setDraggedItem(null);
     };
 
+    // Show error state only when validation is triggered and no metric is selected
     const metricsHasError = showValidation && !hasEnabledMetrics;
-
     return (
         <div className="space-y-6">
+            {/* Normalise Data toggle */}
             <div className="bg-[#FAFAFA] rounded-xl p-4">
                 <div className="flex items-start justify-between mb-2">
                     <h3 className={tw.sectionHeading}>Normalise Data</h3>
@@ -65,6 +77,7 @@ function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, reado
                 </div>
             </div>
 
+            {/* Metrics section — red border applied when validation fails */}
             <div className={`bg-[#FAFAFA] rounded-xl p-4 ${metricsHasError ? ' border border-red-400 ring-1 ring-red-400' : ''}`}>
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex-1">
@@ -98,29 +111,34 @@ function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, reado
                                     onDragOver={(e) => handleDragOver(e, index)}
                                     onDragEnd={handleDragEnd}
                                     draggable={!(readonly || disabled)}
+                                    // Dim the card being dragged to indicate it's in motion
                                     className={`flex items-center gap-3 p-3 rounded-lg ${(readonly || disabled) ? 'cursor-not-allowed' : 'cursor-move'
                                         } bg-white transition-colors ${draggedItem === index ? 'opacity-50' : ''}`}
                                 >
+                                    {/* Priority label — reflects current drag order */}
                                     <span className="text-md font-medium text-[#8e78b7] w-8">P{index + 1}</span>
-                                    <GripVertical className="w-5 h-5 text-gray-400" /><div className="relative group flex-1">
-    <span className={`${tw.sectionHeading} cursor-pointer`}>
-        {metric.name}
-    </span>
+                                    <GripVertical className="w-5 h-5 text-gray-400" />
 
-    {metricFullFormMap?.[metric.name] && (
-        <div className="
-            absolute right-0 top-full mt-1
-            bg-gray-800 text-white text-xs px-2 py-1 rounded
-            opacity-0 group-hover:opacity-100
-            transition duration-200
-            whitespace-nowrap
-            z-[9999]
-            pointer-events-none
-        ">
-            {metricFullFormMap[metric.name]}
-        </div>
-    )}
-</div>
+                                    {/* Metric name with tooltip showing full form on hover */}
+                                    <div className="relative group flex-1">
+                                        <span className={`${tw.sectionHeading} cursor-pointer`}>
+                                            {metric.name}
+                                        </span>
+                                        {metricFullFormMap?.[metric.name] && (
+                                            <div className="
+                                                absolute right-0 top-full mt-1
+                                                bg-gray-800 text-white text-xs px-2 py-1 rounded
+                                                opacity-0 group-hover:opacity-100
+                                                transition duration-200
+                                                whitespace-nowrap
+                                                z-[9999]
+                                                pointer-events-none
+                                            ">
+                                                {metricFullFormMap[metric.name]}
+                                            </div>
+                                        )}
+                                    </div>
+
                                     <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                                         <input
                                             type="checkbox"

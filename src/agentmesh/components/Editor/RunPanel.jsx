@@ -6,8 +6,9 @@ import {
   FiSend, FiRotateCcw, FiPaperclip, FiMic, FiChevronDown, FiChevronUp, FiArrowUp,
   FiAlertCircle, FiCpu, FiBox, FiActivity,
   FiMessageSquare, FiX, FiCheck, FiEdit, FiTrash, FiUser, FiMicOff, FiClock, FiPlus,
-  FiFolder, FiZap, FiStar, FiBriefcase, FiCheckSquare, FiRefreshCw, FiList, FiCamera
+  FiFolder, FiZap, FiStar, FiBriefcase, FiCheckSquare, FiRefreshCw, FiList, FiCamera, FiPlay
 } from 'react-icons/fi';
+
 import { motion, AnimatePresence } from 'framer-motion';
 // Import RunPanelModules submodules
 import {
@@ -24,6 +25,7 @@ import FollowupRenderer from './RunPanelModules/FollowupRenderer';
 import TurnRenderer from './RunPanelModules/TurnRenderer';
 import ChatInput from './RunPanelModules/ChatInput';
 import { VfsExplorer, BlackboardModal, ProfilingModal } from './RunPanelModules/sessiontool';
+import { STARTING_TRIGGER_TYPES } from './RunPanelModules/pauseRegistry';
 import { findStartingTriggers, resolvePauseConfig, processWorkflowMessages } from './RunPanelModules/utils';
 import HistorySidebar from './RunPanelModules/HistorySidebar';
 import PauseModal from './RunPanelModules/PauseModal';
@@ -67,42 +69,31 @@ export default function RunPanel({ onClose }) {
     return findStartingTriggers(nodes, edges, 'auto_trigger');
   }, [nodes, edges]);
 
-  const startingSttNodes = useMemo(() => {
-    return findStartingTriggers(nodes, edges, 'stt_trigger');
-  }, [nodes, edges]);
-
-  const startingCameraNodes = useMemo(() => {
-    return findStartingTriggers(nodes, edges, 'camera');
-  }, [nodes, edges]);
-
-  const startingOcrNodes = useMemo(() => {
-    return findStartingTriggers(nodes, edges, 'ocr_node');
-  }, [nodes, edges]);
-
-  const startingExtractorNodes = useMemo(() => {
-    return findStartingTriggers(nodes, edges, 'signature_stamp_extractor');
-  }, [nodes, edges]);
-
-  const startingFormNodes = useMemo(() => {
-    return findStartingTriggers(nodes, edges, 'form_node');
+  const startingNodes = useMemo(() => {
+    const result = {};
+    STARTING_TRIGGER_TYPES.forEach(type => {
+      result[type] = findStartingTriggers(nodes, edges, type);
+    });
+    return result;
   }, [nodes, edges]);
 
   const hasButtonTriggers = startingButtonTriggers.length > 0;
   const hasAutoTriggers = startingAutoTriggers.length > 0;
-  const hasStartingSttNode = startingSttNodes.length > 0;
-  const hasStartingCameraNode = startingCameraNodes.length > 0;
-  const hasStartingOcrNode = startingOcrNodes.length > 0 || startingExtractorNodes.length > 0;
-  const hasStartingFormNode = startingFormNodes.length > 0;
+  const hasStartingSttNode = (startingNodes['stt_trigger'] || []).length > 0;
+  const hasStartingCameraNode = (startingNodes['camera'] || []).length > 0;
 
   const hasOcrNodes = useMemo(() => {
-    return nodes.some(n => n.data?.type === 'ocr_node' || n.data?.type === 'signature_stamp_extractor');
-  }, [nodes]);
+    const startingOcr = findStartingTriggers(nodes, edges, 'ocr_node');
+    const startingSig = findStartingTriggers(nodes, edges, 'signature_stamp_extractor');
+    return (startingOcr.length > 0) || (startingSig.length > 0);
+  }, [nodes, edges]);
 
   const isChatStarted = useMemo(() => {
     return streamEvents.some(e => ['node_start', 'token', 'user_message'].includes(e.type));
   }, [streamEvents]);
 
-  const hideInput = !isChatStarted && (hasButtonTriggers || hasAutoTriggers || hasStartingOcrNode || hasStartingSttNode || hasStartingCameraNode || hasStartingFormNode);
+  const hasAnyStartingNode = STARTING_TRIGGER_TYPES.some(t => (startingNodes[t] || []).length > 0);
+  const hideInput = !isChatStarted && (hasButtonTriggers || hasAutoTriggers || hasOcrNodes || hasAnyStartingNode);
 
   const hasBlackboardTool = useMemo(() => {
     return nodes.some(n => {
@@ -198,9 +189,9 @@ export default function RunPanel({ onClose }) {
   // Can the user run? 
   const canRun = true; // We auto-compile now
 
-  const onSend = async (overrideInput, overrideContext, overrideTargetId, isAutoTrigger) => {
+  const onSend = useCallback(async (overrideInput, overrideContext, overrideTargetId, isAutoTrigger) => {
     const textToSubmit = typeof overrideInput === 'string' ? overrideInput : '';
-    if (!textToSubmit.trim() || running) return;
+    if (!textToSubmit.trim() || useRunStore.getState().running) return;
     const currentInput = textToSubmit;
 
     // ── Auto-Compile Step ──
@@ -251,26 +242,34 @@ export default function RunPanel({ onClose }) {
           }
         }
 
-        const pausedOriginalNodeId = res.next_node?.replace(/^(gate_|pre_gate_|post_gate_)/, '') || res.next_node;
+        const isBp = Boolean(res.is_breakpoint || res.pause_type === 'breakpoint' || res.next_node?.startsWith('bp_gate_'));
 
         const storeNodes = useWorkflowStore.getState().nodes;
-        const { nodeType, nodeConfig } = resolvePauseConfig(res, storeNodes, pausedOriginalNodeId);
-        
-        const enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
+        let pausedOriginalNodeId = res.next_node?.replace(/^(gate_|pre_gate_|post_gate_)/, '') || res.next_node;
+        if (isBp && res.next_node?.startsWith('bp_gate_')) {
+          const matchedTargetNode = storeNodes.find(n => res.next_node.endsWith(n.id) || res.next_node.includes(`_${n.id}`));
+          if (matchedTargetNode) {
+            pausedOriginalNodeId = matchedTargetNode.id;
+          }
+        }
 
-        console.log(`DEBUG [RunPanel]: Pause detected at ${res.next_node} (Original: ${pausedOriginalNodeId}). Enabled actions:`, enabledActions);
+        const { nodeType, nodeConfig } = resolvePauseConfig(res, storeNodes, pausedOriginalNodeId);
+        const enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
 
         setPausedInfo({
           isPaused: true,
+          isBreakpoint: isBp,
           nextNode: pausedOriginalNodeId,
           gateNodeId: res.next_node,
           pausedNodeOutput: pausedOutput,
           threadId: tid,
           enabledActions: enabledActions,
-          nodeType: nodeType,
+          nodeType: isBp ? 'breakpoint' : nodeType,
           nodeConfig: nodeConfig,
           context: res.context || {}
         });
+
+
       }
 
       // ── Process the full message history to extract artifacts ──
@@ -340,7 +339,17 @@ export default function RunPanel({ onClose }) {
     } catch (e) {
       setError(e.message || 'Workflow execution failed');
     }
-  };
+  }, [
+    isDirty, isCompiled, threadId, autoNewSession, workflowId,
+    history, startRun, addEvent, finishRun, setError, reset, setPausedInfo, addToHistory,
+    playAudio
+  ]);
+
+  useEffect(() => {
+    window.__agentmesh_onSend = (input, context, targetId) => {
+      onSend(input || 'Auto Start', context, targetId, true);
+    };
+  }, [onSend]);
 
   // 🚀 AUTO-TRIGGER LOGIC: If we arrived here via a "Quick Run" button on a card
   useEffect(() => {
@@ -443,25 +452,35 @@ export default function RunPanel({ onClose }) {
           }
         }
 
-        const resumeOriginalNodeId = res.next_node?.replace(/^(gate_|pre_gate_|post_gate_)/, '') || res.next_node;
-        
+        const isBp = Boolean(res.is_breakpoint || res.pause_type === 'breakpoint' || res.next_node?.startsWith('bp_gate_'));
+
         const storeNodes = useWorkflowStore.getState().nodes;
+        let resumeOriginalNodeId = res.next_node?.replace(/^(gate_|pre_gate_|post_gate_)/, '') || res.next_node;
+        if (isBp && res.next_node?.startsWith('bp_gate_')) {
+          const matchedTargetNode = storeNodes.find(n => res.next_node.endsWith(n.id) || res.next_node.includes(`_${n.id}`));
+          if (matchedTargetNode) {
+            resumeOriginalNodeId = matchedTargetNode.id;
+          }
+        }
+
         const { nodeType, nodeConfig } = resolvePauseConfig(res, storeNodes, resumeOriginalNodeId);
-        
         const enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
         
         setPausedInfo({
           isPaused: true,
+          isBreakpoint: isBp,
           nextNode: resumeOriginalNodeId,
           gateNodeId: res.next_node,
           pausedNodeOutput: pausedOutput,
           threadId: threadId,
           enabledActions: enabledActions,
           showReworkForm: false,
-          nodeType: nodeType,
+          nodeType: isBp ? 'breakpoint' : nodeType,
           nodeConfig: nodeConfig,
           context: res.context || {}
         });
+
+
       } else if (res.status === 'rejected') {
         setPausedInfo({ isPaused: false, nextNode: null, pausedNodeOutput: null, showReworkForm: false });
         setReworkFeedback('');
@@ -657,7 +676,7 @@ export default function RunPanel({ onClose }) {
     return findProfileReportHtml(pausedInfo?.context) || findProfileReportHtml(latestContext);
   }, [pausedInfo?.context, latestContext]);
 
-  const shouldHideInput = pausedInfo.isPaused && PAUSE_UI[pausedInfo.nodeType]?.hidesInput && pausedInfo.nodeType !== 'stt_trigger';
+  const shouldHideInput = pausedInfo?.isPaused && PAUSE_UI[pausedInfo?.nodeType]?.hidesInput && pausedInfo?.nodeType !== 'stt_trigger';
 
   return (
     <div style={{
@@ -678,7 +697,7 @@ export default function RunPanel({ onClose }) {
         display: 'flex',
         alignItems: 'center',
         gap: 12,
-        zIndex: 100,
+        zIndex: 10001,
         position: 'sticky',
         top: 0
       }}>
@@ -698,9 +717,9 @@ export default function RunPanel({ onClose }) {
           <div style={{ fontSize: 9, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 4, marginTop: 1, fontWeight: 700 }}>
             <span style={{
               width: 5, height: 5, borderRadius: '50%',
-              background: running ? '#8E77BB' : canRun ? '#8E77BB' : '#F59E0B'
+              background: '#8E77BB'
             }} />
-            {running ? 'TRANSMITTING' : canRun ? 'CONNECTED' : 'STANDBY'}
+            {running ? 'TRANSMITTING' : 'CONNECTED'}
           </div>
         </div>
 
@@ -839,7 +858,7 @@ export default function RunPanel({ onClose }) {
                 Agent Mesh Intelligence
               </div>
               <div style={{ fontSize: 14, color: '#6B7280', fontWeight: 500, maxWidth: 360, textAlign: 'center', lineHeight: 1.6 }}>
-                {canRun ? 'Engage the neural network with a prompt or specific instruction to begin orchestration.' : 'System initialization required.'}
+                {'Engage the neural network with a prompt or specific instruction to begin orchestration.'}
               </div>
             </div>
           )}
@@ -921,11 +940,12 @@ export default function RunPanel({ onClose }) {
               }}
             >
               <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 500, letterSpacing: '0.01em' }}>
-                <span style={{ color: THEME_TEXT, fontWeight: 800, marginRight: 8, textTransform: 'uppercase', fontSize: 11 }}>
-                  SYSTEM INTERRUPT: {pausedInfo.nextNode === 'human_gate' ? 'Tool Approval Required' : (nodes.find(n => n.id === pausedInfo.nextNode)?.data?.label || pausedInfo.nextNode || 'AWAITING RESPONSE')}
+                <span style={{ color: (pausedInfo.isBreakpoint || pausedInfo.nodeType === 'breakpoint' || pausedInfo.gateNodeId?.startsWith('bp_gate_')) ? '#DC2626' : THEME_TEXT, fontWeight: 800, marginRight: 8, textTransform: 'uppercase', fontSize: 11 }}>
+                  {(pausedInfo.isBreakpoint || pausedInfo.nodeType === 'breakpoint' || pausedInfo.gateNodeId?.startsWith('bp_gate_')) ? '🛑 WIRE BREAKPOINT HIT' : `SYSTEM INTERRUPT: ${pausedInfo.nextNode === 'human_gate' ? 'Tool Approval Required' : (nodes.find(n => n.id === pausedInfo.nextNode)?.data?.label || pausedInfo.nextNode || 'AWAITING RESPONSE')}`}
                 </span>
-                The workflow context requires a human decision to proceed.
+                {(pausedInfo.isBreakpoint || pausedInfo.nodeType === 'breakpoint' || pausedInfo.gateNodeId?.startsWith('bp_gate_')) ? `Flow execution paused before running target node '${nodes.find(n => n.id === pausedInfo.nextNode)?.data?.label || pausedInfo.nextNode}'.` : 'The workflow context requires a human decision to proceed.'}
               </div>
+
             </motion.div>
           )}
         </div>
@@ -1076,14 +1096,75 @@ export default function RunPanel({ onClose }) {
                 )}
               </AnimatePresence>
               {pausedInfo.nodeType !== 'followup_selection' && (
-                <ActionButtonGroup
-                  actions={pausedInfo.enabledActions || ['approve', 'rework', 'reject']}
-                  onApprove={() => onResume('approve')}
-                  onRework={() => setPausedInfo({ ...pausedInfo, showReworkForm: !pausedInfo.showReworkForm })}
-                  onReject={() => onResume('reject')}
-                  isLoading={running}
-                />
+                (pausedInfo.isBreakpoint || pausedInfo.nodeType === 'breakpoint' || pausedInfo.gateNodeId?.startsWith('bp_gate_')) ? (
+
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: 'linear-gradient(135deg, #FFF5F5 0%, #FEF2F2 100%)',
+                    border: '1.5px solid #FECACA',
+                    borderRadius: 20,
+                    padding: '12px 20px',
+                    boxShadow: '0 8px 30px rgba(239, 68, 68, 0.06)',
+                    width: '100%',
+                    backdropFilter: 'blur(10px)',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: '50%',
+                        backgroundColor: '#F87171',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#FFF',
+                        fontSize: 16,
+                        boxShadow: '0 0 12px rgba(248, 113, 113, 0.35)',
+                      }}>🛑</div>
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#991B1B', fontSize: 14, letterSpacing: '-0.2px' }}>
+                          Wire Breakpoint Paused
+                        </div>
+                        <div style={{ fontSize: 12, color: '#B91C1C', marginTop: 1 }}>
+                          Flow stopped before: <b>{nodes.find(n => n.id === pausedInfo.nextNode)?.data?.label || pausedInfo.nextNode || 'Target Node'}</b>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => onResume('approve')}
+                      disabled={running}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        background: 'linear-gradient(135deg, #F87171 0%, #EF4444 100%)',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        borderRadius: 12,
+                        padding: '10px 18px',
+                        fontWeight: 600,
+                        fontSize: 13,
+                        cursor: running ? 'not-allowed' : 'pointer',
+                        boxShadow: '0 4px 14px rgba(239, 68, 68, 0.2)',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <FiPlay size={15} /> Resume Flow
+                    </button>
+                  </div>
+                ) : (
+                  <ActionButtonGroup
+                    actions={pausedInfo.enabledActions || ['approve', 'rework', 'reject']}
+                    onApprove={() => onResume('approve')}
+                    onRework={() => setPausedInfo({ ...pausedInfo, showReworkForm: !pausedInfo.showReworkForm })}
+                    onReject={() => onResume('reject')}
+                    isLoading={running}
+                  />
+                )
               )}
+
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', pointerEvents: 'auto' }}>
@@ -1253,10 +1334,10 @@ export default function RunPanel({ onClose }) {
               {canRun && !running && !isChatStarted && hasStartingSttNode && !pausedInfo.isPaused && (
                 <div style={{ width: '100%' }}>
                   <SpeechRecorder
-                    autoStart={startingSttNodes[0]?.data?.auto_start === true}
-                    autoStop={startingSttNodes[0]?.data?.auto_stop !== false}
-                    silenceDelay={startingSttNodes[0]?.data?.silence_delay ?? 1500}
-                    lang={startingSttNodes[0]?.data?.stt_lang || 'en-US'}
+                    autoStart={startingNodes['stt_trigger']?.[0]?.data?.auto_start === true}
+                    autoStop={startingNodes['stt_trigger']?.[0]?.data?.auto_stop !== false}
+                    silenceDelay={startingNodes['stt_trigger']?.[0]?.data?.silence_delay ?? 1500}
+                    lang={startingNodes['stt_trigger']?.[0]?.data?.stt_lang || 'en-US'}
                     onTranscript={(text) => onSend(text)}
                     isAudioPlaying={audioPlaying}
                   />
@@ -1322,10 +1403,10 @@ export default function RunPanel({ onClose }) {
               {/* Ongoing STT chat: keep showing mic recorder instead of text box */}
               {!hideInput && hasStartingSttNode && !running && !pausedInfo.isPaused && (
                 <SpeechRecorder
-                  autoStart={startingSttNodes[0]?.data?.auto_start === true}
-                  autoStop={startingSttNodes[0]?.data?.auto_stop !== false}
-                  silenceDelay={startingSttNodes[0]?.data?.silence_delay ?? 1500}
-                  lang={startingSttNodes[0]?.data?.stt_lang || 'en-US'}
+                  autoStart={startingNodes['stt_trigger']?.[0]?.data?.auto_start === true}
+                  autoStop={startingNodes['stt_trigger']?.[0]?.data?.auto_stop !== false}
+                  silenceDelay={startingNodes['stt_trigger']?.[0]?.data?.silence_delay ?? 1500}
+                  lang={startingNodes['stt_trigger']?.[0]?.data?.stt_lang || 'en-US'}
                   onTranscript={(text) => onSend(text)}
                   isAudioPlaying={audioPlaying}
                 />

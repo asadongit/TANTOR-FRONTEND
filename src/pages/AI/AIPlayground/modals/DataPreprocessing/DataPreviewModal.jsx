@@ -12,38 +12,56 @@ const DataPreviewModal = ({ isOpen, onClose, currentStep, predictionType }) => {
     const hostnameAI = window._env_?.VITE_AI_API;
 
     const getPrefix = (step) => {
-        const isTimeSeries = predictionType && [
-            'univariate_timeseries',
-            'multivariate_timeseries',
-            'multiseries_timeseries'
-        ].includes(predictionType);
+    const isUnivariate =
+        predictionType === 'univariate_timeseries';
 
-        const supervisedPrefixMap = {
-            2: 'initial_clean',
-            3: 'feature_selection',
-            4: 'feature_engineering',
-            5: 'advanced_transformation',
-            6: 'statistical_analysis',
-            7: 'feature_importance'
-        };
+    const isMultiTimeSeries =
+        predictionType === 'multivariate_timeseries' ||
+        predictionType === 'multiseries_timeseries';
 
-        const timeseriesPrefixMap = {
-            2: 'initial_clean',
-            3: 'handle_missing_values',
-            4: 'feature_integrity_validation',
-            5: 'data_stabalization',
-            6: 'data_seasonalization',
-            7: 'data_stationarity_treatment',
-            8: 'feature_dependency_analysis',
-            9: 'scaling_and_encoding'
-        };
-
-        const prefixMap = isTimeSeries ? timeseriesPrefixMap : supervisedPrefixMap;
-        return prefixMap[step] || null;
+    const supervisedPrefixMap = {
+        1: 'genesis',
+        2: 'initial_clean',
+        3: 'feature_selection',
+        4: 'feature_engineering',
+        5: 'advanced_transformation',
+        6: 'statistical_analysis',
+        7: 'feature_importance'
     };
 
+    const univariatePrefixMap = {
+        1: 'initial_clean',
+        2: 'handle_missing_values',
+        3: 'feature_integrity_validation',
+        4: 'data_stabalization',
+        5: 'data_seasonalization',
+        6: 'data_stationarity_treatment'
+    };
+
+    const multivariatePrefixMap = {
+        1: 'initial_clean',
+        2: 'handle_missing_values',
+        3: 'feature_integrity_validation',
+        4: 'data_stabalization',
+        5: 'data_seasonalization',
+        6: 'data_stationarity_treatment',
+        7: 'feature_dependency_analysis'
+    };
+
+    if (isUnivariate) {
+        return univariatePrefixMap[step] || null;
+    }
+
+    if (isMultiTimeSeries) {
+        return multivariatePrefixMap[step] || null;
+    }
+
+    return supervisedPrefixMap[step] || null;
+};
+        
+
     useEffect(() => {
-        if (isOpen && currentStep > 1) {
+        if (isOpen && currentStep >= 1) {
             fetchPreviewData();
         }
     }, [isOpen, currentStep]);

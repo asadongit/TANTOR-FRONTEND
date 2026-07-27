@@ -1,5 +1,5 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Bot, Copy } from "lucide-react";
 import {
   ChartBarIcon,
@@ -48,7 +48,7 @@ import AgentMeshIcon from '../assets/ai/agentmesh.svg';
 import CollaboratorIcon from '../assets/ai/collabarator.svg';
 import MarketplaceIcon from '../assets/ai/margetplace.svg';
 import NeoModeIcon from '../assets/ai/neomode.svg';
-import ObservabilityIcon from '../assets/ai/observability.svg';
+// import ObservabilityIcon from '../assets/ai/observability.svg';
 import AccountTreeIcon from '../assets/ai/account_tree.svg';
 import { usePersonaStatuses } from '../hooks/dataGovernance/Users/auth';
 import { useUIStore as useAgentMeshUIStore } from '../agentmesh/store';
@@ -61,7 +61,7 @@ const INACTIVE_TEXT_COLOR = '#282F49';
 const ACTIVE_FILTER = 'brightness(0) saturate(100%) invert(54%) sepia(25%) saturate(471%) hue-rotate(223deg)';
 const INACTIVE_FILTER = 'brightness(0) saturate(100%) invert(53%) sepia(6%) saturate(300%) hue-rotate(190deg) brightness(90%)';
 
-const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
+const Sidebar = ({ activeSection, isCollapsed, toggleSidebar, setIsSidebarCollapsed }) => {
   const [expandedItem, setExpandedItem] = useState(null);
   const [expandedSubItem, setExpandedSubItem] = useState(null);
   const [expandedSubSubItem, setExpandedSubSubItem] = useState(null);
@@ -76,12 +76,26 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const [isCancelLoading, setIsCancelLoading] = useState(false);
 
   const { decodedToken } = useAuth();
-  const { isAIPlaygroundActive, resetAllStates, datasetState, workflowsState, F1Mode: F1ModeCtx, setF1Mode ,activeWorkflowId} = useAIPlayground();
+  const { isAIPlaygroundActive, resetAllStates, datasetState, workflowsState, F1Mode: F1ModeCtx, setF1Mode, activeWorkflowId } = useAIPlayground();
   const { personaStatuses, isLoading: personasLoading } = usePersonaStatuses();
   const navigate = useNavigate();
   const workflowState = activeWorkflowId
-  ? (workflowsState[activeWorkflowId] ?? null)
-  : null; 
+    ? (workflowsState[activeWorkflowId] ?? null)
+    : null;
+
+  const location = useLocation();
+  const hasAutoCollapsedForEditor = useRef(false);
+
+  useEffect(() => {
+    if (location.pathname === '/editor') {
+      if (!hasAutoCollapsedForEditor.current && setIsSidebarCollapsed) {
+        setIsSidebarCollapsed(true);
+        hasAutoCollapsedForEditor.current = true;
+      }
+    } else {
+      hasAutoCollapsedForEditor.current = false;
+    }
+  }, [location.pathname, setIsSidebarCollapsed]);
 
   const isF1ModeActive = !!F1ModeCtx?.session_id;
   const f1SessionId = F1ModeCtx?.session_id ?? null;
@@ -95,14 +109,14 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     agentMeshUnreadCount,
     agentMeshSetShowNotif,
   } = useAgentMeshUIStore(useShallow((s) => ({
-    agentMeshActivePage:       s.activePage,
+    agentMeshActivePage: s.activePage,
     agentMeshActiveLibraryTab: s.activeLibraryTab,
-    agentMeshSetActivePage:    s.setActivePage,
-    agentMeshSetActiveLibTab:  s.setActiveLibraryTab,
-    agentMeshUnreadCount:      s.unreadCount ?? 0,
-    agentMeshSetShowNotif:     s.setShowNotifications,
+    agentMeshSetActivePage: s.setActivePage,
+    agentMeshSetActiveLibTab: s.setActiveLibraryTab,
+    agentMeshUnreadCount: s.unreadCount ?? 0,
+    agentMeshSetShowNotif: s.setShowNotifications,
   })));
-  const location = useLocation();
+
   const isOnAgentMesh = location.pathname.startsWith('/ai/agent-mesh');
 
   // Remove the old localStorage-reading useEffect and currentActiveSection state.
@@ -121,20 +135,20 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     }
   }, [isOnAgentMesh, agentMeshActivePage]);
 
-  const { isGlobalAdmin, isPolicyManager, isUserManager, isDataAuditor, isConnectionCreation  } = useMemo(() => {
-  const hasRoleInToken = (roleKey) =>
-    decodedToken?.resource_access?.darch?.roles?.some(
-      role => role.toLowerCase() === roleKey
-    );
+  const { isGlobalAdmin, isPolicyManager, isUserManager, isDataAuditor, isConnectionCreation } = useMemo(() => {
+    const hasRoleInToken = (roleKey) =>
+      decodedToken?.resource_access?.darch?.roles?.some(
+        role => role.toLowerCase() === roleKey
+      );
 
-  return {
-    isGlobalAdmin:   hasRoleInToken('global-admin'),
-    isPolicyManager: hasRoleInToken('persona:policy manager') && personaStatuses['persona:policy manager'] === true,
-    isUserManager:   hasRoleInToken('persona:user manager')   && personaStatuses['persona:user manager']   === true,
-    isDataAuditor:   hasRoleInToken('persona:data auditor')   && personaStatuses['persona:data auditor']   === true,
-    isConnectionCreation: hasRoleInToken('persona:connection manager')   && personaStatuses['persona:connection manager']   === true,
-};
-}, [decodedToken, personaStatuses]);
+    return {
+      isGlobalAdmin: hasRoleInToken('global-admin'),
+      isPolicyManager: hasRoleInToken('persona:policy manager') && personaStatuses['persona:policy manager'] === true,
+      isUserManager: hasRoleInToken('persona:user manager') && personaStatuses['persona:user manager'] === true,
+      isDataAuditor: hasRoleInToken('persona:data auditor') && personaStatuses['persona:data auditor'] === true,
+      isConnectionCreation: hasRoleInToken('persona:connection manager') && personaStatuses['persona:connection manager'] === true,
+    };
+  }, [decodedToken, personaStatuses]);
 
   const toggleExpand = (e, routeName) => {
     e.preventDefault();
@@ -227,7 +241,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const platformRoutes = [
     { name: 'Dashboard', icon: DashboardIcon, path: '/dashboard' },
     { name: 'Project', icon: CubeIcon, path: '/project' },
-    { name: 'Connections', icon: LinkIcon, path: '/connections'},
+    { name: 'Connections', icon: LinkIcon, path: '/connections' },
     {
       name: 'Reports',
       icon: DocumentTextIcon,
@@ -314,67 +328,69 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     //{ name: 'Custom Addition', icon: ArrowsPointingOutIcon, path: `${DATAGOVERNANCE_PREFIX}/custom-addition` },
 
     {
-    name: 'MDM',
-    icon: ServerStackIcon,
-    expandOnly: true,
-    path: `${DATAGOVERNANCE_PREFIX}/mdm`,
-    subItems: [
+      name: 'MDM',
+      icon: ServerStackIcon,
+      expandOnly: true,
+      path: `${DATAGOVERNANCE_PREFIX}/mdm`,
+      subItems: [
         {
-            name: 'Overview',
-            subItems: [
-                { name: 'Domain Management', path: `${DATAGOVERNANCE_PREFIX}/mdm/overview/domain-management` },
-                { name: 'Golden Records', path: `${DATAGOVERNANCE_PREFIX}/mdm/overview/golden-records` },
-                // { name: '360° Entity View', path: `${DATAGOVERNANCE_PREFIX}/mdm/overview/entity-view` },
-                { name: 'Cross-Domain Links', path: `${DATAGOVERNANCE_PREFIX}/mdm/overview/cross-domain-links` },
-            ]
-        },
-        {
-            name: 'Match & Merge',
-            subItems: [
-                { name: 'Match Configuration', path: `${DATAGOVERNANCE_PREFIX}/mdm/match&merge/match-configuration` },
-                { name: 'Survivorship Rules', path: `${DATAGOVERNANCE_PREFIX}/mdm/match&merge/survivorship-rules` },
-                { name: 'Match Jobs', path: `${DATAGOVERNANCE_PREFIX}/mdm/match&merge/match-jobs` },
-                { name: 'Review Queue', path: `${DATAGOVERNANCE_PREFIX}/mdm/match&merge/review-queue` },
-            ]
+          name: 'Overview',
+          subItems: [
+            { name: 'Domain Management', path: `${DATAGOVERNANCE_PREFIX}/mdm/overview/domain-management` },
+            { name: 'Golden Records', path: `${DATAGOVERNANCE_PREFIX}/mdm/overview/golden-records` },
+            // { name: '360° Entity View', path: `${DATAGOVERNANCE_PREFIX}/mdm/overview/entity-view` },
+            { name: 'Cross-Domain Links', path: `${DATAGOVERNANCE_PREFIX}/mdm/overview/cross-domain-links` },
+          ]
         },
         {
-            name: 'Hierarchy Manager',
-            subItems: [
-                { name: 'Hierarchy Definition', path: `${DATAGOVERNANCE_PREFIX}/mdm/hierarchy-manager/hierarchy-definition` },
-                { name: 'Visual Hierarchy', path: `${DATAGOVERNANCE_PREFIX}/mdm/hierarchy-manager/visual-hierarchy` },
-                { name: 'Node Management', path: `${DATAGOVERNANCE_PREFIX}/mdm/hierarchy-manager/node-management` },
-            ]
+          name: 'Match & Merge',
+          subItems: [
+            { name: 'Match Configuration', path: `${DATAGOVERNANCE_PREFIX}/mdm/match&merge/match-configuration` },
+            { name: 'Survivorship Rules', path: `${DATAGOVERNANCE_PREFIX}/mdm/match&merge/survivorship-rules` },
+            // { name: 'Match Jobs', path: `${DATAGOVERNANCE_PREFIX}/mdm/match&merge/match-jobs` },
+            { name: 'Review Queue', path: `${DATAGOVERNANCE_PREFIX}/mdm/match&merge/review-queue` },
+          ]
         },
         {
-            name: 'Stewardship Console',
-            subItems: [
-                { name: 'My Tasks', path: `${DATAGOVERNANCE_PREFIX}/mdm/stewardship-console/my-tasks` },
-                { name: 'Task Queue', path: `${DATAGOVERNANCE_PREFIX}/mdm/stewardship-console/task-queue` },
-                { name: 'Review History', path: `${DATAGOVERNANCE_PREFIX}/mdm/stewardship-console/review-history` },
-                { name: 'SLA Dashboard', path: `${DATAGOVERNANCE_PREFIX}/mdm/stewardship-console/sla-dashboard` },
-            ]
+          name: 'Hierarchy Manager',
+          subItems: [
+            { name: 'Hierarchy Definition', path: `${DATAGOVERNANCE_PREFIX}/mdm/hierarchy-manager/hierarchy-definition` },
+            { name: 'Visual Hierarchy', path: `${DATAGOVERNANCE_PREFIX}/mdm/hierarchy-manager/visual-hierarchy` },
+            { name: 'Node Management', path: `${DATAGOVERNANCE_PREFIX}/mdm/hierarchy-manager/node-management` },
+          ]
         },
         {
-            name: 'Data Sync',
-            subItems: [
-                { name: 'Sync Configuration', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/sync-configuration` },
-                { name: 'Sync Monitor', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/sync-monitor` },
-                { name: 'Conflict Resolution', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/conflict-resolution` },
-                { name: 'API Gateway', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/api-gateway` },
-            ]
+          name: 'Stewardship Console',
+          subItems: [
+            { name: 'My Tasks', path: `${DATAGOVERNANCE_PREFIX}/mdm/stewardship-console/my-tasks` },
+            { name: 'Task Queue', path: `${DATAGOVERNANCE_PREFIX}/mdm/stewardship-console/task-queue` },
+            { name: 'Review History', path: `${DATAGOVERNANCE_PREFIX}/mdm/stewardship-console/review-history` },
+            { name: 'SLA Dashboard', path: `${DATAGOVERNANCE_PREFIX}/mdm/stewardship-console/sla-dashboard` },
+          ]
         },
-        { name: 'Agent Mesh',
-        subItems: [
-                { name: 'Agent Dashboard', path: `${DATAGOVERNANCE_PREFIX}/mdm/agent-mesh/agent-dashboard` },
-                { name: 'Agent Chat (NLQ)', path: `${DATAGOVERNANCE_PREFIX}/mdm/agent-mesh/agent-chat` },
-                { name: 'Agent Catalog', path: `${DATAGOVERNANCE_PREFIX}/mdm/agent-mesh/agent-catalog` },
-                { name: 'Workflow Templates', path: `${DATAGOVERNANCE_PREFIX}/mdm/agent-mesh/workflow-templates` },
-                { name: 'Workflow Designer', path: `${DATAGOVERNANCE_PREFIX}/mdm/agent-mesh/workflow-designer` },
-                { name: 'Active Workflows', path: `${DATAGOVERNANCE_PREFIX}/mdm/agent-mesh/active-workflows` },
-            ]
+        // {
+        //     name: 'Data Sync',
+        //     subItems: [
+        //         { name: 'Sync Configuration', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/sync-configuration` },
+        //         { name: 'Sync Monitor', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/sync-monitor` },
+        //         { name: 'Conflict Resolution', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/conflict-resolution` },
+        //         { name: 'API Gateway', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/api-gateway` },
+        //     ]
+        // },
+        { name: 'Processing Center', path: `${DATAGOVERNANCE_PREFIX}/mdm/processing-center` },
+        {
+          name: 'Agent Mesh',
+          subItems: [
+            { name: 'Agent Dashboard', path: `${DATAGOVERNANCE_PREFIX}/mdm/agent-mesh/agent-dashboard` },
+            { name: 'Agent Chat (NLQ)', path: `${DATAGOVERNANCE_PREFIX}/mdm/agent-mesh/agent-chat` },
+            { name: 'Agent Catalog', path: `${DATAGOVERNANCE_PREFIX}/mdm/agent-mesh/agent-catalog` },
+            { name: 'Workflow Templates', path: `${DATAGOVERNANCE_PREFIX}/mdm/agent-mesh/workflow-templates` },
+            { name: 'Workflow Designer', path: `${DATAGOVERNANCE_PREFIX}/mdm/agent-mesh/workflow-designer` },
+            { name: 'Active Workflows', path: `${DATAGOVERNANCE_PREFIX}/mdm/agent-mesh/active-workflows` },
+          ]
         },
-    ]
-},
+      ]
+    },
   ];
 
   const dataGovernanceRoutes = allDataGovernanceRoutes
@@ -418,19 +434,19 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
       path: `${AI_PREFIX}/agent-mesh`,
       agentMeshAccordion: true,
       subItems: [
-        { name: 'Dashboard',     agentMeshPage: 'dashboard' },
+        { name: 'Dashboard', agentMeshPage: 'dashboard' },
         {
           name: 'Agent Studio',
           agentMeshAccordionStudio: true,
           subItems: [
-            { name: 'Canvas',    agentMeshPage: 'canvas' },
+            { name: 'Canvas', agentMeshPage: 'canvas' },
             {
-              name: 'Library',   agentMeshPage: 'library',
+              name: 'Library', agentMeshPage: 'library',
               subItems: [
                 { name: 'Agents', agentMeshLibTab: 'agents' },
-                { name: 'Nodes',  agentMeshLibTab: 'nodes' },
-                { name: 'Tools',  agentMeshLibTab: 'tools' },
-                { name: 'APIs',   agentMeshLibTab: 'apis' },
+                { name: 'Nodes', agentMeshLibTab: 'nodes' },
+                { name: 'Tools', agentMeshLibTab: 'tools' },
+                { name: 'APIs', agentMeshLibTab: 'apis' },
                 { name: 'Skills', agentMeshLibTab: 'skills' },
                 { name: 'Templates', agentMeshLibTab: 'templates' },
               ]
@@ -438,34 +454,34 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
             { name: 'Knowledge', agentMeshPage: 'rag' },
           ]
         },
-        { name: 'Workflows',     agentMeshPage: 'workflows' },
-        { name: 'Marketplace',   agentMeshPage: 'marketplace' },
-        { name: 'Logs',          agentMeshPage: 'logs' },
-        { name: 'Observability', agentMeshPage: 'observability' },
+        { name: 'Workflows', agentMeshPage: 'workflows' },
+        { name: 'Marketplace', agentMeshPage: 'marketplace' },
+        { name: 'Logs', agentMeshPage: 'logs' },
+        // { name: 'Observability', agentMeshPage: 'observability' },
         {
           name: 'Admin Panel',
           agentMeshAccordionAdmin: true,
           subItems: [
             { name: 'Publish Approval', agentMeshPage: 'publish-approval' },
             { name: 'Template Approval', agentMeshPage: 'template-approval' },
-            { name: 'Connections',   agentMeshPage: 'connections' },
+            { name: 'Connections', agentMeshPage: 'connections' },
           ]
         },
         { name: 'Notifications', agentMeshNotif: true },
-        { name: 'Settings',      agentMeshPage: 'settings' },
+        { name: 'Settings', agentMeshPage: 'settings' },
       ],
     },
     { name: 'Marketplace', icon: MarketplaceIcon, path: `${AI_PREFIX}/marketplace` },
-    { name: 'Observability', icon: ObservabilityIcon, path: `${AI_PREFIX}/observability` },
+    // { name: 'Observability', icon: ObservabilityIcon, path: `${AI_PREFIX}/observability` },
     { type: 'divider' },
     { name: 'Collaboration', icon: CollaboratorIcon, path: `${AI_PREFIX}/collaboration` },
     { name: 'Neo Mode', icon: NeoModeIcon, path: `${AI_PREFIX}/neo-mode` },
   ];
 
   const currentRoutes =
-    activeSection === 'platform'        ? platformRoutes :
-    activeSection === 'ai'              ? aiRoutes :
-                                          dataGovernanceRoutes;
+    activeSection === 'platform' ? platformRoutes :
+      activeSection === 'ai' ? aiRoutes :
+        dataGovernanceRoutes;
 
   const renderIcon = (IconComponent, isActive) => {
     if (typeof IconComponent === 'string') {
@@ -605,8 +621,8 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
                             <div className="space-y-1 py-1" style={{ borderLeft: '2px solid #E2E8F0', marginLeft: '4px', paddingLeft: '8px' }}>
                               {subItem.subItems.map(studioSubItem => {
                                 if (studioSubItem.agentMeshPage === 'library') {
-                                  const libActive  = agentMeshActivePage === 'library';
-                                  const libOpen    = expandedSubSubItem === 'Library';
+                                  const libActive = agentMeshActivePage === 'library';
+                                  const libOpen = expandedSubSubItem === 'Library';
                                   return (
                                     <div key="am-library">
                                       <button

@@ -13,12 +13,13 @@ export default function JsonTransformConfig({ data, update }) {
     <>
       <Field
         label="Input Context Key"
-        hint="Context key to read data from (supports dot notation, e.g. latest_api_result.data). Defaults to latest_api_result."
+        hint="Context key to read data from (e.g. latest_api_result or nodes.node_id). Leave empty to query the full root context."
       >
         <Input
-          value={data.jt_input_key ?? "latest_api_result"}
+          stripBraces
+          value={data.jt_input_key ?? ""}
           onChange={(v) => update({ jt_input_key: v })}
-          placeholder="latest_api_result"
+          placeholder="Leave empty for root context (or e.g. latest_api_result)"
         />
       </Field>
 
@@ -27,6 +28,7 @@ export default function JsonTransformConfig({ data, update }) {
         hint="Context key where the transformed data will be saved. Defaults to transformed_data."
       >
         <Input
+          stripBraces
           value={data.jt_output_key ?? "transformed_data"}
           onChange={(v) => update({ jt_output_key: v })}
           placeholder="transformed_data"

@@ -9,6 +9,7 @@ export {
   Select,
   Toggle,
   MiniatureToggle,
+  Slider,
   CommaArrayEditor,
   VariablePicker,
   HitlConfigSection,

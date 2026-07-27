@@ -162,6 +162,7 @@ export default function OcrNodeConfig({ data, update }) {
                   hint="Multipart form field name for file."
                 >
                   <Input
+                    stripBraces
                     value={data.ocr_service_file_field || "files"}
                     onChange={(v) => update({ ocr_service_file_field: v })}
                     placeholder="files"
@@ -211,6 +212,7 @@ export default function OcrNodeConfig({ data, update }) {
             hint="Context key containing a list of uploaded file objects (e.g., payload.uploaded_files). If set, processes ALL files."
           >
             <Input
+              stripBraces
               value={data.ocr_multi_file_key || ""}
               onChange={(v) => update({ ocr_multi_file_key: v })}
               placeholder="e.g. payload.uploaded_files"
@@ -221,10 +223,26 @@ export default function OcrNodeConfig({ data, update }) {
 
       <div style={{ marginTop: 16 }}>
         <Field
+          label="Allowed File Formats"
+          hint="Restrict allowed file upload formats for this OCR Node."
+        >
+          <Select
+            value={data.allowed_file_types || "all"}
+            onChange={(v) => update({ allowed_file_types: v })}
+            options={[
+              { value: "all", label: "All Formats (PDF, PNG, JPG, WEBP)" },
+              { value: "images", label: "Images Only (PNG, JPG, WEBP)" },
+              { value: "pdf", label: "PDF Only (.pdf)" },
+            ]}
+          />
+        </Field>
+
+        <Field
           label="Destination Key"
           hint="The context key where OCR results are saved. Defaults to 'latest_ocr_output'."
         >
           <Input
+            stripBraces
             value={data.destination_key || "latest_ocr_output"}
             onChange={(v) => update({ destination_key: v })}
             placeholder="latest_ocr_output"

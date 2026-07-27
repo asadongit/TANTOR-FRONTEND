@@ -180,6 +180,11 @@ if (!isOpen) return null;
             );
             return;
         }
+        // Check if DQ Dimension is selected but DQ Rule is not
+        if (formData.dqDimension?.length > 0 && (!formData.ruleIds || formData.ruleIds.length === 0)) {
+            toast.error('DQ Rule is required when DQ Dimension is selected.');
+            return;
+        }
 
         const result = await editAttribute({
             domain_id:  domainId,
@@ -190,7 +195,7 @@ if (!isOpen) return null;
                 display_name:          formData.displayName || null,
                 source_attribute_name: formData.sourceAttributeName || null,  
                 source_display_name:   formData.sourceDisplayName || null,    
-                data_type:             getPayloadType(formData.dataType),   // "VARCHAR", "NUMERIC", etc.
+                data_type:             getPayloadType(formData.dataType),
                 length_precision:      getLengthMode(formData.dataType) ? (formData.lengthPrecision || null) : null,
                 required:              formData.required || null,
                 rule:                  formData.ruleIds.length > 0 ? formData.ruleIds : [],
@@ -211,6 +216,8 @@ if (!isOpen) return null;
         formData.displayName.trim() &&
         formData.dataType &&
         isLengthValid(formData.dataType, formData.lengthPrecision) &&
+        // If DQ Dimension is selected, DQ Rule must be selected
+        !(formData.dqDimension?.length > 0 && (!formData.ruleIds || formData.ruleIds.length === 0)) &&
         !isSubmitting;
 
     const lengthMode = getLengthMode(formData.dataType);
@@ -245,13 +252,13 @@ if (!isOpen) return null;
                     {/* Row 1: Attribute Name | Display Name | Source Attribute Name | Source Display Name */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className={labelClass}>Attribute Name <span className="text-[#E05252]">*</span></label>
-                            <input type="text" placeholder="Enter Attribute Name" value={formData.attributeName}
+                            <label className={labelClass}>Golden Attribute Name <span className="text-[#E05252]">*</span></label>
+                            <input type="text" placeholder="Enter Golden Attribute Name" value={formData.attributeName}
                                 onChange={e => handleChange('attributeName', e.target.value)} className={inputClass} />
                         </div>
                         <div>
-                            <label className={labelClass}>Display Name <span className="text-[#E05252]">*</span></label>
-                            <input type="text" placeholder="Enter Display Name" value={formData.displayName}
+                            <label className={labelClass}>Golden Attribute Display Name <span className="text-[#E05252]">*</span></label>
+                            <input type="text" placeholder="Enter Golden Attribute Display Name" value={formData.displayName}
                                 onChange={e => handleChange('displayName', e.target.value)} className={inputClass} />
                         </div>
                         <div>
@@ -308,28 +315,26 @@ if (!isOpen) return null;
                                 placeholder={dimsLoading ? 'Loading...' : 'Select Dimension'}
                             />
                         </div>
-                        <div>
-                            <label className={labelClass}>DQ Rule</label>
-                            <MultiSelectDropdown
-                                options={rules.map(r => ({ rule_id: r.rule_id, rule_name: r.rule_name }))}
-                                selectedIds={formData.ruleIds}
-                                onToggle={(id) => {
-                                    const next = formData.ruleIds.includes(id)
-                                        ? formData.ruleIds.filter(v => v !== id)
-                                        : [...formData.ruleIds, id];
-                                    handleChange('ruleIds', next);
-                                }}
-                                onSelectAll={(currentIds) => {
-                                    const allIds = rules.map(r => r.rule_id);
-                                    handleChange('ruleIds', currentIds.length === allIds.length ? [] : allIds);
-                                }}
-                                placeholder={
-                                    rulesLoading ? 'Loading rules...'
-                                    : !formData.dqDimension?.length ? 'Select dimension first'
-                                    : 'Select Rules'
-                                }
-                            />
-                        </div>
+                        {formData.dqDimension?.length > 0 && (
+                            <div>
+                                <label className={labelClass}>DQ Rule <span className="text-[#E05252]">*</span></label>
+                                <MultiSelectDropdown
+                                    options={rules.map(r => ({ rule_id: r.rule_id, rule_name: r.rule_name }))}
+                                    selectedIds={formData.ruleIds}
+                                    onToggle={(id) => {
+                                        const next = formData.ruleIds.includes(id)
+                                            ? formData.ruleIds.filter(v => v !== id)
+                                            : [...formData.ruleIds, id];
+                                        handleChange('ruleIds', next);
+                                    }}
+                                    onSelectAll={(currentIds) => {
+                                        const allIds = rules.map(r => r.rule_id);
+                                        handleChange('ruleIds', currentIds.length === allIds.length ? [] : allIds);
+                                    }}
+                                    placeholder={rulesLoading ? 'Loading rules...' : 'Select Rules'}
+                                />
+                            </div>
+                        )}
                     </div>
 
                 </div>

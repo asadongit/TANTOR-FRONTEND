@@ -2,12 +2,12 @@ import React, { useEffect, useState, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { useWorkflowStore, useUIStore } from '../../../store';
 import { listWorkflows, deleteWorkflow, cloneWorkflow, dispatchScheduleAction, listWorkflowCategories, getWorkflow } from '../../../api/agentmesh';
-import { FiSearch, FiRefreshCw, FiPlus, FiTrash2, FiGitBranch, FiCopy, FiDownload, FiArrowRight, FiPause, FiPlay, FiGrid, FiList, FiFolder, FiTag, FiChevronDown, FiChevronRight, FiEdit2, FiX, FiCheck, FiFilter, FiMoreHorizontal, FiZap, FiInfo } from 'react-icons/fi';
+import { FiSearch, FiRefreshCw, FiPlus, FiTrash2, FiGitBranch, FiCopy, FiDownload, FiArrowRight, FiPause, FiPlay, FiFolder, FiTag, FiChevronDown, FiChevronRight, FiEdit2, FiX, FiCheck, FiMoreHorizontal, FiZap, FiInfo } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmationModal from '../../Common/ConfirmationModal';
 import Pagination from '../../Common/Pagination';
 import toast from 'react-hot-toast';
-import PageHeader from '../../Common/PageHeader';
+import LibraryHeader from '../../Common/LibraryHeader';
 
 const NODE_COLORS = {
   llm_agent: '#C9DEFF', tool_node: '#FFE4B8', router: '#E5D9FF',
@@ -484,14 +484,14 @@ export default function WorkflowsPage() {
   const [categories, setCategories] = useState([]);
   const [groups, setGroups] = useState(['All']);
   const [collapsedGroups, setCollapsedGroups] = useState(new Set());
-  const [filterOpen, setFilterOpen] = useState(false);
-  const filterPanelRef = useRef(null);
+  // const [filterOpen, setFilterOpen] = useState(false);
+  // const filterPanelRef = useRef(null);
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingWf, setEditingWf] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(search?.length > 0);
-  const searchInputRef = useRef(null);
+  // const [searchOpen, setSearchOpen] = useState(search?.length > 0);
+  // const searchInputRef = useRef(null);
 
   // Pagination state
   const [officialCategories, setOfficialCategories] = useState([]);
@@ -585,51 +585,7 @@ export default function WorkflowsPage() {
   }, [selectedCategory, selectedGroupFilter, debouncedSearch]);
 
 
-  // Click outside for filters
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (filterPanelRef.current && !filterPanelRef.current.contains(event.target)) {
-        setFilterOpen(false);
-      }
-    }
-    if (filterOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [filterOpen]);
-
-  // Focus search input when searchOpen is true
-  useEffect(() => {
-    if (searchOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [searchOpen]);
-
-  // Keydown listener for 's' keyboard shortcut
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      const activeEl = document.activeElement;
-      if (
-        activeEl &&
-        (activeEl.tagName === 'INPUT' ||
-         activeEl.tagName === 'TEXTAREA' ||
-         activeEl.isContentEditable)
-      ) {
-        return;
-      }
-      if (e.key === 's' || e.key === 'S') {
-        e.preventDefault();
-        setSearchOpen(true);
-        setTimeout(() => {
-          if (searchInputRef.current) {
-            searchInputRef.current.focus();
-          }
-        }, 50);
-      }
-    };
-    globalThis.addEventListener('keydown', handleKeyDown);
-    return () => globalThis.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  // Cleaned up old filter/search handlers (now managed inside LibraryHeader)
 
   const handleDelete = async (id, e) => {
     e.stopPropagation();
@@ -764,187 +720,52 @@ export default function WorkflowsPage() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-primary)', fontFamily: "'Google Sans','Roboto',sans-serif" }}>
-      {/* Header with view toggle and search */}
-      <div style={{ padding: '16px 32px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white' }}>
-        <PageHeader 
-          title="Workflows" 
-          description="Orchestrate and coordinate multi-agent system graphs, state machines, and sequential pipeline flows." 
-        />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* Search bar collapsible (AgentsPage Style) */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', transition: 'all 0.2s', width: (searchOpen || search) ? 320 : 36 }}>
-            {(!searchOpen && !search) && (
-              <button
-                onClick={() => setSearchOpen(true)}
-                title="Search workflows..."
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer', padding: 0, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8
-                }}
-              >
-                <FiSearch size={18} color="#6B7280" />
-              </button>
-            )}
-            {(searchOpen || search) && (
-              <div style={{ position: 'relative', width: '100%' }}>
-                <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} size={16} />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Search workflows..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  onBlur={() => { if (!search) setSearchOpen(false); }}
-                  autoFocus={searchOpen && !search}
-                  style={{
-                    width: '100%', padding: '8px 12px 8px 36px', border: '1px solid #E5E7EB', borderRadius: 10,
-                    fontSize: 14, outline: 'none', background: 'white', color: '#111827'
-                  }}
-                />
-              </div>
-            )}
-          </div>
-
-          <button
-            onClick={load}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 7, padding: '7px 14px',
-              background: 'var(--theme-primary-glow)', color: 'var(--theme-primary)', border: 'none', borderRadius: 8,
-              fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
-              marginLeft: 4
-            }}
-            onMouseEnter={e => e.currentTarget.style.filter = 'brightness(0.95)'}
-            onMouseLeave={e => e.currentTarget.style.filter = 'none'}
-          >
-            <FiRefreshCw size={14} className={loadingWorkflows ? 'animate-spin' : ''} /> Refresh
-          </button>
-
-          <button
-            onClick={() => {
-              newWorkflow();
-              setActivePage('canvas');
-            }}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 8, padding: '7px 16px',
-              background: 'var(--theme-primary-glow)', color: 'var(--theme-primary)', border: 'none', borderRadius: 8,
-              fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
-            }}
-            onMouseEnter={e => e.currentTarget.style.filter = 'brightness(0.95)'}
-            onMouseLeave={e => e.currentTarget.style.filter = 'none'}
-          >
-            <FiPlus size={14} /> New Workflow
-          </button>
-
-          <div style={{ width: 1, height: 24, background: 'var(--border-light)', margin: '0 8px' }} />
-
-          {/* Minimalist Filter Popover */}
-          <div style={{ position: 'relative' }} ref={filterPanelRef}>
+      <LibraryHeader
+        title="Workflows"
+        description="Orchestrate and coordinate multi-agent system graphs, state machines, and sequential pipeline flows."
+        search={search}
+        onSearchChange={setSearch}
+        placeholder="Search workflows..."
+        groups={groups}
+        selectedGroup={selectedGroupFilter}
+        onGroupChange={(val) => { setSelectedGroupFilter(val); setCurrentPage(1); }}
+        categories={categories}
+        selectedCategory={selectedCategory}
+        onCategoryChange={(val) => { setSelectedCategory(val); setCurrentPage(1); }}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        actions={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button
-              onClick={() => setFilterOpen(!filterOpen)}
+              onClick={load}
               style={{
-                display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
-                background: filterOpen ? '#111827' : 'white',
-                color: filterOpen ? 'white' : '#111827',
-                border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, fontWeight: 600,
-                cursor: 'pointer', transition: 'all 0.2s'
+                display: 'flex', alignItems: 'center', gap: 7, padding: '7px 14px',
+                background: 'var(--theme-primary-glow)', color: 'var(--theme-primary)', border: 'none', borderRadius: 8,
+                fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
               }}
+              onMouseEnter={e => e.currentTarget.style.filter = 'brightness(0.95)'}
+              onMouseLeave={e => e.currentTarget.style.filter = 'none'}
             >
-              <FiFilter size={16} /> Filters
-              {(selectedCategory !== 'All' || selectedGroupFilter !== 'All') && (
-                <span style={{
-                  width: 6, height: 6, borderRadius: '50%', background: '#EF4444'
-                }} />
-              )}
-            </button>
-
-            <AnimatePresence>
-              {filterOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-                  style={{
-                    position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 260,
-                    background: 'white', border: '1px solid #E5E7EB', borderRadius: 12,
-                    boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
-                    zIndex: 100, padding: 16
-                  }}
-                >
-                  <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>By Group</div>
-                    <select
-                      value={selectedGroupFilter}
-                      onChange={(e) => { setSelectedGroupFilter(e.target.value); setCurrentPage(1); }}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: 6, outline: 'none', fontSize: 13 }}
-                    >
-                      <option value="All">All Groups</option>
-                      {groups.filter(g => g !== 'All').map(g => <option key={g} value={g}>{g}</option>)}
-                    </select>
-                  </div>
-
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>By Category</div>
-                    <select
-                      value={selectedCategory}
-                      onChange={(e) => { setSelectedCategory(e.target.value); setCurrentPage(1); }}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: 6, outline: 'none', fontSize: 13 }}
-                    >
-                      <option value="All">All Categories</option>
-                      {categories.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-
-                  <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'flex-end' }}>
-                    <button
-                      onClick={() => { setSelectedCategory('All'); setSelectedGroupFilter('All'); setCurrentPage(1); setSearch(''); }}
-                      style={{ padding: '6px 10px', fontSize: 12, color: '#6B7280', border: 'none', background: 'none', cursor: 'pointer' }}
-                    >
-                      Reset All
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* View toggle */}
-          <div style={{ display: 'flex', gap: 2, background: 'var(--bg-canvas)', border: '1px solid var(--border)', borderRadius: 8, padding: '4px' }}>
-            <button
-              onClick={() => setViewMode('cards')}
-              title="Card view"
-              style={{
-                background: viewMode === 'cards' ? 'var(--accent-btn)' : 'transparent',
-                border: 'none',
-                borderRadius: 6,
-                padding: '6px 10px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: viewMode === 'cards' ? '#FFF' : 'var(--text-muted)',
-                transition: 'all 0.2s'
-              }}
-            >
-              <FiGrid size={16} />
+              <FiRefreshCw size={14} className={loadingWorkflows ? 'animate-spin' : ''} /> Refresh
             </button>
             <button
-              onClick={() => setViewMode('list')}
-              title="List view"
-              style={{
-                background: viewMode === 'list' ? 'var(--accent-btn)' : 'transparent',
-                border: 'none',
-                borderRadius: 6,
-                padding: '6px 10px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: viewMode === 'list' ? '#FFF' : 'var(--text-muted)',
-                transition: 'all 0.2s'
+              onClick={() => {
+                newWorkflow();
+                setActivePage('canvas');
               }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '7px 16px',
+                background: 'var(--theme-primary-glow)', color: 'var(--theme-primary)', border: 'none', borderRadius: 8,
+                fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
+              }}
+              onMouseEnter={e => e.currentTarget.style.filter = 'brightness(0.95)'}
+              onMouseLeave={e => e.currentTarget.style.filter = 'none'}
             >
-              <FiList size={16} />
+              <FiPlus size={14} /> New Workflow
             </button>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Body */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '32px', display: 'flex', flexDirection: 'column' }}>

@@ -160,6 +160,7 @@ export const useDomainDetails = () => {
                     attributeName: attr.attribute_name,
                     dataType:      attr.data_type,
                     required:      attr.is_mandatory ? 'Yes' : 'No',
+                    criticality: attr.criticality || '--',
                     dqRule:        (attr.dq_rules || []).map((r) => r.rule_name).join(', ') || '--',
                     dqRules:       attr.dq_rules || [],
                     matchWeight:   attr.match_weight ?? '--',
@@ -452,4 +453,18 @@ export const useRulesByDimensions = () => {
     }, []);
 
     return { rules, isLoading, fetchRules };
+};
+
+
+export const useExpressionExample = (validationType) => {
+    const [example, setExample] = useState('');
+
+    useEffect(() => {
+        if (!validationType) { setExample(''); return; }
+        api.get(`/get_expression/${validationType}`)
+            .then(res => setExample(res.data ?? ''))
+            .catch(() => setExample(''));
+    }, [validationType]);
+
+    return { example };
 };

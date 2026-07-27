@@ -20,6 +20,7 @@ export default function AggregatorConfig({ data, update }) {
         hint="The path to the data you want to collect (e.g. 'item')."
       >
         <Input
+          stripBraces
           value={data.field_to_aggregate || "item"}
           onChange={(v) => update({ field_to_aggregate: v })}
           placeholder="item"
@@ -30,6 +31,7 @@ export default function AggregatorConfig({ data, update }) {
         hint="Where to store the final combined result."
       >
         <Input
+          stripBraces
           value={data.destination_field || "aggregated_results"}
           onChange={(v) => update({ destination_field: v })}
           placeholder="aggregated_results"

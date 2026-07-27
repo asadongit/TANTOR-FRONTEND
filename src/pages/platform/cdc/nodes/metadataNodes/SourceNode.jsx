@@ -332,7 +332,7 @@ export function SourceNode({ id, data, selected }) {
 
      
 
-      {filteredTables.length>0 && (
+      {selectedSchema && (
         <div>
              <div className="flex items-center justify-between my-3">
               <div className="text-sm font-medium text-black">Data Set</div>
@@ -340,7 +340,7 @@ export function SourceNode({ id, data, selected }) {
               <input
                 type="search"
                 placeholder="Search datasets..."
-                className="p-0.5 text-sm text-black border border-gray-300 rounded-lg focus:outline-none focus:border-[#8e78b7] "
+                className="ml-3 p-0.5 text-sm text-black border border-gray-300 rounded-lg focus:outline-none focus:border-[#8e78b7] "
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />

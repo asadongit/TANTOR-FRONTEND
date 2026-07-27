@@ -46,7 +46,7 @@ const NODE_DEFAULTS = {
   json_transform: {
     label: 'JSON Transform',
     transform_operation: 'flatten', transform_separator: '_', transform_pick_fields: [], transform_rename_map: {}, transform_omit_keys: [], transform_input_key: 'api_response', transform_output_key: 'flattened_json',
-    jt_input_key: 'latest_api_result',
+    jt_input_key: '',
     jt_output_key: 'transformed_data',
     jt_mode: 'jmespath',
     jt_query: '',
@@ -122,6 +122,18 @@ const NODE_DEFAULTS = {
     audio_speed: 1.0,
     mute_audio: false,
     audio_input_text: ''
+  },
+  vision_intelligence: {
+    label: 'Vision Intelligence',
+    vision_mode: 'face_verification',
+    vision_face_match_threshold: 0.65,
+    vision_quality_min_score: 0.70,
+    vision_quality_blur_threshold: 100,
+    vision_quality_min_contrast: 0.10,
+    vision_quality_max_contrast: 0.45,
+    vision_id_image_key: 'latest_file_path',
+    vision_selfie_image_key: 'vcip_capture_path',
+    vision_output_key: 'vision_result'
   }
 };
 
@@ -164,7 +176,6 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
           llm: n.llm || n.data?.llm || { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 },
           wait_seconds: n.wait_seconds || n.data?.wait_seconds || 0,
           skills: n.skills || n.data?.skills || [],
-          custom_python_rules: n.custom_python_rules || n.data?.custom_python_rules || '',
           python_rules: n.python_rules || n.data?.python_rules || [],
           deep_agent_backend: n.deep_agent_backend || n.data?.deep_agent_backend || 'postgres',
           deep_agent_root_dir: n.deep_agent_root_dir || n.data?.deep_agent_root_dir || './mnt/deep_agents',
@@ -190,7 +201,7 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
           classification_input_field: n.classification_input_field || n.data?.classification_input_field || '',
           use_curl: n.use_curl ?? n.data?.use_curl ?? false,
           curl_command: n.curl_command || n.data?.curl_command || '',
-          jt_input_key: n.jt_input_key || n.data?.jt_input_key || 'latest_api_result',
+          jt_input_key: n.jt_input_key ?? n.data?.jt_input_key ?? '',
           jt_output_key: n.jt_output_key || n.data?.jt_output_key || 'transformed_data',
           jt_mode: n.jt_mode || n.data?.jt_mode || 'jmespath',
           jt_query: n.jt_query || n.data?.jt_query || '',
@@ -206,6 +217,15 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
           weightage_cross_rules: n.weightage_cross_rules || n.data?.weightage_cross_rules || [],
           extractor_input_key: n.extractor_input_key || n.data?.extractor_input_key || 'latest_file_path',
           extractor_output_key: n.extractor_output_key || n.data?.extractor_output_key || 'extracted_elements',
+          vision_mode: n.vision_mode || n.data?.vision_mode || 'face_verification',
+          vision_face_match_threshold: n.vision_face_match_threshold ?? n.data?.vision_face_match_threshold ?? 0.65,
+          vision_quality_min_score: n.vision_quality_min_score ?? n.data?.vision_quality_min_score ?? 0.70,
+          vision_quality_blur_threshold: n.vision_quality_blur_threshold ?? n.data?.vision_quality_blur_threshold ?? 100,
+          vision_quality_min_contrast: n.vision_quality_min_contrast ?? n.data?.vision_quality_min_contrast ?? 0.10,
+          vision_quality_max_contrast: n.vision_quality_max_contrast ?? n.data?.vision_quality_max_contrast ?? 0.45,
+          vision_id_image_key: n.vision_id_image_key || n.data?.vision_id_image_key || 'latest_file_path',
+          vision_selfie_image_key: n.vision_selfie_image_key || n.data?.vision_selfie_image_key || 'vcip_capture_path',
+          vision_output_key: n.vision_output_key || n.data?.vision_output_key || 'vision_result',
         },
       };
     });
@@ -240,21 +260,23 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
   const mappedEdges = rawEdges.map((e, i) => {
     const cond = e.condition;
     const hasCond = cond && cond.key && cond.value;
+    const isBp = Boolean(e.is_breakpoint || e.data?.isBreakpoint);
     return {
-      id: `e${i}`,
+      id: e.id || `e${i}`,
       source: (e.source === 'START' || e.source === 'start' || e.source === startNode?.id) ? '__start__' : e.source,
       target: (e.target === 'END' || e.target === 'end' || e.target === endNode?.id) ? '__end__' : e.target,
       sourceHandle: e.source_handle || e.sourceHandle || null,
       targetHandle: e.target_handle || e.targetHandle || null,
-      data: { condition: e.condition },
+      data: { condition: e.condition, isBreakpoint: isBp, ...(e.data || {}) },
       animated: !!hasCond,
       label: hasCond ? `${cond.key} ${cond.operator || '=='} ${cond.value}` : null,
       labelStyle: { fill: '#4F46E5', fontWeight: 700, fontSize: 10 },
       labelBgStyle: { fill: '#F5F3FF', fillOpacity: 0.9, rx: 4, stroke: '#C7D2FE', strokeWidth: 1 },
       type: 'smoothstep',
-      style: { stroke: '#CBD5E1', strokeWidth: 1.5 },
+      style: { stroke: isBp ? '#ef4444' : '#CBD5E1', strokeWidth: isBp ? 2.5 : 1.5 },
     };
   });
+
 
   return { allNodes, rfEdges: mappedEdges };
 };
@@ -372,6 +394,7 @@ export const useWorkflowStore = create((set, get) => ({
   allWorkflows: [], // Global catalog for dropdowns
   loadingWorkflows: false,
   loadingAllWorkflows: false,
+  isLoadingWorkflow: false,
 
   // Global Enterprise Connections Vault Cache
   connectionsVault: [],
@@ -968,6 +991,7 @@ export const useWorkflowStore = create((set, get) => ({
   loadWorkflowIntoEditor: async (w) => {
     if (!w) return;
 
+    set({ isLoadingWorkflow: true });
     // If this is a summary object from the list endpoint (no config),
     // fetch the full workflow first before loading into the editor.
     if (!w.config) {
@@ -977,6 +1001,7 @@ export const useWorkflowStore = create((set, get) => ({
         if (full) w = { ...w, ...full };
       } catch (e) {
         console.error('loadWorkflowIntoEditor: failed to fetch full config', e);
+        set({ isLoadingWorkflow: false });
         return;
       }
     }
@@ -1005,6 +1030,7 @@ export const useWorkflowStore = create((set, get) => ({
       isCompiled: w.is_active || false,
       createdAt: w.created_at || null,
       updatedAt: w.updated_at || null,
+      isLoadingWorkflow: false,
     });
     // ✅ VARIABLE EXPLORER: Clear data explorer when loading an existing workflow
     useRunStore.getState().reset();
@@ -1091,7 +1117,13 @@ export const useWorkflowStore = create((set, get) => ({
           // SMTP Email Node
           'email_provider', 'email_to', 'email_cc', 'email_bcc', 'email_subject', 'email_body', 'email_html', 'email_smtp_server', 'email_smtp_port', 'email_user', 'email_password', 'email_attachments', 'email_headers', 'email_smtp_timeout',
           'email_auth_method', 'email_tenant_id', 'email_client_id', 'email_client_secret',
-          'email_google_service_account_json', 'email_google_delegated_user'
+          'email_google_service_account_json', 'email_google_delegated_user',
+          // STT Configs
+          'auto_start', 'auto_stop', 'silence_delay', 'stt_lang',
+          // Vision Intelligence
+          'vision_mode', 'vision_face_match_threshold', 'vision_quality_min_score',
+          'vision_quality_blur_threshold', 'vision_quality_min_contrast', 'vision_quality_max_contrast',
+          'vision_id_image_key', 'vision_selfie_image_key', 'vision_output_key'
         ];
 
         const nodeConfig = {};
@@ -1128,7 +1160,7 @@ export const useWorkflowStore = create((set, get) => ({
     const frontend_meta = {
       // Store positions of START/END nodes for full layout restoration
       system_positions: Object.fromEntries(
-        s.nodes.filter(n => systemIds.has(n.id) || ['webhook', 'cron', 'polling'].includes(n.data.type)).map(n => [n.id === '__start__' || n.id === '__end__' ? n.id : n.data.type, n.position])
+        s.nodes.filter(n => systemIds.has(n.id) || ['webhook', 'cron', 'polling'].includes(n.data?.type)).map(n => [n.id === '__start__' || n.id === '__end__' ? n.id : n.data?.type, n.position])
       ),
       cardboards: cardboardNodes.map(n => ({
         id: n.id,
@@ -1143,19 +1175,23 @@ export const useWorkflowStore = create((set, get) => ({
     const finalEdges = s.edges
       .filter(e => !systemIds.has(e.source) || !systemIds.has(e.target))
       .map((e) => {
+        const isBp = Boolean(e.data?.isBreakpoint || e.is_breakpoint);
         return {
           source: e.source === '__start__' ? 'START' : e.source,
           target: e.target === '__end__' ? 'END' : e.target,
           source_handle: e.sourceHandle || null,
           target_handle: e.targetHandle || null,
           condition: e.data?.condition || null,
+          is_breakpoint: isBp,
+          data: { ...(e.data || {}), isBreakpoint: isBp },
         };
       });
 
+
     // Extract Triggers from special trigger nodes with validation
-    const webhookNode = s.nodes.find(n => n.data.type === 'webhook');
-    const cronNode = s.nodes.find(n => n.data.type === 'cron');
-    const pollingNode = s.nodes.find(n => n.data.type === 'polling');
+    const webhookNode = s.nodes.find(n => n.data?.type === 'webhook');
+    const cronNode = s.nodes.find(n => n.data?.type === 'cron');
+    const pollingNode = s.nodes.find(n => n.data?.type === 'polling');
 
     const triggers = {};
 
@@ -1327,6 +1363,7 @@ export const useUIStore = create((set) => ({
   rightPanel: 'properties', // properties | palette
   sidebarCollapsed: false,
   showNotes: false,
+  showFlowchart: false,
   showNotifications: false,
   showVariableExplorer: false,
   setShowVariableExplorer: (v) => set({ showVariableExplorer: v }),
@@ -1379,6 +1416,7 @@ export const useUIStore = create((set) => ({
   setSelectedEdge: (id) => set({ selectedEdgeId: id, selectedNodeId: null, panelOpen: !!id, rightPanel: 'properties' }),
   togglePanel: () => set((s) => ({ panelOpen: !s.panelOpen })),
   toggleNotes: () => set((s) => ({ showNotes: !s.showNotes })),
+  toggleFlowchart: (val) => set((s) => ({ showFlowchart: typeof val === 'boolean' ? val : !s.showFlowchart })),
   setShowNotifications: (v) => set({ showNotifications: v }),
   setUnreadCount: (v) => set((s) => ({ unreadCount: typeof v === 'function' ? v(s.unreadCount) : v })),
   openPalette: () => set({ panelOpen: true, rightPanel: 'palette', selectedNodeId: null, selectedEdgeId: null }),
@@ -1470,7 +1508,7 @@ export const useRunStore = create((set) => ({
   setEvents: (evts) => set({ streamEvents: evts }),
   finishRun: (output) => set({ running: false, runOutput: output }),
   setError: (err) => set({ running: false, runError: err }),
-  setPausedInfo: (info) => set({ pausedInfo: info }),
+  setPausedInfo: (info) => set((s) => ({ pausedInfo: { ...s.pausedInfo, ...info } })),
   removeEventsFromIndex: (index) => set((s) => ({ streamEvents: s.streamEvents.slice(0, index) })),
 
   setHistory: (history) => set({ history }),

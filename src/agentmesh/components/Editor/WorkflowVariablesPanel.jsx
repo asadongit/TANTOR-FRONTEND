@@ -574,7 +574,20 @@ function AddVariableForm({ workflowId, onSave, saving }) {
   ]);
 
   // list state
-  const [listItems, setListItems] = useState([""]);
+  const [listItems, setListItems] = useState([]);
+
+  // Auto-set sensible defaults when type changes
+  useEffect(() => {
+    if (varType === "boolean") {
+      setValue("true");
+    } else if (varType === "json") {
+      setValue(prev => prev && prev.trim() ? prev : "{}");
+    } else if (varType === "number") {
+      setValue(prev => prev && prev.trim() ? prev : "0");
+    } else if (varType === "text") {
+      setValue(prev => (prev === "true" || prev === "false" || prev === "{}" || prev === "0") ? "" : prev);
+    }
+  }, [varType]);
 
   const handleSubmit = (e) => {
     e.preventDefault();

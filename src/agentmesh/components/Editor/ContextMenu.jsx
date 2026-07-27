@@ -141,6 +141,19 @@ export default function ContextMenu({ ids = [], top, left, right, bottom, onMous
                     {isGroupNode && (
                         <ContextItem icon={<FiLayers />} label="Ungroup" shortcut="Ctrl+Shift+G" onClick={onUngroup} />
                     )}
+                    <ContextItem 
+                        icon={<span style={{ color: '#10B981', fontWeight: 'bold' }}>▶</span>} 
+                        label="Run from this Node" 
+                        onClick={() => {
+                            const onSend = window.__agentmesh_onSend;
+                            if (onSend && ids[0]) {
+                                onSend('Execute node', null, ids[0]);
+                            } else {
+                                alert("Execution panel is not active.");
+                            }
+                            onMouseLeave();
+                        }} 
+                    />
                     <ContextItem icon={<FiSettings />} label="Open Settings" onClick={onOpen} />
                     <ContextItem icon={<FiCopy />} label="Copy Properties" onClick={onCopyProperties} />
                 </>

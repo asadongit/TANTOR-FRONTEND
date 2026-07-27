@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { listTools, syncMCPTools, listMCPServers, deleteMCPServer, listToolPackages } from '../../../api/agentmesh';
 import { useUIStore, useWorkflowStore } from '../../../store';
 import Pagination from '../../Common/Pagination';
@@ -13,12 +13,13 @@ import {
   FiDownload, FiUpload, FiRefreshCw, FiCloud, FiMonitor,
   FiFolder, FiArchive, FiList, FiGrid, FiLayers, FiBook,
   FiShoppingCart, FiCreditCard, FiDollarSign, FiActivity,
-  FiGithub, FiEye, FiBox, FiChevronDown, FiFilter
+  FiGithub, FiEye, FiBox, FiChevronDown
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import MCPConnectorModal from './mcpConnectorModal';
 import AddToolModal from './addToolModal';
-import PageHeader from '../../Common/PageHeader';
+import LibraryHeader from '../../Common/LibraryHeader';
+import LibraryListRow from '../../Common/LibraryListRow';
 
 const TOOL_COLORS = ['#C9DEFF', '#FFE4B8', '#E5D9FF', '#C9F5E0', '#FFD9EE', '#FFF3B8', '#C9F5F5', '#FFE4E6'];
 const TOOL_TEXT = ['#1A56DB', '#B45309', '#7C3AED', '#065F46', '#9D174D', '#92400E', '#065555', '#BE123C'];
@@ -414,6 +415,24 @@ function ToolCard({ tool, idx, onAddTool }) {
   );
 }
 
+function ToolListRow({ tool, idx, onAddTool }) {
+  const tags = [];
+  if (tool.package) tags.push({ label: tool.package, type: 'Package' });
+  if (tool.category) tags.push({ label: tool.category, type: 'Category' });
+  if (tool.version) tags.push({ label: tool.version, type: 'Version' });
+
+  return (
+    <LibraryListRow
+      icon={getToolIcon(tool, 22)}
+      title={tool.display_name || tool.name}
+      description={tool.description || "Powerful utility to expand agent capabilities."}
+      tags={tags}
+      primaryAction={{ label: '+ Add', onClick: () => onAddTool(tool) }}
+      idx={idx}
+    />
+  );
+}
+
 export default function ToolsPage() {
   const [activeTab, setActiveTab] = useState('library'); // 'library' | 'packages' | 'servers'
   const [tools, setTools] = useState([]);
@@ -423,14 +442,15 @@ export default function ToolsPage() {
   const [error, setError] = useState(null);
   const [editingServer, setEditingServer] = useState(null);
   const [addToolModalTool, setAddToolModalTool] = useState(null);
+  const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'list'
 
   // Filtering States
   const [categories, setCategories] = useState(['All']);
   const [packagesList, setPackagesList] = useState(['All']);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedPackage, setSelectedPackage] = useState('All');
-  const [filterOpen, setFilterOpen] = useState(false);
-  const filterPanelRef = useRef(null);
+  // const [filterOpen, setFilterOpen] = useState(false);
+  // const filterPanelRef = useRef(null);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -439,10 +459,9 @@ export default function ToolsPage() {
   const itemsPerPage = 12;
   const packagesPerPage = 10;
 
-  const { managementSearch, refreshTrigger, showManagementModal: showMCP, setShowManagementModal: setShowMCP, setActivePage } = useUIStore();
-  const [searchOpen, setSearchOpen] = useState(managementSearch?.length > 0);
-  const searchInputRef = React.useRef(null);
-  const { addNode, setNodeData } = useWorkflowStore();
+  const { managementSearch, refreshTrigger, showManagementModal: showMCP, setShowManagementModal: setShowMCP } = useUIStore();
+  // const [searchOpen, setSearchOpen] = useState(managementSearch?.length > 0);
+  // const searchInputRef = React.useRef(null);
 
   const handleAddToWorkflow = (tool) => {
     setAddToolModalTool(tool);
@@ -508,49 +527,7 @@ export default function ToolsPage() {
       .catch(e => console.error("Failed to load unique filters:", e));
   }, [refreshTrigger]);
 
-  // Handle clicks outside filter panel
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (filterPanelRef.current && !filterPanelRef.current.contains(event.target)) {
-        setFilterOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Focus search input when searchOpen is true
-  useEffect(() => {
-    if (searchOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [searchOpen]);
-
-  // Keydown listener for 's' keyboard shortcut
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      const activeEl = document.activeElement;
-      if (
-        activeEl &&
-        (activeEl.tagName === 'INPUT' ||
-         activeEl.tagName === 'TEXTAREA' ||
-         activeEl.isContentEditable)
-      ) {
-        return;
-      }
-      if (e.key === 's' || e.key === 'S') {
-        e.preventDefault();
-        setSearchOpen(true);
-        setTimeout(() => {
-          if (searchInputRef.current) {
-            searchInputRef.current.focus();
-          }
-        }, 50);
-      }
-    };
-    globalThis.addEventListener('keydown', handleKeyDown);
-    return () => globalThis.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  // Cleaned up old filter/search handlers (now managed inside LibraryHeader)
 
   // Reset page when tab changes or filters change
   useEffect(() => {
@@ -594,111 +571,27 @@ export default function ToolsPage() {
         tool={addToolModalTool}
       />
 
-      {/* ── Standard Header ── */}
-      <div style={{ padding: '16px 40px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white' }}>
-        <PageHeader 
-          title="Tools" 
-          description="Register local tools and MCP (Model Context Protocol) server connections to extend agent capabilities." 
-        />
-        
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* Search bar collapsible (AgentsPage Style) */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', transition: 'all 0.2s', width: (searchOpen || managementSearch) ? 320 : 36 }}>
-            {(!searchOpen && !managementSearch) && (
-              <button
-                onClick={() => setSearchOpen(true)}
-                title="Search tools..."
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer', padding: 0, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8
-                }}
-              >
-                <FiSearch size={18} color="#6B7280" />
-              </button>
-            )}
-            {(searchOpen || managementSearch) && (
-              <div style={{ position: 'relative', width: '100%' }}>
-                <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} size={16} />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Search tools..."
-                  value={managementSearch}
-                  onChange={(e) => useUIStore.getState().setManagementSearch(e.target.value)}
-                  onBlur={() => { if (!managementSearch) setSearchOpen(false); }}
-                  autoFocus={searchOpen && !managementSearch}
-                  style={{
-                    width: '100%', padding: '8px 12px 8px 36px', border: '1px solid #E5E7EB', borderRadius: 10,
-                    fontSize: 14, outline: 'none', background: 'white', color: '#111827'
-                  }}
-                />
-              </div>
-            )}
-          </div>
-          {activeTab === 'library' && (
-            <div style={{ position: 'relative' }} ref={filterPanelRef}>
-              <button
-                onClick={() => setFilterOpen(!filterOpen)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
-                  background: filterOpen ? '#111827' : 'white',
-                  color: filterOpen ? 'white' : '#111827',
-                  border: '1px solid #E5E7EB', borderRadius: 10, fontSize: 13, fontWeight: 600,
-                  cursor: 'pointer', transition: 'all 0.2s'
-                }}
-              >
-                <FiFilter size={16} /> Filters
-                {(selectedCategory !== 'All' || selectedPackage !== 'All') && (
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444' }} />
-                )}
-              </button>
-
-              <AnimatePresence>
-                {filterOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-                    style={{
-                      position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 260,
-                      background: 'white', border: '1px solid #E5E7EB', borderRadius: 12,
-                      boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', zIndex: 100, padding: 16
-                    }}
-                  >
-                    <div style={{ marginBottom: 16 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>By Package</div>
-                      <select
-                        value={selectedPackage}
-                        onChange={(e) => setSelectedPackage(e.target.value)}
-                        style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: 8, outline: 'none', fontSize: 13 }}
-                      >
-                        {packagesList.map(p => <option key={p} value={p}>{p === 'All' ? 'All Packages' : p.toUpperCase()}</option>)}
-                      </select>
-                    </div>
-
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>By Category</div>
-                      <select
-                        value={selectedCategory}
-                        onChange={(e) => setSelectedCategory(e.target.value)}
-                        style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: 8, outline: 'none', fontSize: 13 }}
-                      >
-                        {categories.map(c => <option key={c} value={c}>{c === 'All' ? 'All Categories' : c}</option>)}
-                      </select>
-                    </div>
-
-                    <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'flex-end' }}>
-                      <button
-                        onClick={() => { setSelectedCategory('All'); setSelectedPackage('All'); }}
-                        style={{ padding: '6px 10px', fontSize: 12, color: '#6B7280', border: 'none', background: 'none', cursor: 'pointer' }}
-                      >
-                        Reset All
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
-          {activeTab === 'servers' && (
-            <>
+      <LibraryHeader
+        title="Tools"
+        description="Register local tools and MCP (Model Context Protocol) server connections to extend agent capabilities."
+        search={managementSearch}
+        onSearchChange={(val) => useUIStore.getState().setManagementSearch(val)}
+        placeholder="Search tools..."
+        showFilters={activeTab === 'library'}
+        showSearch={activeTab !== 'servers'}
+        categories={categories}
+        selectedCategory={selectedCategory}
+        onCategoryChange={setSelectedCategory}
+        tags={packagesList}
+        selectedTag={selectedPackage}
+        onTagChange={setSelectedPackage}
+        tagLabel="Package"
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        showViewToggle={activeTab === 'library'}
+        actions={
+          activeTab === 'servers' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <button
                 onClick={() => setShowMCP(true)}
                 style={{ 
@@ -728,10 +621,10 @@ export default function ToolsPage() {
               >
                 <FiRefreshCw size={14} /> Sync Registry
               </button>
-            </>
-          )}
-        </div>
-      </div>
+            </div>
+          )
+        }
+      />
 
       {/* ── Tabs ── */}
       <div style={{
@@ -809,9 +702,15 @@ export default function ToolsPage() {
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 30 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
-                      {paginatedTools.map((t, i) => <ToolCard key={t.name || i} tool={t} idx={i} onAddTool={handleAddToWorkflow} />)}
-                    </div>
+                    {viewMode === 'cards' ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
+                        {paginatedTools.map((t, i) => <ToolCard key={t.name || i} tool={t} idx={i} onAddTool={handleAddToWorkflow} />)}
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        {paginatedTools.map((t, i) => <ToolListRow key={t.name || i} tool={t} idx={i} onAddTool={handleAddToWorkflow} />)}
+                      </div>
+                    )}
 
                     {/* Pagination Controller */}
                     <Pagination

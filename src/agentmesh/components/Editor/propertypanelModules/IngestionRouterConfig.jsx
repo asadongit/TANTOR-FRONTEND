@@ -43,6 +43,7 @@ export default function IngestionRouterConfig({ data, update }) {
           hint="Key for macro-bulk processing (default: 'parent_folder_path')."
         >
           <Input
+            stripBraces
             value={data.parent_folder_key || "parent_folder_path"}
             onChange={(v) => update({ parent_folder_key: v })}
             placeholder="parent_folder_path"
@@ -54,6 +55,7 @@ export default function IngestionRouterConfig({ data, update }) {
           hint="Key used to pass the item's name to the child workflow (default: 'customer_folder_name')."
         >
           <Input
+            stripBraces
             value={data.folder_identifier_key || "customer_folder_name"}
             onChange={(v) => update({ folder_identifier_key: v })}
             placeholder="customer_folder_name"
@@ -65,6 +67,7 @@ export default function IngestionRouterConfig({ data, update }) {
           hint="Key containing a cURL command string to execute for JSON endpoints (default: 'curl_command')."
         >
           <Input
+            stripBraces
             value={data.curl_command_key || "curl_command"}
             onChange={(v) => update({ curl_command_key: v })}
             placeholder="curl_command"

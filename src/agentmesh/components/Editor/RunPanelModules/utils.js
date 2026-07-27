@@ -28,7 +28,7 @@ export function findStartingTriggers(nodes, edges, triggerType) {
         for (const edge of incoming) {
           const parentNode = nodes.find(n => n.id === edge.source);
           if (parentNode) {
-            const type = parentNode.type || parentNode.data?.type;
+            const type = parentNode.data?.type;
             if (type !== 'start' && parentNode.id !== 'START' && parentNode.id !== 'start' && parentNode.id !== '__start__') {
               continue;
             }

@@ -31,6 +31,7 @@ export default function JsonTransformVaConfig({ data, update }) {
         hint="Context variable containing the JSON data."
       >
         <Input
+          stripBraces
           value={data.transform_input_key || "payload"}
           onChange={(v) => update({ transform_input_key: v })}
           placeholder="payload"
@@ -42,6 +43,7 @@ export default function JsonTransformVaConfig({ data, update }) {
         hint="Context variable where the result will be stored."
       >
         <Input
+          stripBraces
           value={data.transform_output_key || "transformed_json"}
           onChange={(v) => update({ transform_output_key: v })}
           placeholder="transformed_json"

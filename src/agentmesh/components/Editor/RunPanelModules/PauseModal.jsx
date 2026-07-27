@@ -21,7 +21,7 @@ export default function PauseModal({ isOpen, title, icon: Icon, maxWidth = 600, 
           bottom: 0,
           background: 'rgba(0, 0, 0, 0.4)',
           backdropFilter: 'blur(2px)',
-          zIndex: 90,
+          zIndex: 9999,
         }}
       />
 
@@ -35,7 +35,7 @@ export default function PauseModal({ isOpen, title, icon: Icon, maxWidth = 600, 
           position: 'absolute',
           top: '50%',
           left: '50%',
-          zIndex: 95,
+          zIndex: 10000,
           width: '90%',
           maxWidth,
           maxHeight: '85%',

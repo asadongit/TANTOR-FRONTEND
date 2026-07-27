@@ -1,0 +1,318 @@
+{
+  "GRU": {
+    "category": "Deep Learning",
+    "backend_key": "GRU",
+    "info": "Gated Recurrent Unit is a recurrent neural network architecture designed to capture temporal dependencies while reducing computational complexity compared to LSTMs.",
+    "hyperparameters": {
+      "units": { "low": "32", "high": "512" },
+      "layers": { "low": "1", "high": "5" },
+      "dropout": { "low": "0.0", "high": "0.5" }
+    }
+  },
+
+  "LSTM": {
+    "category": "Deep Learning",
+    "backend_key": "LSTM",
+    "info": "Long Short-Term Memory network is a recurrent neural network architecture capable of learning long-term temporal dependencies in sequential data.",
+    "hyperparameters": {
+      "units": { "low": "32", "high": "512" },
+      "layers": { "low": "1", "high": "5" },
+      "dropout": { "low": "0.0", "high": "0.5" }
+    }
+  },
+
+  "Bidirectional LSTM": {
+    "category": "Deep Learning",
+    "backend_key": "BiLSTM",
+    "info": "Bidirectional LSTM processes sequence data in both forward and backward directions, allowing the model to learn context from past and future observations.",
+    "hyperparameters": {
+      "units": { "low": "32", "high": "512" },
+      "merge_mode": "concat, sum, mul, ave",
+      "dropout": { "low": "0.0", "high": "0.5" }
+    }
+  },
+
+  "CNN-LSTM": {
+    "category": "Deep Learning",
+    "backend_key": "CNN_LSTM",
+    "info": "Hybrid architecture that combines convolutional layers for feature extraction with LSTM layers for temporal sequence modeling.",
+    "hyperparameters": {
+      "filters": { "low": "16", "high": "256" },
+      "kernel_size": { "low": "2", "high": "10" },
+      "lstm_units": { "low": "32", "high": "512" }
+    }
+  },
+
+  "Attention LSTM": {
+    "category": "Deep Learning",
+    "backend_key": "AttentionLSTM",
+    "info": "LSTM architecture enhanced with an attention mechanism that enables the model to focus on the most relevant time steps during prediction.",
+    "hyperparameters": {
+      "units": { "low": "32", "high": "512" },
+      "attention_units": { "low": "16", "high": "256" },
+      "dropout": { "low": "0.0", "high": "0.5" }
+    }
+  },
+
+  "Encoder-Decoder LSTM": {
+    "category": "Deep Learning",
+    "backend_key": "EncoderDecoderLSTM",
+    "info": "Sequence-to-sequence architecture consisting of encoder and decoder LSTM networks, commonly used for multi-step forecasting tasks.",
+    "hyperparameters": {
+       "encoder_decoder units": {
+      "low": "32",
+      "high": "512"
+    },
+      "attention": "true, false"
+    }
+  },
+
+  "TCN": {
+    "category": "Temporal Convolutional",
+    "backend_key": "TCN",
+    "info": "Temporal Convolutional Network uses causal and dilated convolutions to model long-range temporal dependencies efficiently.",
+    "hyperparameters": {
+      "nb_filters": { "low": "16", "high": "256" },
+      "kernel_size": { "low": "2", "high": "10" },
+      "dilations": { "low": "1", "high": "64" }
+    }
+  },
+
+  "WaveNet": {
+    "category": "Temporal Convolutional",
+    "backend_key": "WaveNet",
+    "info": "WaveNet is a deep generative architecture that leverages stacked dilated causal convolutions for modeling sequential and time-series data.",
+    "hyperparameters": {
+      "nb_filters": { "low": "16", "high": "256" },
+      "kernel_size": { "low": "2", "high": "10" },
+      "nb_stacks": { "low": "1", "high": "10" }
+    }
+  },
+
+  "Transformer": {
+    "category": "Transformer-based",
+    "backend_key": "Transformer",
+    "info": "Transformer architecture relies on self-attention mechanisms to capture long-range dependencies and relationships within sequential data.",
+    "hyperparameters": {
+      "d_model": { "low": "32", "high": "512", "warning": "d_model must be exactly divisible by nhead." },
+      "nhead": { "low": "1", "high": "16" },
+      "num_layers": { "low": "1", "high": "12" }
+    }
+  },
+
+  "Informer": {
+    "category": "Transformer-based",
+    "backend_key": "Informer",
+    "info": "Informer is an efficient Transformer variant specifically designed for long-sequence time-series forecasting using ProbSparse attention.",
+    "hyperparameters": {
+      "d_model": { "low": "32", "high": "512", "warning": "d_model must be exactly divisible by n_heads." },
+      "n_heads": { "low": "1", "high": "16" },
+      "e_layers": { "low": "1", "high": "6" }
+    }
+  },
+
+  "FEDformer": {
+    "category": "Transformer-based",
+    "backend_key": "FEDformer",
+    "info": "Frequency Enhanced Decomposed Transformer improves long-term forecasting by combining decomposition methods with frequency-domain attention.",
+    "hyperparameters": {
+      "d_model": { "low": "32", "high": "512", "warning": "d_model must be exactly divisible by n_heads." },
+      "n_heads": { "low": "1", "high": "16" },
+      "modes": { "low": "8", "high": "128" }
+    }
+  },
+
+  
+  "ProphetRegressor": {
+    "category": "Machine Learning",
+    "backend_key": "ProphetRegressor",
+    "info": "Prophet-based forecasting model enhanced with external regressors to improve predictive performance.",
+    "hyperparameters": {
+      "growth": "linear",
+      "changepoints": { "low": "5", "high": "50" },
+      "add_regressor": "true, false",
+      "changepoint_prior_scale": {"low": "0.001","high": "1.0"},
+      "seasonality_mode": "additive"
+    }
+  },
+
+  "ExponentialSmoothing": {
+    "category": "Statistical",
+    "backend_key": "ExponentialSmoothing",
+    "info": "Forecasting method that assigns exponentially decreasing weights to older observations.",
+    "hyperparameters": {
+      "trend": "add",
+      "seasonal": ["add", null],
+      "damped": "true, false",
+      "seasonal_periods": { "low": "2", "high": "365" }
+    }
+  },
+
+  "Holt-Linear": {
+    "category": "Statistical",
+    "backend_key": "Holt-Linear",
+    "info": "Extension of exponential smoothing that captures both level and trend components.",
+    "hyperparameters": {
+      "smoothing_level": { "low": "0.01", "high": "0.99" },
+      "smoothing_trend": { "low": "0.01", "high": "0.99" },
+      "damped_trend": "true, false"
+    }
+  },
+
+  "Holt-Winters": {
+    "category": "Statistical",
+    "backend_key": "Holt-Winters",
+    "info": "Triple exponential smoothing method that models level, trend, and seasonality.",
+    "hyperparameters": {
+      "trend": "add, null",
+      "seasonal": "add, null",
+      "seasonal_periods": { "low": "2", "high": "365" }
+    }
+  },
+
+  "ETS": {
+    "category": "Statistical",
+    "backend_key": "ETS",
+    "info": "Error-Trend-Seasonality state space framework for time-series forecasting.",
+    "hyperparameters": {
+      "error": "add",
+      "trend": "add, null",
+      "seasonal": "add, null",
+      "seasonal_periods": { "low": "2", "high": "365" }
+    }
+  },
+
+
+
+  "ARIMA": {
+    "category": "Statistical",
+    "backend_key": "ARIMA",
+    "info": "Autoregressive Integrated Moving Average model for univariate time-series forecasting, combining autoregression, differencing, and moving average components.",
+    "hyperparameters": {
+      "order": {
+        "p": { "low": "0", "high": "5" },
+        "d": { "low": "0", "high": "2" },
+        "q": { "low": "0", "high": "5" }
+      },
+      "trend": "n, c, t, ct"
+    }
+  },
+
+  "SARIMA": {
+    "category": "Statistical",
+    "backend_key": "SARIMA",
+    "info": "Seasonal ARIMA extends ARIMA with seasonal autoregressive, differencing, and moving average terms to capture periodic patterns in time-series data.",
+    "hyperparameters": {
+      "order": {
+        "p": { "low": "0", "high": "5" },
+        "d": { "low": "0", "high": "2" },
+        "q": { "low": "0", "high": "5" }
+      },
+      "seasonal_order": {
+        "P": { "low": "0", "high": "3" },
+        "D": { "low": "0", "high": "2" },
+        "Q": { "low": "0", "high": "3" },
+        "s": { "low": "2", "high": "24" }
+      },
+      "trend": "n, c, t, ct"
+    }
+  },
+
+  "Prophet": {
+    "category": "Statistical",
+    "backend_key": "Prophet",
+    "info": "Forecasting model developed by Meta for handling seasonality, holidays, and trend changes.",
+    "hyperparameters": {
+      "growth": "linear",
+      "changepoint_prior_scale": { "low": "0.001", "high": "0.5" },
+      "seasonality_mode": "additive, multiplicative"
+    }
+  },
+
+  "TBATS": {
+    "category": "Statistical",
+    "backend_key": "TBATS",
+    "info": "Trigonometric seasonality, Box-Cox transformation, ARMA errors, Trend and Seasonal components model designed for complex seasonal time series.",
+    "hyperparameters": {
+      "use_box_cox": "true, false",
+      "use_trend": "true, false",
+      "use_arma_errors": "true, false"
+    }
+  },
+
+  "BATS": {
+    "category": "Statistical",
+    "backend_key": "BATS",
+    "info": "Box-Cox transformation, ARMA errors, Trend and Seasonal components model for handling multiple seasonalities in time-series forecasting.",
+    "hyperparameters": {
+      "use_box_cox": "true, false",
+      "use_trend": "true, false",
+      "use_damped_trend": "true, false"
+    }
+  },
+
+  "Croston": {
+    "category": "Intermittent Demand",
+    "backend_key": "Croston",
+    "info": "Forecasting technique designed specifically for intermittent demand time series.",
+    "hyperparameters": {
+      "alpha": { "low": "0.01", "high": "0.99" },
+      "variant": "classic, sba , tsb"
+    }
+  },
+
+  "SBA": {
+    "category": "Intermittent Demand",
+    "backend_key": "SBA",
+    "info": "Syntetos-Boylan Approximation improves Croston's method by reducing forecast bias.",
+    "hyperparameters": {
+      "alpha": { "low": "0.01", "high": "0.99" },
+      "beta": { "low": "0.01", "high": "0.99" }
+    }
+  },
+
+  "TSB": {
+    "category": "Intermittent Demand",
+    "backend_key": "TSB",
+    "info": "Teunter-Syntetos-Babai method for intermittent demand forecasting with probability updates.",
+    "hyperparameters": {
+      "alpha": { "low": "0.01", "high": "0.99" },
+      "beta": { "low": "0.01", "high": "0.99" },
+      "alpha_d": { "low": "0.01", "high": "0.99" }
+    }
+  },
+
+  "Moving Average": {
+    "category": "Baseline",
+    "backend_key": "MovingAverage",
+    "info": "Forecasting approach based on the average of recent observations.",
+    "hyperparameters": {
+      "window": { "low": "2", "high": "100" },
+      "center": [true, false],
+      "min_periods": { "low": "1", "high": "50" , "warning": "min_periods must be less than or equal to window."}
+    }
+  },
+
+  "Weighted Moving Average": {
+    "category": "Baseline",
+    "backend_key": "WeightedMovingAverage",
+    "info": "Moving average method assigning higher importance to recent observations.",
+    "hyperparameters": {
+      "window": { "low": "2", "high": "100" }
+    }
+  },
+
+  "EWMA": {
+    "category": "Baseline",
+    "backend_key": "EWMA",
+    "info": "Exponentially Weighted Moving Average forecasting technique emphasizing recent values.",
+    "hyperparameters": {
+      "alpha": { "low": "0.01", "high": "0.99" },
+      "adjust": "true, false",
+      "min_periods": { "low": "1", "high": "50" }
+    }
+  }
+  
+}
+
+  

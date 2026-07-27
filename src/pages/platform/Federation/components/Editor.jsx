@@ -1,72 +1,250 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
-  Database,
-  Search,
-  ChevronRight,
   ChevronDown,
-  Table,
-  Type,
-  Hash,
   X,
   Play,
-  Trash2,
   Download,
   ArrowUpDown,
-  GripVertical
+  GripVertical,
+  Info,
 } from "lucide-react";
 import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/mode-mysql";
 import CircularProgress from "@mui/material/CircularProgress";
 import Switch from "@mui/material/Switch";
 import Builder from "./Builder";
+import EditorSidebar from "./EditorSidebar";
+import {
+  QueryDetailsModal,
+  ApiDetailsModal,
+  EditorToast,
+} from "./EditorModals";
+import Breadcrumb from "../../../../components/Breadcrumb";
 import { useAuth } from "../../../../context/AuthContext";
-import { secureQuery } from '../../../datagovernance/DataCatalogue/Components/function.js';
-import { Icon } from "@iconify/react";
+import { secureQuery } from "../../../datagovernance/DataCatalogue/Components/function.js";
+import { useFederationPolicyIds, useFederationConnections, useFederationBuilderViews } from "../../../../hooks/platform/federation";
+
+// ─── CSS that cannot be expressed in Tailwind ────────────────────────────────
+const EDITOR_STYLES = `
+  @keyframes qe-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+  .qe-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+  .qe-scroll::-webkit-scrollbar-thumb { background: #d4cbe8; border-radius: 4px; }
+  .qe-scroll::-webkit-scrollbar-track { background: transparent; }
+
+  .qe-tr:hover td { background: #faf9ff !important; }
+`;
+
+const sidebarDataCache = {};
+
+const ResultsTable = ({
+  orderedCols,
+  sortedData,
+  dragOverCol,
+  sortConfig,
+  handleColDragStart,
+  handleColDragOver,
+  handleColDrop,
+  handleColDragEnd,
+  handleSort,
+  loadingMore,
+  hasMore,
+  displayCount,
+  dataBufferLength,
+  handleResultsScroll
+}) => {
+  const tableContainerRef = useRef(null);
+
+  const rowVirtualizer = useVirtualizer({
+    count: sortedData.length,
+    getScrollElement: () => tableContainerRef.current,
+    estimateSize: () => 37,
+    overscan: 10,
+  });
+
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const totalSize = rowVirtualizer.getTotalSize();
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0].start : 0;
+  const paddingBottom = virtualRows.length > 0 ? totalSize - virtualRows[virtualRows.length - 1].end : 0;
+
+  return (
+    <div
+      ref={tableContainerRef}
+      className="h-full overflow-auto qe-scroll"
+      onScroll={handleResultsScroll}
+    >
+      <table className="w-full border-collapse bg-white">
+        <thead>
+          <tr>
+            {orderedCols.map((col, vi) => (
+              <th
+                key={col}
+                draggable
+                onDragStart={(e) => handleColDragStart(e, vi)}
+                onDragOver={(e) => handleColDragOver(e, vi)}
+                onDrop={(e) => handleColDrop(e, vi)}
+                onDragEnd={handleColDragEnd}
+                title={col}
+                onClick={() => handleSort(col)}
+                className={`text-left px-3.5 py-2.5 text-[12px] font-semibold text-gray-600 bg-gray-50 border-b border-gray-200 whitespace-nowrap cursor-grab select-none sticky top-0 z-10 ${dragOverCol === vi ? "border-l-2 border-l-[#8e78b7]" : ""}`}
+              >
+                <div className="flex items-center gap-1">
+                  <GripVertical size={11} className="opacity-40 flex-shrink-0" />
+                  <span className="overflow-hidden text-ellipsis whitespace-nowrap">{col}</span>
+                  <ArrowUpDown size={11} className={`flex-shrink-0 ${sortConfig.key === col ? "opacity-100" : "opacity-30"}`} />
+                </div>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {paddingTop > 0 && (
+            <tr>
+              <td style={{ height: `${paddingTop}px` }} colSpan={orderedCols.length} />
+            </tr>
+          )}
+          {virtualRows.map((virtualRow) => {
+            const row = sortedData[virtualRow.index];
+            return (
+              <tr 
+                key={virtualRow.index} 
+                data-index={virtualRow.index}
+                ref={rowVirtualizer.measureElement}
+                className="qe-tr border-b border-gray-100"
+              >
+                {orderedCols.map((col, ci) => {
+                  const val = row[col];
+                  const isLink = typeof val === "string" && val.startsWith("http");
+                  return (
+                    <td
+                      key={ci}
+                      title={val}
+                      className="px-3.5 py-2 text-[13px] text-gray-700 whitespace-nowrap max-w-[260px] overflow-hidden text-ellipsis align-middle"
+                    >
+                      {isLink ? (
+                        <a href={val} target="_blank" rel="noopener noreferrer" className="text-[#8e78b7] underline">
+                          {val}
+                        </a>
+                      ) : (val === 0 ? 0 : val ?? "–")}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+          {paddingBottom > 0 && (
+            <tr>
+              <td style={{ height: `${paddingBottom}px` }} colSpan={orderedCols.length} />
+            </tr>
+          )}
+        </tbody>
+      </table>
+      
+      {loadingMore && (
+        <div className="flex justify-center py-3">
+          <CircularProgress size={20} sx={{ color: "#8e78b7" }} />
+        </div>
+      )}
+      {!hasMore && !loadingMore && displayCount >= dataBufferLength && (
+        <div className="text-center text-[11px] text-gray-400 py-3 select-none">
+          No more rows
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default function Editor() {
-  const { token, project, decodedToken, setSelectedProject, hostnameV1 } = useAuth();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState([]);
-  const [columnDefs, setColumnDefs] = useState([]);
-  const [securedQuery, setSecuredQuery] = useState("");
+  const {
+    token,
+    project,
+    decodedToken,
+    hostnameV1,
+  } = useAuth();
+
+  const [searchTerm, setSearchTerm]               = useState("");
+  const [connectionsLoading, setConnectionsLoading] = useState(true);
+  const [policyIds, setPolicyIds]                 = useState([]);
+  const [originalConnections, setOriginalConnections] = useState([]);
   const [displayedConnections, setDisplayedConnections] = useState([]);
   const [selectedConnection, setSelectedConnection] = useState("");
-  const [schemas, setSchemas] = useState({});
-  const [tables, setTables] = useState({});
-  const [columns, setColumns] = useState({});
-  const [expanded, setExpanded] = useState([]);
+  const [schemas, setSchemas]   = useState({});
+  const [tables, setTables]     = useState({});
+  const [columns, setColumns]   = useState({});
   const [expandedItems, setExpandedItems] = useState({});
-  const [originalConnections, setOriginalConnections] = useState([]);
-  const [policyIds, setPolicyIds] = useState([]);
-  const [checked, setChecked] = useState(true);
-  const [shownViews, setShownViews] = useState([]);
-  const [queryHistory, setQueryHistory] = useState([]);
-  const [pageNo, setPageNo] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-  const [queryLoading, setQueryLoading] = useState(false);
+  // Views
+  const [originalViews, setOriginalViews]   = useState([]);
+  const [displayedViews, setDisplayedViews] = useState([]);
+  const [selectedView, setSelectedView]     = useState("");
+
+  // Refresh trigger
+  const [connectionsRefreshKey, setConnectionsRefreshKey] = useState(0);
+
+  // ── Query editor ──────────────────────────────────────────────────────────
+  const [query, setQuery]             = useState("");
+  const [securedQuery, setSecuredQuery] = useState("");
+  const [loading, setLoading]         = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  
+  const [dataBuffer, setDataBuffer]   = useState([]);
+  const [displayCount, setDisplayCount] = useState(100);
+  const data = dataBuffer.slice(0, displayCount);
+  
+  const [columnDefs, setColumnDefs]   = useState([]);
+  const [showResults, setShowResults] = useState(false);
+  const [pageSize, setPageSize]       = useState(100);
+  const [nextUri, setNextUri]         = useState(null);
+  const [hasMore, setHasMore]         = useState(false);
+  const [queryError, setQueryError]   = useState(null);
+  
+  const [checked, setChecked]         = useState(true); // true = Editor, false = Builder
+  const [shownViews, setShownViews]   = useState([]);
+
+  // ── Modals ────────────────────────────────────────────────────────────────
   const [isQueryModalOpen, setIsQueryModalOpen] = useState(false);
-  const [viewsDetails, setViewsDetails] = useState(null);
-  const [isApiModalOpen, setIsApiModalOpen] = useState(false);
-  const [apiDetails, setApiDetails] = useState({ viewName: "", curl: "" });
-  const [connectionsLoading, setConnectionsLoading] = useState(true);
-  const [historyLoading, setHistoryLoading] = useState(true);
-  const [toast, setToast] = useState({ show: false, message: '', type: '' });
-  const [pageSize, setPageSize] = useState(100);
+  const [viewsDetails, setViewsDetails]         = useState(null);
+  const [queryLoading, setQueryLoading]         = useState(false);
+  const [isApiModalOpen, setIsApiModalOpen]     = useState(false);
+  const [apiDetails, setApiDetails]             = useState({ viewName: "", curl: "" });
+  const [toast, setToast] = useState({ show: false, message: "", type: "" });
 
+  // ── Download ──────────────────────────────────────────────────────────────
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
-  const [fullDataLoading, setFullDataLoading] = useState(false);
+  const [fullDataLoading, setFullDataLoading]   = useState(false);
   const downloadMenuRef = useRef(null);
+  const ExternalAPI = window._env_?.VITE_EXTERNAL_API;
 
-  // ── Inline table drag-reorder state ───────────────────────────────────────
-  const [colOrder, setColOrder] = useState([]);
-  const [dragOverCol, setDragOverCol] = useState(null);
+  // ── Resize ────────────────────────────────────────────────────────────────
+  const [editorHeightPct, setEditorHeightPct] = useState(45);
+  const [sidebarWidth, setSidebarWidth]       = useState(280);
+  const isDragging  = useRef(false);
+  const isHDragging = useRef(false);
+  const panelRef    = useRef(null);
+  const containerRef = useRef(null);
+
+  // ── Ace editor refs ───────────────────────────────────────────────────────
+  const aceEditorRef = useRef(null);
+  const queryRef     = useRef(query);
+  useEffect(() => { queryRef.current = query; }, [query]);
+
+  // ── Table column drag-reorder & sort ─────────────────────────────────────
+  const [colOrder, setColOrder]         = useState([]);
+  const [dragOverCol, setDragOverCol]   = useState(null);
+  const [sortConfig, setSortConfig]     = useState({ key: "", direction: "asc" });
   const dragSrcCol = useRef(null);
-  const [sortConfig, setSortConfig] = useState({ key: "", direction: "asc" });
-  useEffect(() => { setColOrder(columnDefs.map((_, i) => i)); setSortConfig({ key: "", direction: "asc" }); }, [columnDefs]);
-  const orderedCols = colOrder.map(i => columnDefs[i]);
-  const handleColDragStart = (e, vi) => { dragSrcCol.current = vi; e.dataTransfer.effectAllowed = "move"; };
+
+  useEffect(() => {
+    setColOrder(columnDefs.map((_, i) => i));
+    setSortConfig({ key: "", direction: "asc" });
+  }, [columnDefs]);
+
+  const orderedCols = colOrder.map((i) => columnDefs[i]);
+
+  const handleColDragStart = (e, vi) => {
+    dragSrcCol.current = vi;
+    e.dataTransfer.effectAllowed = "move";
+  };
   const handleColDragOver = (e, vi) => { e.preventDefault(); setDragOverCol(vi); };
   const handleColDrop = (e, vi) => {
     e.preventDefault();
@@ -80,259 +258,358 @@ export default function Editor() {
     dragSrcCol.current = null;
   };
   const handleColDragEnd = () => { setDragOverCol(null); dragSrcCol.current = null; };
-  const handleSort = (key) => setSortConfig(prev => ({ key, direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc" }));
+  const handleSort = (key) =>
+    setSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+    }));
   const sortedData = [...data].sort((a, b) => {
     if (!sortConfig.key) return 0;
     const av = a[sortConfig.key], bv = b[sortConfig.key];
-    if (typeof av === "number" && typeof bv === "number") return sortConfig.direction === "asc" ? av - bv : bv - av;
-    return sortConfig.direction === "asc" ? String(av || "").localeCompare(String(bv || "")) : String(bv || "").localeCompare(String(av || ""));
+    if (typeof av === "number" && typeof bv === "number")
+      return sortConfig.direction === "asc" ? av - bv : bv - av;
+    return sortConfig.direction === "asc"
+      ? String(av || "").localeCompare(String(bv || ""))
+      : String(bv || "").localeCompare(String(av || ""));
   });
-  const toTitleCase = s => s.replace(/_/g, " ").toLowerCase().replace(/\w/g, c => c.toUpperCase());
-  // ──────────────────────────────────────────────────────────────────────────
 
+  // ── Click outside → close download menu ──────────────────────────────────
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (downloadMenuRef.current && !downloadMenuRef.current.contains(e.target)) {
+    const handler = (e) => {
+      if (downloadMenuRef.current && !downloadMenuRef.current.contains(e.target))
         setShowDownloadMenu(false);
-      }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  useEffect(() => {
-    const fetchConnections = async () => {
-      try {
-        setConnectionsLoading(true);
-        const secureQueryResponse = await secureQuery({ user_query: "" }, token);
-        const fetchedPolicyIds = secureQueryResponse.matched_policy_ids || [];
-        setPolicyIds(fetchedPolicyIds);
+  // ── Fetch connections + views from /connections/list (cached via React Query) ────────────
+  const { data: federationData, isFetching: isFedFetching, refetch: refetchFederationData } = useFederationConnections();
+  const { data: builderViews, isFetching: isViewsFetching, refetch: refetchBuilderViews } = useFederationBuilderViews();
+  const { refetch: refetchPolicyIds } = useFederationPolicyIds();
 
-        if (fetchedPolicyIds.length === 0) {
-          setOriginalConnections([]);
-          setDisplayedConnections([]);
-          setConnectionsLoading(false);
+  useEffect(() => {
+    if (federationData) {
+      setOriginalConnections(federationData.connections);
+      setOriginalViews(federationData.views);
+      setPolicyIds(federationData.policyIds);
+      
+      // Update displayed items conditionally to respect search filter
+      const term = searchTerm.trim().toLowerCase();
+      if (!term) {
+        setDisplayedConnections(federationData.connections);
+        setDisplayedViews(federationData.views);
+      }
+      setConnectionsLoading(false);
+    } else {
+      setConnectionsLoading(isFedFetching);
+    }
+  }, [federationData, isFedFetching]);
+
+  // ── Unified search filter ─────────────────────────────────────────────────
+  useEffect(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) {
+      setDisplayedConnections([...originalConnections]);
+      setDisplayedViews([...originalViews]);
+    } else {
+      setDisplayedConnections(
+        originalConnections.filter((c) =>
+          c.connection_name.toLowerCase().includes(term)
+        )
+      );
+      setDisplayedViews(originalViews.filter((v) => v.toLowerCase().includes(term)));
+    }
+  }, [searchTerm, originalConnections, originalViews]);
+
+  // ── Fetch builder views list (separate endpoint via React Query) ──────────────────────────
+  // ── Fetch builder views list (separate endpoint via React Query) ──────────────────────────
+
+  useEffect(() => {
+    if (builderViews) {
+      setShownViews(builderViews);
+    }
+  }, [builderViews]);
+
+  // ── Toast helper ──────────────────────────────────────────────────────────
+  const showToast = (message, type = "error") => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+  };
+
+  // ── Refresh sidebar (explicit — bypasses & clears cache) ──────────────────
+  const refreshConnections = async (e) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    if (token) delete sidebarDataCache[token];
+    // Do not wipe out originalConnections and displayedConnections manually.
+    // React Query's structural sharing means if the API returns the exact same
+    // connections, federationData won't change referentially, and the useEffect
+    // won't fire. Thus we'd be stuck with empty arrays if we wipe them here!
+    setSearchTerm("");
+    setSchemas({});
+    setTables({});
+    setColumns({});
+    setExpandedItems({});
+    setSelectedConnection("");
+    setSelectedView("");
+    
+    // Explicitly show the loading animation for manual refreshes
+    setConnectionsLoading(true);
+    try {
+      await refetchPolicyIds();
+      await Promise.all([
+        refetchFederationData(),
+        refetchBuilderViews()
+      ]);
+    } finally {
+      setConnectionsLoading(false);
+    }
+  };
+
+  // ── Tree expand helpers ───────────────────────────────────────────────────
+  const toggleExpanded = (id) =>
+    setExpandedItems((prev) => ({ ...prev, [id]: !prev[id] }));
+
+  const handleConnectionClick = async (event, connection) => {
+    setSelectedConnection(connection);
+    const connId = `conn-${connection}`;
+    toggleExpanded(connId);
+    if (!expandedItems[connId] && !schemas[connection]) {
+      try {
+        setSchemas((p) => ({ ...p, [connection]: "loading" }));
+        if (policyIds.length === 0) {
+          setSchemas((p) => ({ ...p, [connection]: [] }));
           return;
         }
-        const response = await fetch(`${hostnameV1}/connections/list`, {
+        const res = await fetch(`${hostnameV1}/schemas/list`, {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ matched_policy_ids: fetchedPolicyIds })
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ matched_policy_ids: policyIds, connection_name: connection }),
         });
-        if (!response.ok) throw new Error('Failed to fetch connections');
-        const connectionsData = await response.json();
-        const formattedConnections = connectionsData.map(conn => ({
-          connection_name: conn.connection_name,
-        }));
-        setOriginalConnections(formattedConnections);
-        setDisplayedConnections(formattedConnections);
-      } catch (error) {
-        console.error("Error fetching connections:", error);
-        setToast({ show: true, message: "Failed to load connections", type: "error" });
-        setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-      } finally {
-        setConnectionsLoading(false);
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        const connectionData = data.find((item) => item[connection]);
+        const schemaNames = connectionData ? connectionData[connection] : [];
+        setSchemas((p) => ({ ...p, [connection]: schemaNames }));
+      } catch (err) {
+        setSchemas((p) => ({ ...p, [connection]: "error" }));
+        showToast(`Failed to load schemas: ${err.message}`);
       }
-    };
-    fetchConnections();
-  }, [token, hostnameV1]);
-
-  useEffect(() => {
-    if (searchTerm.trim() === "") {
-      setDisplayedConnections([...originalConnections]);
-    } else {
-      const filteredConnections = originalConnections.filter((connection) =>
-        connection.connection_name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setDisplayedConnections(filteredConnections);
     }
-  }, [searchTerm, originalConnections]);
+  };
 
-  useEffect(() => {
-    const fetchViews = async () => {
+  const handleSchemaClick = async (event, connection, schema) => {
+    const schemaId = `schema-${connection}-${schema}`;
+    toggleExpanded(schemaId);
+    if (!expandedItems[schemaId] && !tables[`${connection}-${schema}`]) {
       try {
-        const response = await fetch(`${hostnameV1}/get-all-views`);
-        const data = await response.json();
-        if (data && data.result) {
-          setShownViews(data.result);
-        } else {
-          console.error("Invalid response from the API");
+        setTables((p) => ({ ...p, [`${connection}-${schema}`]: "loading" }));
+        if (policyIds.length === 0) {
+          setTables((p) => ({ ...p, [`${connection}-${schema}`]: [] }));
+          return;
         }
-      } catch (error) {
-        console.error("Error fetching views:", error);
+        const res = await fetch(`${hostnameV1}/tables/list`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ matched_policy_ids: policyIds, connection_name: connection, schema_name: [schema] }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        const tableData = data.schemas.find(
+          (item) =>
+            item.connection_name.toLowerCase() === connection.toLowerCase() &&
+            item.schema.toLowerCase() === schema.toLowerCase()
+        );
+        const tableNames = tableData?.tables ?? [];
+        setTables((p) => ({ ...p, [`${connection}-${schema}`]: tableNames }));
+      } catch (err) {
+        setTables((p) => ({ ...p, [`${connection}-${schema}`]: "error" }));
+        showToast(`Failed to load tables: ${err.message}`);
       }
-    };
-    fetchViews();
-  }, [hostnameV1]);
-
-  useEffect(() => {
-    fetchQueryHistory();
-  }, [decodedToken, project, token, hostnameV1]);
-
-  const fetchQueryHistory = async () => {
-    try {
-      setHistoryLoading(true);
-      const type = 'df';
-      const response = await fetch(`${hostnameV1}/queries/${decodedToken?.preferred_username}/${project}/${type}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (!response.ok) throw new Error('Failed to fetch query history');
-      const data = await response.json();
-      const filteredHistory = data.filter(query => query && query.trim() !== "");
-      setQueryHistory(filteredHistory);
-      return filteredHistory;
-    } catch (error) {
-      console.error("Error fetching query history:", error);
-      setToast({ show: true, message: "Failed to load query history", type: "error" });
-      setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-    } finally {
-      setHistoryLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (query.trim() !== "" && data.length > 0) {
-      executeQuery(query, 1);
+  const handleTableClick = async (event, connection, schema, table) => {
+    const tableId = `table-${connection}-${schema}-${table}`;
+    toggleExpanded(tableId);
+    if (!expandedItems[tableId] && !columns[`${connection}-${schema}-${table}`]) {
+      try {
+        setColumns((p) => ({ ...p, [`${connection}-${schema}-${table}`]: "loading" }));
+        if (policyIds.length === 0) {
+          setColumns((p) => ({ ...p, [`${connection}-${schema}-${table}`]: [] }));
+          return;
+        }
+        const res = await fetch(`${hostnameV1}/columns/list`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ matched_policy_ids: policyIds, connection_name: connection, schema_name: [schema], table_name: [table] }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        if (!data?.columns || !Array.isArray(data.columns))
+          throw new Error("Invalid response structure from /columns/list");
+        const columnData = data.columns.find(
+          (item) =>
+            item.connection_name.toLowerCase() === connection.toLowerCase() &&
+            item.schema.toLowerCase() === schema.toLowerCase() &&
+            item.table_name.toLowerCase() === table.toLowerCase()
+        );
+        const formatted = columnData?.columns
+          ? columnData.columns.map((item) => ({
+              column: item.column_name,
+              datatype: item.metadata?.DATA_TYPE || "unknown",
+              metadata: item.metadata,
+            }))
+          : [];
+        setColumns((p) => ({ ...p, [`${connection}-${schema}-${table}`]: formatted }));
+      } catch (err) {
+        setColumns((p) => ({ ...p, [`${connection}-${schema}-${table}`]: "error" }));
+        showToast(`Failed to load columns: ${err.message}`);
+      }
     }
-  }, [pageSize]);
+  };
 
-  const handleClearQuery = () => {
-    setViewsDetails(null);
-    setQuery("");
-    setData([]);
-    setColumnDefs([]);
+  const handleTableDoubleClick = (connection, schema, table) => {
+    const q = `Select * from ${connection}.${schema}.${table}`;
+    setQuery(q);
     setSecuredQuery("");
+    executeQuery(q);
   };
 
+  // ── View handlers ─────────────────────────────────────────────────────────
+  const handleViewClick = (viewName) => {
+    setSelectedView(viewName);
+  };
+
+  const handleViewDoubleClick = (viewName) => {
+    if (loading) return;
+    const q = `SELECT * FROM ${viewName}`;
+    setQuery(q);
+    setSecuredQuery("");
+    executeQuery(q);
+  };
+
+  // ── SQL helpers ───────────────────────────────────────────────────────────
   function removeComments(sql) {
-    const lines = sql.split("\n");
-    let newQuery = "";
-    let inMultiLineComment = false;
-    lines.forEach((line) => {
-      const trimmedLine = line.trim();
-      if (inMultiLineComment) {
-        if (trimmedLine.includes("*/")) { inMultiLineComment = false; }
-        return;
-      }
-      if (trimmedLine.startsWith("/*")) { inMultiLineComment = true; return; }
-      if (trimmedLine.startsWith("--")) return;
-      newQuery += line + "\n";
-    });
-    return newQuery.trim();
+    let out = "";
+    let inMulti = false;
+    for (const line of sql.split("\n")) {
+      const t = line.trim();
+      if (inMulti) { if (t.includes("*/")) inMulti = false; continue; }
+      if (t.startsWith("/*")) { inMulti = true; continue; }
+      if (t.startsWith("--")) continue;
+      out += line + "\n";
+    }
+    return out.trim();
   }
 
-  const extractViewName = (query) => {
-    const createViewRegex = /CREATE\s+VIEW\s+([^\s(]+)\s*(?:AS\s*SELECT|AS\s*\(|AS\s*{)/i;
-    const match = query.match(createViewRegex);
-    return match ? match[1].replace(/[`"]/g, '') : null;
+  const extractViewName = (q) => {
+    const m = q.match(/CREATE\s+VIEW\s+([^\s(]+)\s*(?:AS\s*SELECT|AS\s*\(|AS\s*{)/i);
+    return m ? m[1].replace(/[`"]/g, "") : null;
   };
 
   const generateCurl = async (viewName) => {
     try {
-      const url = `${hostnameV1}/view/${viewName}`;
-      const response = await fetch(`${hostnameV1}/generate_curl`, {
+      const url = `${ExternalAPI}/view/${viewName}`;
+      const res = await fetch(`${hostnameV1}/generate_curl`, {
         method: "POST",
-        headers: { accept: "application/json", "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ url: url, page: 1 }),
+        headers: { accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ url, page: 1 }),
       });
-      const curl = await response.text();
-      return curl;
-    } catch (error) {
-      console.error("Error generating cURL:", error);
+      return await res.text();
+    } catch {
       return "Error generating cURL";
     }
   };
 
-  const executeQuery = async (query, page = 1) => {
-    setData([]);
-    setColumnDefs([]);
-    setViewsDetails(null);
-
-    const newQuery = removeComments(query);
-    if (newQuery.trim() === "") {
-      setToast({ show: true, message: "Enter query first", type: "error" });
-      setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-      return;
-    }
+  // ── Execute query (Native Pagination with Client-Side Buffer) ──────────────
+  const executeQuery = async (queryText, { append = false } = {}) => {
+    const newQuery = removeComments(queryText);
+    if (!newQuery.trim()) { showToast("Enter query first"); return; }
 
     const isCreateView = newQuery.toUpperCase().startsWith("CREATE VIEW");
     let viewName = null;
     if (isCreateView) {
       viewName = extractViewName(newQuery);
-      if (!viewName) {
-        setToast({ show: true, message: "Invalid view name in CREATE VIEW query", type: "error" });
-        setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-        return;
-      }
+      if (!viewName) { showToast("Invalid view name in CREATE VIEW query"); return; }
     }
 
-    setLoading(true);
+    if (append) {
+      if (!nextUri) return;
+      setLoadingMore(true);
+    } else {
+      setDataBuffer([]);
+      setDisplayCount(pageSize);
+      setColumnDefs([]);
+      setViewsDetails(null);
+      setLoading(true);
+      setNextUri(null);
+      setQueryError(null);
+    }
+    setShowResults(true);
 
     try {
-      const secureQueryResponse = await fetch(`${window._env_?.VITE_FAST_API}/secure-query`, {
-        method: "POST",
-        headers: { accept: "application/json", "Content-Type": "application/json", 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ user_query: newQuery }),
-      });
+      let secureQueryStr = securedQuery;
 
-      if (!secureQueryResponse.ok) {
-        const errData = await secureQueryResponse.json();
-        const isAccessDenied = errData.detail && errData.detail.toLowerCase().includes("access denied");
-        if (isAccessDenied) {
-          const failedHistoryPayload = {
-            query: newQuery, status: "failed",
-            owner: decodedToken?.preferred_username,
-            project: (project === "default" || project === "none") ? "default" : project,
-            type: 'df'
-          };
-          await fetch(`${hostnameV1}/save_query`, {
-            method: "POST",
-            headers: { accept: "application/json", "Content-Type": "application/json", 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify(failedHistoryPayload),
-          });
-          const updatedHistory = await fetchQueryHistory();
-          if (updatedHistory) setQueryHistory(updatedHistory);
+      if (!append) {
+        const sqRes = await fetch(`${window._env_?.VITE_FAST_API}/secure-query`, {
+          method: "POST",
+          headers: { accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ user_query: newQuery }),
+        });
+
+        if (!sqRes.ok) {
+          const errData = await sqRes.json();
+          const isAccessDenied = errData.detail?.toLowerCase().includes("access denied");
+          if (isAccessDenied) {
+            await fetch(`${hostnameV1}/save_query`, {
+              method: "POST",
+              headers: { accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify({
+                query: newQuery, status: "failed",
+                owner: decodedToken?.preferred_username,
+                project: project === "default" || project === "none" ? "default" : project,
+                type: "df",
+              }),
+            });
+          }
+          const sqErrMsg = errData.detail || "Error in query validation";
+          setQueryError(sqErrMsg);
+          throw new Error("secure-query failed");
         }
-        setToast({ show: true, message: errData.detail || "Error in query validation", type: "error" });
-        setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-        throw new Error("secure-query failed");
+
+        const sqData = await sqRes.json();
+        if (!sqData?.secure_query) throw new Error("Invalid response from secure-query");
+        secureQueryStr = sqData.secure_query;
+        setSecuredQuery(secureQueryStr);
       }
 
-      const secureData = await secureQueryResponse.json();
-      if (!secureData || !secureData.secure_query) throw new Error("Invalid response from secure-query");
+      let runRes;
+      if (append) {
+        runRes = await fetch(`${hostnameV1}/runQueryNative/next`, {
+          method: "POST",
+          headers: { accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ next_uri: nextUri }),
+        });
+      } else {
+        const payload = {
+          query: secureQueryStr,
+          project: project === "default" || project === "none" ? "default" : project,
+          created_by: decodedToken?.preferred_username,
+        };
+        runRes = await fetch(`${hostnameV1}/runQueryNative`, {
+          method: "POST",
+          headers: { accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(payload),
+        });
+      }
 
-      const secureQueryStr = secureData.secure_query;
-      setSecuredQuery(secureQueryStr);
-
-      const payload = {
-        page: page,
-        page_size: pageSize,
-        query: secureQueryStr,
-        project: (project === "default" || project === "none") ? "default" : project,
-        created_by: decodedToken?.preferred_username,
-      };
-
-      const runQueryResponse = await fetch(`${hostnameV1}/runQuery`, {
-        method: "POST",
-        headers: { accept: "application/json", "Content-Type": "application/json", 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(payload),
-      });
-
-      if (!runQueryResponse.ok) {
-        const text = await runQueryResponse.text();
-        try {
-          const errData = JSON.parse(text);
-          setToast({ show: true, message: errData.detail || "Error in query execution", type: "error" });
-        } catch {
-          setToast({ show: true, message: text || "Error in query execution", type: "error" });
-        }
-        setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+      if (!runRes.ok) {
+        const text = await runRes.text();
+        let errMsg = "Error in query execution";
+        try { errMsg = JSON.parse(text).detail || errMsg; } catch { errMsg = text || errMsg; }
+        setQueryError(errMsg);
         throw new Error("runQuery failed");
       }
 
@@ -340,337 +617,121 @@ export default function Editor() {
         const curl = await generateCurl(viewName);
         setApiDetails({ viewName, curl });
         setIsApiModalOpen(true);
-        setToast({ show: true, message: `View ${viewName} created successfully`, type: "success" });
-        setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+        showToast(`View ${viewName} created successfully`, "success");
       } else {
-        const dataText = await runQueryResponse.text();
-        const rows = dataText.trim().split("\n").map((row) => JSON.parse(row));
-        const cols = Object.keys(rows[0]);
-        setColumnDefs(cols);
-        setData(rows);
-        setHasMore(rows.length === pageSize);
-      }
+        let resData = await runRes.json();
+        let aggregatedRows = [];
+        let currentCols = resData.columns || [];
+        let currentNextUri = resData.next_uri;
 
-      const historyPayload = {
-        query: newQuery, status: "success",
-        owner: decodedToken?.preferred_username,
-        project: (project === "default" || project === "none") ? "default" : project,
-        type: 'df'
-      };
-      await fetch(`${hostnameV1}/save_query`, {
-        method: "POST",
-        headers: { accept: "application/json", "Content-Type": "application/json", 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(historyPayload),
-      });
-
-      const updatedHistory = await fetchQueryHistory();
-      if (updatedHistory) setQueryHistory(updatedHistory);
-    } catch (error) {
-      if (!["secure-query failed", "runQuery failed", "Invalid response from secure-query"].includes(error.message)) {
-        console.error("Unexpected error in query execution:", error);
-        setToast({ show: true, message: "Unexpected error occurred", type: "error" });
-        setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSwitch = async () => {
-    setData([]);
-    setColumnDefs([]);
-    setQuery("");
-    setChecked(!checked);
-  };
-
-  const toggleExpanded = (id) => {
-    setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  const handleSchema = async (event, connection) => {
-    const connectionId = `conn-${connection}`;
-    toggleExpanded(connectionId);
-    if (!expandedItems[connectionId] && !schemas[connection]) {
-      try {
-        setSchemas((prevSchemas) => ({ ...prevSchemas, [connection]: "loading" }));
-        if (policyIds.length === 0) {
-          setSchemas((prevSchemas) => ({ ...prevSchemas, [connection]: [] }));
-          return;
-        }
-        const response = await fetch(`${hostnameV1}/schemas/list`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ matched_policy_ids: policyIds, connection_name: connection })
-        });
-        if (!response.ok) throw new Error(`Failed to fetch schemas: ${await response.text()}`);
-        const data = await response.json();
-        const connectionData = data.find(item => item[connection]);
-        const schemaNames = connectionData ? connectionData[connection] : [];
-        setSchemas((prevSchemas) => ({ ...prevSchemas, [connection]: schemaNames.length > 0 ? schemaNames : [] }));
-      } catch (error) {
-        console.error("Error fetching schema data:", error);
-        setSchemas((prevSchemas) => ({ ...prevSchemas, [connection]: "error" }));
-        setToast({ show: true, message: `Failed to load schemas: ${error.message}`, type: "error" });
-        setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-      }
-    }
-  };
-
-  const handleTables = async (event, connection, schema) => {
-    const schemaId = `schema-${connection}-${schema}`;
-    toggleExpanded(schemaId);
-    if (!expandedItems[schemaId] && !tables[`${connection}-${schema}`]) {
-      try {
-        setTables((prevTables) => ({ ...prevTables, [`${connection}-${schema}`]: "loading" }));
-        if (policyIds.length === 0) {
-          setTables((prevTables) => ({ ...prevTables, [`${connection}-${schema}`]: [] }));
-          return;
-        }
-        const response = await fetch(`${hostnameV1}/tables/list`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ matched_policy_ids: policyIds, connection_name: connection, schema_name: [schema] }),
-        });
-        if (!response.ok) throw new Error(`Failed to fetch tables: ${await response.text()}`);
-        const data = await response.json();
-        const tableData = data.schemas.find(
-          (item) => item.connection_name.toLowerCase() === connection.toLowerCase() && item.schema.toLowerCase() === schema.toLowerCase()
-        );
-        const tableNames = tableData && tableData.tables ? tableData.tables : [];
-        setTables((prevTables) => ({ ...prevTables, [`${connection}-${schema}`]: tableNames.length > 0 ? tableNames : [] }));
-      } catch (error) {
-        console.error("Error in handleTables:", error.message);
-        setTables((prevTables) => ({ ...prevTables, [`${connection}-${schema}`]: "error" }));
-        setToast({ show: true, message: `Failed to load tables: ${error.message}`, type: "error" });
-        setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-      }
-    }
-  };
-
-  const handleColumns = async (event, connection, schema, table) => {
-    const tableId = `table-${connection}-${schema}-${table}`;
-    toggleExpanded(tableId);
-    if (!expandedItems[tableId] && !columns[`${connection}-${schema}-${table}`]) {
-      try {
-        setColumns((prevColumns) => ({ ...prevColumns, [`${connection}-${schema}-${table}`]: "loading" }));
-        if (policyIds.length === 0) {
-          setColumns((prevColumns) => ({ ...prevColumns, [`${connection}-${schema}-${table}`]: [] }));
-          return;
-        }
-        const response = await fetch(`${hostnameV1}/columns/list`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ matched_policy_ids: policyIds, connection_name: connection, schema_name: [schema], table_name: [table] }),
-        });
-        if (!response.ok) throw new Error(`Failed to fetch columns: ${await response.text()}`);
-        const data = await response.json();
-        if (!data || !data.columns || !Array.isArray(data.columns)) throw new Error("Invalid response structure from /columns/list");
-        const columnData = data.columns.find(
-          (item) =>
-            item.connection_name.toLowerCase() === connection.toLowerCase() &&
-            item.schema.toLowerCase() === schema.toLowerCase() &&
-            item.table_name.toLowerCase() === table.toLowerCase()
-        );
-        const formattedColumns = columnData && columnData.columns
-          ? columnData.columns.map((item) => ({ column: item.column_name, datatype: item.metadata?.DATA_TYPE || "unknown", metadata: item.metadata }))
-          : [];
-        setColumns((prevColumns) => ({ ...prevColumns, [`${connection}-${schema}-${table}`]: formattedColumns.length > 0 ? formattedColumns : [] }));
-      } catch (error) {
-        console.error("Error in handleColumns:", error.message);
-        setColumns((prevColumns) => ({ ...prevColumns, [`${connection}-${schema}-${table}`]: "error" }));
-        setToast({ show: true, message: `Failed to load columns: ${error.message}`, type: "error" });
-        setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-      }
-    }
-  };
-
-  const handleConnectionChange = (event, selectedConn) => {
-    setSelectedConnection(selectedConn);
-    handleSchema(event, selectedConn);
-  };
-
-  const renderDatabaseLabel = (connection) => {
-    const connectionId = `conn-${connection.connection_name}`;
-    const isExpanded = expandedItems[connectionId];
-    return (
-      <div style={{ display: "flex", alignItems: "center", cursor: "pointer", width: "100%", overflow: "hidden" }}>
-        <div style={{ minWidth: "24px", width: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {isExpanded ? <ChevronDown size={18} onClick={(e) => handleConnectionChange(e, connection.connection_name)} /> : <ChevronRight size={18} onClick={(e) => handleConnectionChange(e, connection.connection_name)} />}
-        </div>
-        <div style={{ minWidth: "24px", width: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <Database size={15} />
-        </div>
-        <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={connection.connection_name}>{connection.connection_name}</span>
-      </div>
-    );
-  };
-
-  const renderSchemaLabel = (connection, schema) => {
-    const schemaId = `schema-${connection}-${schema}`;
-    const isExpanded = expandedItems[schemaId];
-    return (
-      <div style={{ display: "flex", alignItems: "center", cursor: "pointer", width: "100%", overflow: "hidden" }}>
-        <div style={{ minWidth: "24px", width: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {isExpanded ? <ChevronDown size={18} onClick={(e) => handleTables(e, connection, schema)} /> : <ChevronRight size={18} onClick={(e) => handleTables(e, connection, schema)} />}
-        </div>
-        <div style={{ minWidth: "24px", width: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <Database size={15} />
-        </div>
-        <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={schema}>{schema}</span>
-      </div>
-    );
-  };
-
-  const renderTableLabel = (connection, schema, table) => {
-    const tableId = `table-${connection}-${schema}-${table}`;
-    const isExpanded = expandedItems[tableId];
-    return (
-      <div style={{ display: "flex", alignItems: "center", cursor: "pointer", width: "100%", overflow: "hidden" }}>
-        <div style={{ minWidth: "24px", width: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {isExpanded ? <ChevronDown size={18} onClick={(e) => handleColumns(e, connection, schema, table)} /> : <ChevronRight size={18} onClick={(e) => handleColumns(e, connection, schema, table)} />}
-        </div>
-        <div style={{ minWidth: "24px", width: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <Table size={15} />
-        </div>
-        <span onDoubleClick={() => { if (!loading) handleTableClick(connection, schema, table); }} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={table}>
-          {table}
-        </span>
-      </div>
-    );
-  };
-
-  const handleTableClick = (connection, schema, table) => {
-    const query = `Select * from ${connection}.${schema}.${table}`;
-    setQuery(query);
-    setSecuredQuery("");
-    setPageNo(1);
-    executeQuery(query, 1);
-  };
-
-  const renderColumnLabel = (column) => {
-    const baseType = column.datatype.split("(")[0].toLowerCase();
-    const isNumber = ["int", "integer", "decimal", "double"].includes(baseType);
-    return (
-      <div style={{ display: "flex", alignItems: "center", paddingLeft: "20px", width: "100%", overflow: "hidden" }}>
-        <div style={{ minWidth: "24px", width: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {isNumber ? <Hash size={18} /> : <Type size={18} />}
-        </div>
-        <span style={{ fontWeight: "normal", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={column.column}>{column.column}</span>
-      </div>
-    );
-  };
-
-  const handleNextPage = () => {
-    setViewsDetails(null);
-    const nextPage = pageNo + 1;
-    setPageNo(nextPage);
-    executeQuery(query, nextPage);
-  };
-
-  const handlePreviousPage = () => {
-    setViewsDetails(null);
-    if (pageNo > 1) {
-      const prevPage = pageNo - 1;
-      setPageNo(prevPage);
-      executeQuery(query, prevPage);
-    }
-  };
-
-  const convertToCSV = (jsonData) => {
-    const headers = Object.keys(jsonData[0]).join(',');
-    const csvRows = jsonData.map(obj => Object.values(obj).map(val => `"${val}"`).join(','));
-    return [headers, ...csvRows].join('\n');
-  };
-
-  const handleDownloadCSV = (csvContent, filename) => {
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
-  const handleDownloadCurrentPage = () => {
-    setShowDownloadMenu(false);
-    if (!data || data.length === 0) {
-      setToast({ show: true, message: "No data to download", type: "error" });
-      setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-      return;
-    }
-    const csvContent = convertToCSV(data);
-    handleDownloadCSV(csvContent, `data_page_${pageNo}.csv`);
-  };
-
-  const handleDownloadFullData = async () => {
-    setShowDownloadMenu(false);
-    if (!securedQuery) {
-      setToast({ show: true, message: "Run a query first to download full data", type: "error" });
-      setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-      return;
-    }
-    setFullDataLoading(true);
-    setToast({ show: true, message: "Fetching full data, please wait...", type: "success" });
-    try {
-      let allRows = [];
-      let currentPage = 1;
-      let morePages = true;
-      const batchSize = 1000;
-      while (morePages) {
-        const payload = {
-          page: currentPage, page_size: batchSize, query: securedQuery,
-          project: (project === "default" || project === "none") ? "default" : project,
-          created_by: decodedToken?.preferred_username,
+        const mapRows = (d, cols) => {
+            if (!d || !d.length) return [];
+            const colNames = cols.map(c => c.name);
+            return d.map(rowArray => {
+                const rowObj = {};
+                colNames.forEach((name, idx) => rowObj[name] = rowArray[idx]);
+                return rowObj;
+            });
         };
-        const response = await fetch(`${hostnameV1}/runQuery`, {
+
+        aggregatedRows = mapRows(resData.data, currentCols);
+
+        while (aggregatedRows.length < pageSize && currentNextUri) {
+           const pollRes = await fetch(`${hostnameV1}/runQueryNative/next`, {
+             method: "POST",
+             headers: { accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+             body: JSON.stringify({ next_uri: currentNextUri }),
+           });
+           if (!pollRes.ok) {
+             const pollErrText = await pollRes.text();
+             let pollErrMsg = "Error in query execution";
+             try { pollErrMsg = JSON.parse(pollErrText).detail || pollErrMsg; } catch { pollErrMsg = pollErrText || pollErrMsg; }
+             setQueryError(pollErrMsg);
+             setDataBuffer([]);
+             setColumnDefs([]);
+             break;
+           }
+           const pollData = await pollRes.json();
+           if (pollData.error) {
+             const pollErrMsg = pollData.error || "Query returned an error";
+             setQueryError(pollErrMsg);
+             setDataBuffer([]);
+             setColumnDefs([]);
+             break;
+           }
+           
+           if (!currentCols.length && pollData.columns) currentCols = pollData.columns;
+           aggregatedRows = aggregatedRows.concat(mapRows(pollData.data, currentCols));
+           currentNextUri = pollData.next_uri;
+        }
+
+        const colNames = currentCols.map(c => c.name);
+
+        if (append) {
+          setDataBuffer((prev) => [...prev, ...aggregatedRows]);
+        } else {
+          setColumnDefs(colNames);
+          setDataBuffer(aggregatedRows);
+          setDisplayCount(pageSize);
+        }
+        
+        setNextUri(currentNextUri || null);
+        setHasMore(!!currentNextUri);
+      }
+
+      if (!append) {
+        await fetch(`${hostnameV1}/save_query`, {
           method: "POST",
-          headers: { accept: "application/json", "Content-Type": "application/json", 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify(payload),
+          headers: { accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            query: newQuery, status: "success",
+            owner: decodedToken?.preferred_username,
+            project: project === "default" || project === "none" ? "default" : project,
+            type: "df",
+          }),
         });
-        if (!response.ok) throw new Error("Failed to fetch page " + currentPage);
-        const dataText = await response.text();
-        const rows = dataText.trim().split("\n").map((row) => JSON.parse(row));
-        allRows = allRows.concat(rows);
-        if (rows.length < batchSize) morePages = false;
-        else currentPage++;
       }
-      if (allRows.length === 0) {
-        setToast({ show: true, message: "No data available to download", type: "error" });
-        setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-        return;
+    } catch (err) {
+      if (!["secure-query failed", "runQuery failed", "Invalid response from secure-query"].includes(err.message)) {
+        console.error("Unexpected error:", err);
+        showToast("Unexpected error occurred");
       }
-      const csvContent = convertToCSV(allRows);
-      handleDownloadCSV(csvContent, `data_full_${Date.now()}.csv`);
-      setToast({ show: true, message: `Downloaded ${allRows.length} rows successfully`, type: "success" });
-      setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-    } catch (error) {
-      console.error("Error downloading full data:", error);
-      setToast({ show: true, message: "Failed to download full data", type: "error" });
-      setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
     } finally {
-      setFullDataLoading(false);
+      if (append) setLoadingMore(false); else setLoading(false);
     }
   };
 
+  // ── Infinite scroll ────────────────────────────────────────────────────────
+  const handleResultsScroll = (e) => {
+    if (loading || loadingMore) return;
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < 120) {
+      if (displayCount < dataBuffer.length) {
+         setDisplayCount(prev => prev + pageSize);
+      } 
+      else if (hasMore) {
+         executeQuery(query, { append: true }).then(() => {
+             setDisplayCount(prev => prev + pageSize);
+         });
+      }
+    }
+  };
+
+  // ── Query Details ─────────────────────────────────────────────────────────
   const handleQueryDetails = async () => {
+    if (!securedQuery) return;
     if (viewsDetails === null) {
       try {
         setQueryLoading(true);
         setIsQueryModalOpen(true);
-        const response = await fetch(`${hostnameV1}/analyzeQuery`, {
-          method: 'POST',
-          headers: { accept: "application/json", "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-          body: JSON.stringify({ sql_query: securedQuery, pageNo: pageNo })
+        const res = await fetch(`${hostnameV1}/analyzeQuery`, {
+          method: "POST",
+          headers: { accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ sql_query: securedQuery, pageNo: 1 }),
         });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const data = await response.json();
-        setViewsDetails(data || null);
-      } catch (error) {
-        console.error("Error fetching data:", error);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        setViewsDetails((await res.json()) || null);
+      } catch (err) {
         setViewsDetails({ status: "Failed", message: "Unable to fetch data" });
       } finally {
         setQueryLoading(false);
@@ -681,411 +742,432 @@ export default function Editor() {
     }
   };
 
+  // ── CSV Download ──────────────────────────────────────────────────────────
+  const convertToCSV = (rows) => {
+    if (!rows || rows.length === 0) return "";
+    const headers = Object.keys(rows[0]).join(",");
+    const csvRows = rows.map((r) => Object.values(r).map((v) => `"${v}"`).join(","));
+    return [headers, ...csvRows].join("\n");
+  };
+  const downloadCSV = (csvContent, filename) => {
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = Object.assign(document.createElement("a"), {
+      href: url, download: filename,
+      style: { visibility: "hidden" },
+    });
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+  
+  const handleDownloadCurrentPage = () => {
+    setShowDownloadMenu(false);
+    if (!data.length) { showToast("No data to download"); return; }
+    // Now downloads what is currently visible in the local buffer view
+    downloadCSV(convertToCSV(data), `data_current_view.csv`);
+  };
+  
+  const handleDownloadFullData = async () => {
+    setShowDownloadMenu(false);
+    if (!securedQuery) { showToast("Run a query first to download full data"); return; }
+    setFullDataLoading(true);
+    showToast("Fetching full data sequentially, please wait…", "success");
+    try {
+      let res = await fetch(`${hostnameV1}/runQueryNative`, {
+        method: "POST",
+        headers: { accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ query: securedQuery, project: project === "default" || project === "none" ? "default" : project, created_by: decodedToken?.preferred_username }),
+      });
+      if (!res.ok) throw new Error("Failed to start full fetch");
+      
+      let allRows = [];
+      let resData = await res.json();
+      let currentNextUri = resData.next_uri;
+      
+      const appendData = (dataChunk, cols) => {
+         if (!dataChunk || dataChunk.length === 0) return;
+         const colNames = cols.map(c => c.name);
+         const rows = dataChunk.map(rowArray => {
+             const rowObj = {};
+             colNames.forEach((cName, idx) => rowObj[cName] = rowArray[idx]);
+             return rowObj;
+         });
+         allRows = allRows.concat(rows);
+      };
 
+      appendData(resData.data, resData.columns);
 
+      while (currentNextUri) {
+         res = await fetch(`${hostnameV1}/runQueryNative/next`, {
+             method: "POST",
+             headers: { accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+             body: JSON.stringify({ next_uri: currentNextUri }),
+         });
+         if (!res.ok) throw new Error("Failed during full fetch");
+         resData = await res.json();
+         appendData(resData.data, resData.columns);
+         currentNextUri = resData.next_uri;
+      }
+      
+      if (!allRows.length) { showToast("No data available to download"); return; }
+      downloadCSV(convertToCSV(allRows), `data_full_${Date.now()}.csv`);
+      showToast(`Downloaded ${allRows.length} rows successfully`, "success");
+    } catch (err) {
+      showToast("Failed to download full data");
+    } finally {
+      setFullDataLoading(false);
+    }
+  };
+
+  // ── Resize drag handlers ──────────────────────────────────────────────────
+  const handleDragStart = useCallback((e) => {
+    e.preventDefault();
+    isDragging.current = true;
+    const onMove = (ev) => {
+      if (!isDragging.current || !panelRef.current) return;
+      const rect = panelRef.current.getBoundingClientRect();
+      const pct = ((ev.clientY - rect.top) / rect.height) * 100;
+      setEditorHeightPct(Math.min(80, Math.max(20, pct)));
+    };
+    const onUp = () => {
+      isDragging.current = false;
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, []);
+
+  const handleSidebarDragStart = useCallback((e) => {
+    e.preventDefault();
+    isHDragging.current = true;
+    const onMove = (ev) => {
+      if (!isHDragging.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      setSidebarWidth(Math.min(400, Math.max(160, ev.clientX - rect.left)));
+    };
+    const onUp = () => {
+      isHDragging.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, []);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="h-[calc(100vh-64px-32px)] px-3 pt-3">
-      <style>{`
-        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .icon-rotate { animation: rotate 1s linear infinite; }
-      `}</style>
-      <div className="flex flex-row h-[100%] bg-gray-50">
+    <div className="h-full flex flex-col bg-[#f7f8fa] p-4">
+      <style>{EDITOR_STYLES}</style>
+
+      <div className="flex-shrink-0 -mb-1">
+        <Breadcrumb title="Platform" link="/" title2="Federation" link2="/federation" title3={checked ? "Editor" : "Query Views"} />
+      </div>
+
+      <div ref={containerRef} className="flex flex-1 min-h-0 overflow-hidden">
         {checked ? (
           <>
-            <aside className="w-1/4 pr-4 flex flex-col border-r border-gray-300 h-full">
-              <div className="flex flex-col overflow-hidden h-[60%]">
-                <div className="flex justify-between items-center mb-2">
-                  <h2 className="text-xl font-bold">Connection</h2>
-                </div>
-                <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-                  <input
-                    type="text"
-                    placeholder="Search..."
-                    className="w-full p-1 pl-8 border rounded-lg"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                  {searchTerm && <X className="absolute right-2 top-2.5 h-4 w-4 text-gray-500 cursor-pointer" onClick={() => setSearchTerm("")} />}
-                </div>
-                <div className="flex-1 overflow-y-auto custom-scroll pr-2">
-                  {connectionsLoading ? (
-                    <div className="flex justify-center items-center h-full">
-                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#8e78b7]"></div>
-                    </div>
-                  ) : (
-                    <div className="tree-view" style={{ width: "100%" }}>
-                      {displayedConnections.length === 0 ? (
-                        <div className="text-gray-500 text-sm p-4">No connections available</div>
-                      ) : (
-                        displayedConnections.map((connection) => {
-                          const connectionId = `conn-${connection.connection_name}`;
-                          const connectionSchemas = schemas[connection.connection_name];
-                          const isExpanded = expandedItems[connectionId];
-                          return (
-                            <div key={connection.sourceConnectionId} className="tree-item" style={{ width: "100%" }}>
-                              <div className="p-1 hover:bg-gray-100 rounded" style={{ width: "100%" }}>{renderDatabaseLabel(connection)}</div>
-                              {isExpanded && (
-                                <div className="ml-6 pl-2 border-l border-gray-300" style={{ width: "calc(100% - 24px)" }}>
-                                  {connectionSchemas === "loading" && <div className="py-1 pl-6 text-gray-500">Loading...</div>}
-                                  {connectionSchemas === "error" && <div className="py-1 pl-6 text-red-500">Error loading schemas</div>}
-                                  {Array.isArray(connectionSchemas) && connectionSchemas.length === 0 && <div className="py-1 pl-6 text-gray-500">No Schemas Available</div>}
-                                  {Array.isArray(connectionSchemas) && connectionSchemas.length > 0 && (
-                                    connectionSchemas.map((schema, schemaIndex) => {
-                                      const schemaId = `schema-${connection.connection_name}-${schema}`;
-                                      const tableData = tables[`${connection.connection_name}-${schema}`];
-                                      const isSchemaExpanded = expandedItems[schemaId];
-                                      return (
-                                        <div key={`${schema}-${schemaIndex}`} className="tree-item" style={{ width: "100%" }}>
-                                          <div className="p-1 my-1 hover:bg-gray-100 rounded" style={{ width: "100%" }}>{renderSchemaLabel(connection.connection_name, schema)}</div>
-                                          {isSchemaExpanded && (
-                                            <div className="ml-6 pl-2 border-l border-gray-300" style={{ width: "calc(100% - 24px)" }}>
-                                              {tableData === "loading" && <div className="py-1 pl-6 text-gray-500">Loading...</div>}
-                                              {tableData === "error" && <div className="py-1 pl-6 text-red-500">Error loading tables</div>}
-                                              {Array.isArray(tableData) && tableData.length === 0 && <div className="py-1 pl-6 text-gray-500">No Tables Available</div>}
-                                              {Array.isArray(tableData) && tableData.length > 0 && (
-                                                tableData.map((table, tableIndex) => {
-                                                  const tableId = `table-${connection.connection_name}-${schema}-${table}`;
-                                                  const columnData = columns[`${connection.connection_name}-${schema}-${table}`];
-                                                  const isTableExpanded = expandedItems[tableId];
-                                                  return (
-                                                    <div key={`${table}-${tableIndex}`} className="tree-item" style={{ width: "100%" }}>
-                                                      <div className="p-1 my-1 hover:bg-gray-100 rounded" style={{ width: "100%" }}>{renderTableLabel(connection.connection_name, schema, table)}</div>
-                                                      {isTableExpanded && (
-                                                        <div className="ml-6 pl-2 border-l border-gray-300" style={{ width: "calc(100% - 24px)" }}>
-                                                          {columnData === "loading" && <div className="py-1 pl-6 text-gray-500">Loading...</div>}
-                                                          {columnData === "error" && <div className="py-1 pl-6 text-red-500">Error loading columns</div>}
-                                                          {Array.isArray(columnData) && columnData.length === 0 && <div className="py-1 pl-6 text-gray-500">No Columns Available</div>}
-                                                          {Array.isArray(columnData) && columnData.length > 0 && (
-                                                            columnData.map((column, columnIndex) => (
-                                                              <div key={`${column.column}-${columnIndex}`} className="p-1 my-1 hover:bg-gray-100 rounded" style={{ width: "100%" }}>
-                                                                {renderColumnLabel(column)}
-                                                              </div>
-                                                            ))
-                                                          )}
-                                                        </div>
-                                                      )}
-                                                    </div>
-                                                  );
-                                                })
-                                              )}
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    })
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  )}
-                </div>
-                <style>{`
-                  .custom-scroll::-webkit-scrollbar { width: 5px; }
-                  .custom-scroll::-webkit-scrollbar-thumb { background-color: #8e78b7; border-radius: 4px; }
-                  .custom-scroll::-webkit-scrollbar-track { background-color: #f1f1f1; }
-                  .custom-scroll::-webkit-scrollbar:horizontal { display: none; }
-                `}</style>
-              </div>
-              <div className="h-[40%] flex flex-col overflow-hidden border-t pt-4">
-                <h2 className="text-xl font-bold mb-2">History</h2>
-                <div className="flex-1 overflow-y-auto custom-scroll">
-                  {historyLoading ? (
-                    <div className="flex justify-center items-center h-full">
-                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#8e78b7]"></div>
-                    </div>
-                  ) : queryHistory.length === 0 ? (
-                    <div className="text-gray-500 text-sm p-4">No query history available</div>
-                  ) : (
-                    <ul className="space-y-1">
-                      {queryHistory.map((query, index) => (
-                        <li key={index} className="p-2 text-sm hover:bg-gray-100 rounded cursor-pointer break-words" onClick={() => setQuery(query)} title={query}>
-                          {query.length > 50 ? `${query.substring(0, 50)}...` : query}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
-            </aside>
+            {/* ════════════ LEFT SIDEBAR ════════════════════════════════════ */}
+            <EditorSidebar
+              sidebarWidth={sidebarWidth}
+              connectionsLoading={connectionsLoading}
+              displayedConnections={displayedConnections}
+              displayedViews={displayedViews}
+              originalViews={originalViews}
+              schemas={schemas}
+              tables={tables}
+              columns={columns}
+              expandedItems={expandedItems}
+              selectedConnection={selectedConnection}
+              selectedView={selectedView}
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              onRefresh={refreshConnections}
+              onConnectionClick={handleConnectionClick}
+              onSchemaClick={handleSchemaClick}
+              onTableClick={handleTableClick}
+              onTableDoubleClick={handleTableDoubleClick}
+              onColumnClick={() => {}}
+              onViewClick={handleViewClick}
+              onViewDoubleClick={handleViewDoubleClick}
+              queryLoading={loading}
+            />
 
-            <main className="flex-1 pl-5 w-3/4 flex flex-col min-h-0 overflow-hidden">
-              <div className="flex flex-col" style={{ flex: (data?.length > 0 || loading) ? '0 0 220px' : '1' }}>
-                <div className="w-[100%] flex justify-between pr-3">
-                  <h2 className="text-xl font-bold">Query Editor</h2>
-                  <div className="flex justify-center items-center gap-2">
-                    <div className="relative" ref={downloadMenuRef}>
+            {/* ══ Horizontal drag handle ════════════════════════════════════ */}
+            <div
+              className="w-1.5 flex-shrink-0 flex items-center justify-center bg-gray-100 border-x border-gray-200 cursor-col-resize hover:bg-[#ede9f6] active:bg-[#ede9f6] transition-colors z-10 relative"
+              onMouseDown={handleSidebarDragStart}
+            >
+              <div className="flex flex-col gap-0.5">
+                {[0,1,2,3,4].map((i) => (
+                  <span key={i} className="w-1 h-1 rounded-full bg-gray-400" />
+                ))}
+              </div>
+            </div>
+
+            {/* ════════════ RIGHT PANEL ════════════════════════════════════ */}
+            <main
+              ref={panelRef}
+              className="flex-1 flex flex-col min-w-0 overflow-hidden bg-white"
+            >
+              {/* ── Toolbar ── */}
+              <div className="flex items-center gap-2 px-3 py-1.5 border-b border-gray-200 bg-white flex-shrink-0">
+                {/* Run */}
+                <button
+                  type="button"
+                  onClick={() => executeQuery(query)}
+                  disabled={loading}
+                  className="flex items-center gap-1.5 bg-[#8e78b7] hover:bg-[#79669c] disabled:opacity-60 disabled:cursor-not-allowed text-white text-[13px] font-semibold px-3.5 py-1.5 rounded-md transition-colors whitespace-nowrap"
+                >
+                  <Play size={13} />
+                  {loading ? "Running…" : "Run"}
+                </button>
+
+
+                <div className="flex-1" />
+
+                {/* Rows per page (fetch batch size) */}
+                <select
+                  value={pageSize}
+                  onChange={(e) => { 
+                    const newSize = Number(e.target.value);
+                    setPageSize(newSize); 
+                    setDisplayCount(newSize); 
+                  }}
+                  className="border border-gray-200 rounded-md text-[12.5px] text-gray-600 px-2 py-1 bg-white outline-none focus:border-[#8e78b7] cursor-pointer"
+                >
+                  {[100, 200, 500, 800, 1000].map((n) => (
+                    <option key={n} value={n}>{n} rows</option>
+                  ))}
+                </select>
+
+                {/* Export */}
+                <div className="relative" ref={downloadMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setShowDownloadMenu((p) => !p)}
+                    disabled={fullDataLoading}
+                    className="flex items-center gap-1.5 border border-gray-200 text-gray-600 text-[12.5px] px-3 py-1.5 rounded-md hover:border-[#8e78b7] hover:text-[#8e78b7] hover:bg-[#f8f5ff] transition-all whitespace-nowrap"
+                  >
+                    {fullDataLoading ? (
+                      <div className="w-3 h-3 rounded-full border-2 border-[#e0d9f5] border-t-[#8e78b7] animate-spin" />
+                    ) : (
+                      <Download size={13} />
+                    )}
+                    Export
+                    <ChevronDown size={11} />
+                  </button>
+                  {showDownloadMenu && (
+                    <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 w-52 overflow-hidden">
                       <button
-                        type="button"
-                        onClick={() => setShowDownloadMenu((prev) => !prev)}
-                        disabled={fullDataLoading}
-                        title="Download CSV"
-                        className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-1.5 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] flex items-center gap-1 transition-colors"
+                        className="flex items-center gap-2 w-full px-3.5 py-2.5 text-[13px] text-gray-700 hover:bg-[#f8f5ff] transition-colors"
+                        onClick={handleDownloadCurrentPage}
                       >
-                        {fullDataLoading ? <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]" /> : <Download className="h-4 w-4" />}
-                        <ChevronDown className="h-3 w-3" />
-                      </button>
-                      {showDownloadMenu && (
-                        <div className="download-menu-enter absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden">
-                          <button onClick={handleDownloadCurrentPage} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-[#f3f0f9] hover:text-[#8e78b7] flex items-center gap-2 transition-colors">
-                            <Download className="h-4 w-4 flex-shrink-0" />
-                            <div>
-                              <div className="font-medium">Current Page</div>
-                              <div className="text-xs text-gray-400">Page {pageNo} · {data.length} rows</div>
-                            </div>
-                          </button>
-                          <div className="border-t border-gray-100" />
-                          <button onClick={handleDownloadFullData} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-[#f3f0f9] hover:text-[#8e78b7] flex items-center gap-2 transition-colors">
-                            <Download className="h-4 w-4 flex-shrink-0" />
-                            <div>
-                              <div className="font-medium">Full Data</div>
-                              <div className="text-xs text-gray-400">All pages · may take a moment</div>
-                            </div>
-                          </button>
+                        <Download size={13} />
+                        <div className="text-left">
+                          <div className="font-medium">Loaded View</div>
+                          <div className="text-[11px] text-gray-400">{data.length} rows visible</div>
                         </div>
-                      )}
+                      </button>
+                      <div className="border-t border-gray-100" />
+                      <button
+                        className="flex items-center gap-2 w-full px-3.5 py-2.5 text-[13px] text-gray-700 hover:bg-[#f8f5ff] transition-colors"
+                        onClick={handleDownloadFullData}
+                      >
+                        <Download size={13} />
+                        <div className="text-left">
+                          <div className="font-medium">Full Data</div>
+                          <div className="text-[11px] text-gray-400">All pages · may take a moment</div>
+                        </div>
+                      </button>
                     </div>
-                    <Switch
-                      checked={checked}
-                      onChange={handleSwitch}
-                      inputProps={{ "aria-label": "controlled" }}
-                      sx={{
-                        '& .MuiSwitch-switchBase.Mui-checked': { color: '#8e78b7' },
-                        '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { backgroundColor: '#8e78b7' },
-                      }}
-                    />
-                    <span>{checked ? "Editor" : "Builder"}</span>
-                  </div>
+                  )}
                 </div>
+
+                {/* Editor / Builder toggle */}
+                <div className="flex items-center gap-1">
+                  <Switch
+                    checked={checked}
+                    onChange={() => { setDataBuffer([]); setColumnDefs([]); setQuery(""); setChecked(!checked); }}
+                    inputProps={{ "aria-label": "controlled" }}
+                    size="small"
+                    sx={{
+                      "& .MuiSwitch-switchBase.Mui-checked": { color: "#8e78b7" },
+                      "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: "#8e78b7" },
+                    }}
+                  />
+                  <span className="text-[13px] text-gray-500 whitespace-nowrap">
+                    {checked ? "Editor" : "Query Views"}
+                  </span>
+                </div>
+              </div>
+
+              {/* ── Ace Editor pane ── */}
+              <div
+                style={
+                  showResults
+                    ? { height: `${editorHeightPct}%`, flexShrink: 0, overflow: "hidden" }
+                    : { flex: 1, overflow: "hidden", minHeight: 0 }
+                }
+              >
                 <AceEditor
                   aria-label="editor"
                   mode="mysql"
                   theme="background"
                   name="editor"
-                  fontSize={14}
-                  wrapEnabled={true}
+                  fontSize={13}
+                  wrapEnabled
                   showPrintMargin={false}
                   showGutter
-                  placeholder="Write your query here..."
+                  placeholder="Write SQL here…"
                   editorProps={{ $blockScrolling: true }}
                   setOptions={{ enableBasicAutocompletion: true, enableLiveAutocompletion: true, enableSnippets: true }}
                   value={query}
                   onChange={setQuery}
-                  style={{
-                    width: "100%", height: "100%", padding: "10px", borderRadius: "8px",
-                    boxSizing: "border-box", border: "1px solid #e0e0e0",
-                    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)", marginTop: "2px", flexGrow: 1,
-                  }}
+                  ref={aceEditorRef}
+                  commands={[{
+                    name: "executeQuery",
+                    bindKey: { win: "Ctrl-Enter", mac: "Command-Enter" },
+                    exec: () => {
+                      const ace = aceEditorRef.current?.editor;
+                      const sel = ace ? ace.getSelectedText() : "";
+                      executeQuery(sel?.trim() ? sel : queryRef.current);
+                    },
+                  }]}
+                  style={{ width: "100%", height: "100%" }}
                   showLineNumbers
                 />
-                <div className="mt-3 flex gap-3 justify-end">
-                  <button
-                    type="button"
-                    onClick={() => executeQuery(query)}
-                    disabled={loading}
-                    className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-8 py-1.5 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
-                  >
-                    <div className="flex justify-between items-center">
-                      <Play size={16} className="mr-2" />
-                      {loading ? "Processing..." : "Run"}
-                    </div>
-                  </button>
-                  <button onClick={handleClearQuery} className="bg-gray-400 text-white px-7 py-1.5 rounded-lg hover:bg-gray-500 flex items-center">
-                    <Trash2 size={16} className="mr-2" />
-                    Clear
-                  </button>
-                </div>
               </div>
 
-              {(data?.length > 0 || loading) && (
-                <div className="flex-1 flex flex-col min-h-0" style={{ paddingBottom: '8px' }}>
-                  <h2 className="text-xl font-bold pb-2">Output</h2>
-                  {loading ? (
-                    <div className="bg-white rounded-lg shadow w-full flex-1 overflow-hidden">
-                      <div className="flex justify-center items-center h-full">
-                        <CircularProgress sx={{ color: "#8e78b7" }} />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
-                      {/* Inline output table with drag-reorder columns */}
-                      <div className="flex-1 min-h-0 overflow-auto rounded-lg border border-gray-200">
-                        <table className="w-full bg-white" style={{ borderCollapse: "collapse" }}>
-                          <thead className="border-b border-gray-200">
-                            <tr>
-                              {orderedCols.map((col, vi) => (
-                                <th
-                                  key={col}
-                                  draggable
-                                  onDragStart={e => handleColDragStart(e, vi)}
-                                  onDragOver={e => handleColDragOver(e, vi)}
-                                  onDrop={e => handleColDrop(e, vi)}
-                                  onDragEnd={handleColDragEnd}
-                                  title={toTitleCase(col)}
-                                  onClick={() => handleSort(col)}
-                                  style={{
-                                    background: "#F9F9F9",
-                                    color: "#332849",
-                                    padding: "12px 16px",
-                                    fontSize: "13px",
-                                    fontWeight: 600,
-                                    whiteSpace: "nowrap",
-                                    maxWidth: "160px",
-                                    overflow: "hidden",
-                                    cursor: "grab",
-                                    userSelect: "none",
-                                    borderLeft: dragOverCol === vi ? "1px solid #332849" : "none",
-                                    transition: "background 0.15s ease",
-                                    position: "sticky",
-                                    top: 0,
-                                    zIndex: 10,
-                                    textAlign: "left",
-                                    verticalAlign: "middle"
-                                  }}
-                                >
-                                  <div style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden" }}>
-                                    <GripVertical size={12} style={{ opacity: 0.5, flexShrink: 0 }} />
-                                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
-                                      {toTitleCase(col)}
-                                    </span>
-                                    <ArrowUpDown size={13} style={{ flexShrink: 0, opacity: sortConfig.key === col ? 1 : 0.5 }} />
-                                  </div>
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {sortedData.map((row, ri) => (
-                              <tr key={ri} style={{ borderBottom: "1px solid #e5e5e5" }} className="hover:bg-gray-50">
-                                {orderedCols.map((col, ci) => {
-                                  const val = row[col];
-                                  const isLink = typeof val === "string" && val.startsWith("http");
-                                  return (
-                                    <td key={ci} style={{ padding: "11px 16px", fontSize: "14px", color: "#23252D", whiteSpace: "nowrap", maxWidth: "260px", overflow: "hidden", textOverflow: "ellipsis",verticalAlign: "middle",}} title={val}>
-                                      {isLink ? <a href={val} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">{val}</a> : (val === 0 ? 0 : val ?? "-")}
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Bottom controls - always visible */}
-                      <div className="w-full mt-2 flex justify-between flex-none pb-1">
-                        <div className="flex gap-4 items-center">
-                          <button
-                            type="button"
-                            onClick={handleQueryDetails}
-                            className="text-white px-8 py-1.5 bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
-                          >
-                            Query Details
-                          </button>
-                          <select
-                            value={pageSize}
-                            onChange={(e) => { setPageSize(Number(e.target.value)); setPageNo(1); }}
-                            className="px-4 py-1.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#8e78b7]"
-                          >
-                            <option value={100}>100</option>
-                            <option value={200}>200</option>
-                            <option value={500}>500</option>
-                            <option value={800}>800</option>
-                            <option value={1000}>1000</option>
-                          </select>
-                        </div>
-                        <div className="flex justify-end">
-                          <button
-                            type="button"
-                            onClick={handlePreviousPage}
-                            disabled={pageNo === 1}
-                            className={`px-8 py-1.5 focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm focus:outline-none mr-4 ${pageNo === 1 ? "text-gray-400 bg-gray-200 cursor-not-allowed" : "text-white bg-[#8e78b7] hover:bg-[#7a63a8]"}`}
-                          >
-                            Previous
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleNextPage}
-                            disabled={!hasMore}
-                            className={`px-8 py-1.5 rounded-lg text-sm ${!hasMore ? "text-gray-400 bg-gray-200 cursor-not-allowed" : "text-white focus:ring-1 focus:ring-[#8e78b7] bg-[#8e78b7] hover:bg-[#7a63a8]"}`}
-                          >
-                            Next
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+              {/* ── Drag handle (vertical resize) ── */}
+              {showResults && (
+                <div
+                  className="h-2 flex-shrink-0 flex items-center justify-center bg-gray-50 border-y border-gray-200 cursor-row-resize hover:bg-[#ede9f6] transition-colors select-none"
+                  onMouseDown={handleDragStart}
+                >
+                  <div className="flex gap-0.5">
+                    {[0,1,2,3,4].map((i) => <span key={i} className="w-1 h-1 rounded-full bg-gray-400" />)}
+                  </div>
                 </div>
               )}
 
+              {/* ── Results pane ── */}
+              {showResults && (
+                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                  {/* Tab bar */}
+                  <div className="flex items-center justify-between border-b border-gray-200 bg-white flex-shrink-0">
+                    <div className="flex items-center gap-1.5 px-4 py-1.5 text-[13px] font-semibold text-[#8e78b7] border-b-2 border-[#8e78b7] whitespace-nowrap">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M3 15h18M9 3v18" />
+                      </svg>
+                      Results
+                      {dataBuffer.length > 0 && (
+                        <span className="text-[11px] font-normal text-gray-400 ml-1">
+                          · {data.length} / {dataBuffer.length}{hasMore ? "+" : ""} rows
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-0.5 mr-1">
+                      <button
+                        type="button"
+                        title="Query Details"
+                        onClick={handleQueryDetails}
+                        disabled={!securedQuery}
+                        className="text-gray-400 hover:text-[#8e78b7] disabled:opacity-40 disabled:cursor-not-allowed p-1.5 rounded transition-colors"
+                      >
+                        <Info size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        title="Close results"
+                        onClick={() => setShowResults(false)}
+                        className="text-gray-400 hover:text-[#8e78b7] p-1.5 rounded transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Results body */}
+                  <div className="qe-scroll flex-1 overflow-auto bg-white min-h-0">
+                    {loading ? (
+                      <div className="flex items-center justify-center h-full">
+                        <CircularProgress sx={{ color: "#8e78b7" }} />
+                      </div>
+                    ) : queryError ? (
+                      <div className="flex flex-col items-center justify-center h-full select-none px-6">
+                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mb-3 opacity-80">
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="12" y1="8" x2="12" y2="12" />
+                          <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                        <p className="text-[14px] font-medium text-gray-600 mb-2">Query failed</p>
+                        <p className="text-[12px] text-gray-500 font-mono text-center leading-relaxed max-w-xl break-words">{queryError}</p>
+                      </div>
+                    ) : data.length > 0 ? (
+                      <ResultsTable
+                        orderedCols={orderedCols}
+                        sortedData={sortedData}
+                        dragOverCol={dragOverCol}
+                        sortConfig={sortConfig}
+                        handleColDragStart={handleColDragStart}
+                        handleColDragOver={handleColDragOver}
+                        handleColDrop={handleColDrop}
+                        handleColDragEnd={handleColDragEnd}
+                        handleSort={handleSort}
+                        loadingMore={loadingMore}
+                        hasMore={hasMore}
+                        displayCount={displayCount}
+                        dataBufferLength={dataBuffer.length}
+                        handleResultsScroll={handleResultsScroll}
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full select-none">
+                        <span className="text-[30px] font-light text-[#c4b5e8] tracking-widest mb-2.5">&lt;/&gt;</span>
+                        <p className="text-[14px] text-[#9b8eb5] mb-1">No results returned</p>
+                        <p className="text-[12px] text-[#c4b5e8]">Try a different query</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </main>
 
-            {toast.show && (
-              <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${toast.type === "success" ? "bg-green-100 text-green-800 border-l-4 border-green-500" : "bg-red-100 text-red-800 border-l-4 border-red-500"}`}>
-                <Icon icon={toast.type === "success" ? "mdi:check-circle" : "mdi:alert-circle"} className="h-5 w-5" />
-                <p>{toast.message}</p>
-                <button onClick={() => setToast({ show: false, message: "", type: "" })} className="ml-2 text-gray-500 hover:text-gray-700">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            )}
+            {/* Toast */}
+            <EditorToast
+              toast={toast}
+              onClose={() => setToast({ show: false, message: "", type: "" })}
+            />
           </>
         ) : (
-          <Builder handleSwitch={handleSwitch} checked={checked} />
+          <Builder
+            handleSwitch={() => { setDataBuffer([]); setColumnDefs([]); setQuery(""); setChecked(!checked); }}
+            checked={checked}
+          />
         )}
       </div>
 
-      {isQueryModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg min-w-[32vw] min-h-[50vh] flex flex-col justify-between">
-            <div className="p-2 pl-4 border-b flex justify-between items-center bg-[#282F49] text-white rounded-t-lg">
-              <h2 className="text-xl font-semibold">Query Details</h2>
-            </div>
-            <div className="mt-4 mx-10 flex justify-center">
-              {viewsDetails && viewsDetails.length > 0 && (
-                <div>
-                  {Object.entries(viewsDetails[0]).filter(([key]) => key !== "query").map(([key, value]) => (
-                    <div key={key} style={{ marginBottom: '10px', fontSize: '16px', fontWeight: '400', color: '#8E77BB', lineHeight: '1.5' }}>
-                      <strong style={{ color: '#8E77BB' }}>{key.replace(/_/g, " ").toUpperCase()}:</strong>{" "}
-                      <span style={{ color: '#555' }}>{value || "N/A"}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {queryLoading && <CircularProgress sx={{ color: "#8e78b7" }} />}
-            </div>
-            <div className="py-3 pr-4 flex justify-end gap-4">
-              <button onClick={() => setIsQueryModalOpen(false)} className="px-6 py-1 bg-[#8E77BB] text-white rounded-lg hover:bg-opacity-80">Close</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ── Modals (rendered outside the flex container) ── */}
 
-      {isApiModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg min-w-[32vw] min-h-[30vh] flex flex-col justify-between">
-            <div className="p-2 pl-4 border-b flex justify-between items-center bg-[#282F49] text-white rounded-t-lg">
-              <h2 className="text-xl font-semibold">API Details</h2>
-            </div>
-            <div className="mt-4 mx-10 flex flex-col">
-              <div className="flex items-center mb-4">
-                <div className="bg-[#8E77BB] mr-4 text-white rounded-lg px-2.5 py-0.5">POST</div>
-                <span className="text-lg">/api/v1/view/{apiDetails.viewName}</span>
-              </div>
-              <div className="bg-gray-100 p-4 rounded-lg">
-                <pre className="text-sm whitespace-pre-wrap">{apiDetails.curl}</pre>
-              </div>
-            </div>
-            <div className="py-3 pr-4 flex justify-end gap-4">
-              <button onClick={() => setIsApiModalOpen(false)} className="px-6 py-1 bg-[#8E77BB] text-white rounded-lg hover:bg-opacity-80">Close</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <QueryDetailsModal
+        isOpen={isQueryModalOpen}
+        onClose={() => setIsQueryModalOpen(false)}
+        viewsDetails={viewsDetails}
+        queryLoading={queryLoading}
+      />
+      <ApiDetailsModal
+        isOpen={isApiModalOpen}
+        onClose={() => setIsApiModalOpen(false)}
+        apiDetails={apiDetails}
+      />
     </div>
   );
 }

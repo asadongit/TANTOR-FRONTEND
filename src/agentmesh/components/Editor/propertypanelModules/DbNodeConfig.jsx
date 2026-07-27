@@ -203,6 +203,7 @@ export default function DbNodeConfig({ data, update }) {
           ) && (
             <Field label="Output Key" hint="Context key to store query results.">
               <Input
+                stripBraces
                 value={data.db_output_key || "db_result"}
                 onChange={(v) => update({ db_output_key: v })}
                 placeholder="db_result"
@@ -277,6 +278,7 @@ export default function DbNodeConfig({ data, update }) {
             <>
               <Field label="Output Key" hint="Context key to store query results.">
                 <Input
+                  stripBraces
                   value={data.db_output_key || "db_result"}
                   onChange={(v) => update({ db_output_key: v })}
                   placeholder="db_result"

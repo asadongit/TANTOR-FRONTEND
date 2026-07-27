@@ -288,6 +288,7 @@ export default function BeneficiaryRiskConfig({ data, update }) {
           hint="Context key that holds the transaction payload."
         >
           <Input
+            stripBraces
             value={data.context_key ?? "enriched_transaction"}
             onChange={(v) => update({ context_key: v })}
             placeholder="enriched_transaction"

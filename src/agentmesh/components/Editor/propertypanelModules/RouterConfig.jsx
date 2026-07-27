@@ -9,6 +9,7 @@ export default function RouterConfig({ data, update }) {
         hint="The state key whose value determines which node to route to."
       >
         <Input
+          stripBraces
           value={data.routing_key || "next"}
           onChange={(v) => update({ routing_key: v })}
           placeholder="next"

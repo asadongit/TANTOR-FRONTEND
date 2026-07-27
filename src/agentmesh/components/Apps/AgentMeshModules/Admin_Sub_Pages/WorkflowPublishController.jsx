@@ -2,9 +2,9 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  FiGitBranch, FiSearch, FiRefreshCw, FiTag, 
-  FiFilter, FiX, FiCheck, FiTrash2, FiMessageSquare, FiGrid, FiList,
-  FiPlay, FiPause, FiArrowRight, FiInfo, FiMoreHorizontal, FiFolder
+  FiGitBranch, FiRefreshCw, FiTag, 
+  FiX, FiCheck, FiTrash2, FiMessageSquare,
+  FiPlay, FiPause, FiArrowRight, FiInfo, FiMoreHorizontal, FiFolder, FiLoader
 } from 'react-icons/fi';
 import { 
   listMarketplaceUsecases, 
@@ -13,9 +13,9 @@ import {
   getWorkflow,
   dispatchScheduleAction
 } from '../../../../api/agentmesh';
-import { useWorkflowStore, useUIStore } from '../../../../store';
+import { useWorkflowStore, useUIStore, useRunStore } from '../../../../store';
 import Pagination from '../../../Common/Pagination';
-import PageHeader from '../../../Common/PageHeader';
+import LibraryHeader from '../../../Common/LibraryHeader';
 
 function ActionDropdown({ actions, isOpen, onClose }) {
   if (!isOpen) return null;
@@ -40,23 +40,13 @@ function ActionDropdown({ actions, isOpen, onClose }) {
   );
 }
 
-const PublishRequestCard = React.memo(function PublishRequestCard({ u, idx, handlePause, handleResume, handleOpenWorkflow, handleUpdateStatus, setShowRemarksModal, setShowDetailsModal, handleDelete, actionInProgress, getStatusBadge }) {
+const PublishRequestCard = React.memo(function PublishRequestCard({ 
+  u, idx, handlePause, handleResume, handleOpenWorkflow, handleUpdateStatus, 
+  setShowRemarksModal, setShowDetailsModal, handleDelete, actionInProgress, 
+  getStatusBadge, handleLaunch, isLaunching 
+}) {
   const [showMore, setShowMore] = useState(false);
   const navigate = useNavigate();
-
-  const handleLaunch = async (e) => {
-    e.stopPropagation();
-    if (u.launch_mode === 'navigation' && u.navigation_path) {
-      navigate(u.navigation_path, { state: { fromMarketplace: true, usecaseName: u.name } });
-    } else if (u.launch_url) {
-      globalThis.open(u.launch_url, '_blank', 'noopener,noreferrer');
-    } else {
-      await handleOpenWorkflow(u.id);
-      setTimeout(() => {
-        useUIStore.getState().setRunOpen(true);
-      }, 300);
-    }
-  };
 
   const moreActions = [
     { label: 'Details', icon: <FiInfo size={14} />, onClick: () => setShowDetailsModal(u) },
@@ -208,11 +198,13 @@ const PublishRequestCard = React.memo(function PublishRequestCard({ u, idx, hand
 
         {/* Launch button */}
         <button
-          onClick={handleLaunch}
+          onClick={(e) => handleLaunch(u, e)}
+          disabled={isLaunching || actionInProgress === u.id}
           title="Launch / Preview Usecase"
-          className="px-3 h-9 rounded-lg border-none flex items-center justify-center gap-1.5 text-[11px] font-extrabold cursor-pointer transition-all duration-200 bg-[var(--theme-primary-glow)] text-[var(--theme-primary)] hover:bg-[var(--theme-primary)] hover:text-white"
+          className="px-3 h-9 rounded-lg border-none flex items-center justify-center gap-1.5 text-[11px] font-extrabold cursor-pointer transition-all duration-200 bg-[var(--theme-primary-glow)] text-[var(--theme-primary)] hover:bg-[var(--theme-primary)] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
         >
-          <FiPlay size={12} /> Launch
+          {isLaunching ? <FiLoader className="animate-spin" size={12} /> : <FiPlay size={12} />} 
+          {isLaunching ? 'Launching...' : 'Launch'}
         </button>
 
         <div style={{ flex: 1 }} />
@@ -278,19 +270,20 @@ export default function WorkflowPublishController() {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [searchOpen, setSearchOpen] = useState(false);
+  // const [searchOpen, setSearchOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState('All');
   const [actionInProgress, setActionInProgress] = useState(null);
+  const [launchingId, setLaunchingId] = useState(null);
 
   // Remarks state for rejection
   const [remarksInput, setRemarksInput] = useState('');
   const [showRemarksModal, setShowRemarksModal] = useState(null); // holds usecase object
   const [showDetailsModal, setShowDetailsModal] = useState(null); // holds usecase object for details modal
 
-  const [filterOpen, setFilterOpen] = useState(false);
-  const filterPanelRef = useRef(null);
-  const searchInputRef = useRef(null);
+  // const [filterOpen, setFilterOpen] = useState(false);
+  // const filterPanelRef = useRef(null);
+  // const searchInputRef = useRef(null);
 
   const [categories, setCategories] = useState(['All']);
   const [groups, setGroups] = useState(['All']);
@@ -318,14 +311,6 @@ export default function WorkflowPublishController() {
       if (res.status === 'success') {
         setUsecases(res.workflows || []);
         setTotalUsecases(res.total || 0);
-        
-        // Extract unique groups and categories if available from the dataset
-        if (res.workflows) {
-          const uniqueGroups = Array.from(new Set(res.workflows.map(w => w.group).filter(Boolean)));
-          const uniqueCategories = Array.from(new Set(res.workflows.map(w => w.category).filter(Boolean)));
-          setGroups(['All', ...uniqueGroups]);
-          setCategories(['All', ...uniqueCategories]);
-        }
       }
     } catch (e) {
       if (e.name === 'AbortError') return;
@@ -336,6 +321,25 @@ export default function WorkflowPublishController() {
       }
     }
   }, [currentPage, pageSize, selectedGroupFilter, selectedCategory, debouncedSearch, activeTab]);
+
+  // Load all unique groups/categories once initially so the filters don't shrink or change dynamically
+  const loadFilters = useCallback(async () => {
+    try {
+      const res = await listMarketplaceUsecases({ page: 1, limit: 1000 });
+      if (res.status === 'success' && res.workflows) {
+        const uniqueGroups = Array.from(new Set(res.workflows.map(w => w.group).filter(Boolean)));
+        const uniqueCategories = Array.from(new Set(res.workflows.map(w => w.category).filter(Boolean)));
+        setGroups(['All', ...uniqueGroups]);
+        setCategories(['All', ...uniqueCategories]);
+      }
+    } catch (e) {
+      console.error('Failed to load filters:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadFilters();
+  }, [loadFilters]);
 
   const handlePause = useCallback(async (id) => {
     setActionInProgress(id);
@@ -360,6 +364,34 @@ export default function WorkflowPublishController() {
       setActionInProgress(null);
     }
   }, [loadUsecases]);
+
+  const handleLaunch = useCallback(async (u, e) => {
+    if (e) e.stopPropagation();
+    if (u.launch_mode === 'navigation' && u.navigation_path) {
+      navigate(u.navigation_path, { state: { fromMarketplace: true, usecaseName: u.name } });
+    } else if (u.launch_url) {
+      globalThis.open(u.launch_url, '_blank', 'noopener,noreferrer');
+    } else {
+      setLaunchingId(u.id);
+      try {
+        const full = await getWorkflow(u.id);
+        if (full) {
+          const currentWfId = useWorkflowStore.getState().workflowId;
+          if (currentWfId !== u.id) {
+            useRunStore.getState().reset();
+          }
+          await useWorkflowStore.getState().loadWorkflowIntoEditor(full.config || full);
+          useUIStore.getState().setRunOpen(true);
+        } else {
+          alert("Workflow details could not be loaded.");
+        }
+      } catch (err) {
+        alert("Error launching workflow: " + err.message);
+      } finally {
+        setLaunchingId(null);
+      }
+    }
+  }, [navigate]);
 
   const handleOpenWorkflow = useCallback(async (workflowId) => {
     try {
@@ -455,153 +487,33 @@ export default function WorkflowPublishController() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (filterPanelRef.current && !filterPanelRef.current.contains(event.target)) {
-        setFilterOpen(false);
-      }
-    }
-    if (filterOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [filterOpen]);
+  // Cleaned up old filter/search handlers (now managed inside LibraryHeader)
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#F8FAFC', height: '100%', overflow: 'hidden', fontFamily: "'Google Sans','Roboto',sans-serif" }}>
-      {/* Header */}
-      <div style={{ 
-        padding: '16px 32px', 
-        background: 'white', 
-        borderBottom: '1px solid var(--border-light)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        zIndex: 10
-      }}>
-        <PageHeader 
-          title="Publish Approval Queue" 
-          description="Review, approve, or reject deployment requests for workflows submitted to the workspace." 
-          letterSpacing="-0.5px"
-        />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* Search bar */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', transition: 'all 0.2s', width: (searchOpen || search) ? 260 : 36 }}>
-            {(!searchOpen && !search) && (
-              <button
-                onClick={() => setSearchOpen(true)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8 }}
-              >
-                <FiSearch size={18} color="#6B7280" />
-              </button>
-            )}
-            {(searchOpen || search) && (
-              <div style={{ position: 'relative', width: '100%' }}>
-                <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} size={16} />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Search requests..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  onBlur={() => { if (!search) setSearchOpen(false); }}
-                  autoFocus={searchOpen && !search}
-                  style={{
-                    width: '100%', padding: '8px 12px 8px 36px', border: '1px solid #E5E7EB', borderRadius: 10,
-                    fontSize: 14, outline: 'none', background: 'white', color: '#111827', boxSizing: 'border-box'
-                  }}
-                />
-              </div>
-            )}
-          </div>
-
+      <LibraryHeader
+        title="Publish Approval Queue"
+        description="Review, approve, or reject deployment requests for workflows submitted to the workspace."
+        search={search}
+        onSearchChange={setSearch}
+        placeholder="Search requests..."
+        groups={groups}
+        selectedGroup={selectedGroupFilter}
+        onGroupChange={setSelectedGroupFilter}
+        categories={categories}
+        selectedCategory={selectedCategory}
+        onCategoryChange={setSelectedCategory}
+        viewMode={viewMode === 'card' ? 'cards' : 'list'}
+        onViewModeChange={(mode) => setViewMode(mode === 'cards' ? 'card' : 'list')}
+        actions={
           <button
             onClick={loadUsecases}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--theme-primary-glow)', color: 'var(--theme-primary)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
           >
             <FiRefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
           </button>
-
-          {/* Filters */}
-          <div style={{ position: 'relative' }} ref={filterPanelRef}>
-            <button
-              onClick={() => setFilterOpen(!filterOpen)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
-                background: filterOpen ? '#111827' : 'white', color: filterOpen ? 'white' : '#111827',
-                border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer'
-              }}
-            >
-              <FiFilter size={16} /> Filters
-              {(selectedCategory !== 'All' || selectedGroupFilter !== 'All') && (
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444' }} />
-              )}
-            </button>
-
-            <AnimatePresence>
-              {filterOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-                  style={{
-                    position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 260,
-                    background: 'white', border: '1px solid #E5E7EB', borderRadius: 12,
-                    boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', zIndex: 100, padding: 16
-                  }}
-                >
-                  <div style={{ marginBottom: 12 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Group</div>
-                    <select
-                      value={selectedGroupFilter}
-                      onChange={(e) => setSelectedGroupFilter(e.target.value)}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: 6, fontSize: 13, background: 'white' }}
-                    >
-                      <option value="All">All Groups</option>
-                      {groups.filter(g => g !== 'All').map(g => <option key={g} value={g}>{g}</option>)}
-                    </select>
-                  </div>
-
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Category</div>
-                    <select
-                      value={selectedCategory}
-                      onChange={(e) => setSelectedCategory(e.target.value)}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: 6, fontSize: 13, background: 'white' }}
-                    >
-                      <option value="All">All Categories</option>
-                      {categories.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          <div style={{ display: 'flex', gap: 2, background: 'var(--bg-canvas)', border: '1px solid var(--border)', borderRadius: 10, padding: '4px' }}>
-            <button 
-              onClick={() => setViewMode('card')}
-              style={{
-                background: viewMode === 'card' ? 'var(--theme-primary)' : 'transparent',
-                color: viewMode === 'card' ? 'white' : '#6B7280',
-                border: 'none', borderRadius: 6, padding: '6px 10px', display: 'flex', alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s'
-              }}
-              title="Card View"
-            >
-              <FiGrid size={16} />
-            </button>
-            <button 
-              onClick={() => setViewMode('list')}
-              style={{
-                background: viewMode === 'list' ? 'var(--theme-primary)' : 'transparent',
-                color: viewMode === 'list' ? 'white' : '#6B7280',
-                border: 'none', borderRadius: 6, padding: '6px 10px', display: 'flex', alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s'
-              }}
-              title="List View"
-            >
-              <FiList size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Tabs */}
       <div style={{ background: 'white', borderBottom: '1px solid var(--border-light)', display: 'flex', gap: 24, padding: '0 32px' }}>
@@ -672,6 +584,8 @@ export default function WorkflowPublishController() {
                     handleDelete={handleDelete}
                     actionInProgress={actionInProgress}
                     getStatusBadge={getStatusBadge}
+                    handleLaunch={handleLaunch}
+                    isLaunching={launchingId === u.id}
                   />
                 ))}
               </div>
@@ -743,23 +657,13 @@ export default function WorkflowPublishController() {
 
                       {/* Launch Usecase */}
                       <button
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          if (u.launch_mode === 'navigation' && u.navigation_path) {
-                            navigate(u.navigation_path, { state: { fromMarketplace: true, usecaseName: u.name } });
-                          } else if (u.launch_url) {
-                            globalThis.open(u.launch_url, '_blank', 'noopener,noreferrer');
-                          } else {
-                            await handleOpenWorkflow(u.id);
-                            setTimeout(() => {
-                              useUIStore.getState().setRunOpen(true);
-                            }, 300);
-                          }
-                        }}
+                        onClick={(e) => handleLaunch(u, e)}
+                        disabled={launchingId === u.id || actionInProgress === u.id}
                         title="Launch Usecase"
-                        className="px-2.5 py-1.5 rounded-md border-none cursor-pointer text-[11px] font-bold bg-[var(--theme-primary-glow)] text-[var(--theme-primary)] hover:bg-[var(--theme-primary)] hover:text-white transition-all duration-200"
+                        className="px-2.5 py-1.5 rounded-md border-none cursor-pointer text-[11px] font-bold bg-[var(--theme-primary-glow)] text-[var(--theme-primary)] hover:bg-[var(--theme-primary)] hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                       >
-                        Launch
+                        {launchingId === u.id && <FiLoader className="animate-spin" size={10} />}
+                        {launchingId === u.id ? 'Launching...' : 'Launch'}
                       </button>
 
                       {/* View details */}

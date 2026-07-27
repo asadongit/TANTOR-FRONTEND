@@ -404,7 +404,8 @@ function Group() {
             "No description available",
           status: group.attributes?.Status?.[0] === "Enabled" ? "Enabled" : "Disabled",
           subGroup: group.subgroups?.join(", ") || "None",
-          createdDate: formattedDate,
+          createdDate: formattedDate || "-",
+          createdBy: group.attributes?.created_by?.[0] || "-", 
           updatedDate: "",
         };
       });
@@ -941,6 +942,9 @@ function Group() {
                 <th className="text-left" style={{ padding: '16px 19.75px' }}>Description</th>
                 <th className="text-center" style={{ padding: '16px 19.75px' }}>Status</th>
                 <th className="text-left" style={{ padding: '16px 19.75px' }}>Sub group</th>
+                <th className="text-left" style={{ padding: '16px 19.75px' }}>
+                  Created By
+                </th>
                 <th className="text-left" style={{ padding: '16px 19.75px' }}>Created Date</th>
                 <th className="text-left" style={{ padding: '16px 19.75px' }}>Action</th>
               </tr>
@@ -1005,8 +1009,10 @@ function Group() {
                       </div>
                     </td>
                     <td style={{ padding: '16px 19.75px' }} className="text-gray-600 max-w-xs truncate">{group.subGroup}</td>
+                    <td style={{ padding: '16px 19.75px' }} className="text-gray-600">
+                      {group.createdBy}
+                    </td>
                     <td style={{ padding: '16px 19.75px' }} className="text-gray-600">{group.createdDate}</td>
-
                     <td style={{ padding: '16px 19.75px' }}>
                        <div className="relative">
                          <button

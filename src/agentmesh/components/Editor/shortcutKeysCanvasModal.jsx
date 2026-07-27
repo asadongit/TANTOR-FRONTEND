@@ -2,7 +2,7 @@
 /* eslint-disable jsx-a11y/no-static-element-interactions */
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 import React from 'react';
-import { FiX, FiMousePointer, FiSearch, FiFileText, FiTrash2, FiRotateCcw, FiRotateCw, FiLayers } from 'react-icons/fi';
+import { FiX, FiMousePointer, FiSearch, FiFileText, FiTrash2, FiRotateCcw, FiRotateCw, FiLayers, FiZap } from 'react-icons/fi';
 
 export default function ShortcutKeysCanvasModal({ isOpen, onClose }) {
   if (!isOpen) return null;
@@ -55,6 +55,12 @@ export default function ShortcutKeysCanvasModal({ isOpen, onClose }) {
       keys: ['Ctrl', 'Shift', 'G'],
       description: 'Ungroup the currently selected Group Node.',
       icon: <FiLayers size={16} />,
+    },
+    {
+      id: 'breakpoint',
+      keys: ['Alt', 'Click (Wire)'],
+      description: 'Toggle a Wire Breakpoint on the clicked edge. Execution pauses before the target node — useful for debugging.',
+      icon: <FiZap size={16} />,
     },
   ];
 

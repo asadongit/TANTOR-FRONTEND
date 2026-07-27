@@ -280,7 +280,18 @@ export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
           schema: node.data.schema,
           table: node.data.table,
           columns: node.type === 'source'
-            ? (sourceOriginalColumns[node.id] || []).map(col => typeof col === 'object' ? { name: col.name, datatype: col.datatype } : { name: col, datatype: null })
+            ? (
+                (sourceOriginalColumns[node.id] && sourceOriginalColumns[node.id].length > 0)
+                  ? sourceOriginalColumns[node.id].map(col =>
+                      typeof col === 'object' ? { name: col.name, datatype: col.datatype } : { name: col, datatype: null }
+                    )
+                  : (Array.isArray(node.data.columns)
+                      ? node.data.columns.map(col => ({
+                          name: typeof col === 'object' ? col.name : col,
+                          datatype: typeof col === 'object' ? col.datatype : null
+                        }))
+                      : [])
+              )
             : (node.data.columns && Array.isArray(node.data.columns)
               ? node.data.columns.map(col => ({
                 name: typeof col === 'object' ? col.name : col,

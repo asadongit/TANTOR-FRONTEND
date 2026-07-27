@@ -92,6 +92,7 @@ export const NODE_TYPES = [
 
   // Media Services
   { type: 'textToAudio', icon: FiVolume2,   label: 'Text to Speech', desc: 'Converts text passages into natural speech audio.', detailedDesc: 'Utilizes text-to-speech audio synthesis models to generate audio files (.mp3/.wav) from written scripts or AI messages.', bg: '#FFE4E1', color: '#C71585', category: 'Media Services' },
+  { type: 'vision_intelligence', icon: FiEye, label: 'Vision Intelligence', desc: 'Unified AI vision engine for face verification, signature/stamp detection, and quality gates.', detailedDesc: 'Comprehensive Computer Vision engine that unifies InsightFace biometric face match (1:1 verification), signature/stamp extraction, and document quality gates in a single node.', bg: '#F3E8FF', color: '#7E22CE', category: 'Media Services' },
 
   // Visual Organizers
   { type: 'cardboard',   icon: FiLayers,    label: 'Sticky Note',     desc: 'Sticky notes to add visual documentation on the canvas.', detailedDesc: 'Visual layout containers that allow developers to group nodes, add comments, and document canvas flows without affecting runtime execution.', bg: '#F1F5F9', color: '#64748B', category: 'Visual Organizers' },
@@ -104,12 +105,63 @@ export const NODE_TYPES = [
   { type: 'weightage', icon: FiSliders,    label: 'Weightage System', desc: 'Calculates overall weighted scores across multiple categories.', detailedDesc: 'Applies custom category weights to values in context, producing aggregated risk scores or compliance grades.', bg: '#E0F2FE', color: '#0369A1', category: 'Banking' },
 ];
 
+function getNodeDetails(type) {
+  const found = NODE_TYPES.find(n => n.type === type);
+  return found || { icon: FiLayers, label: type, desc: 'Custom configured node', bg: '#E0F2FE', color: '#0EA5E9' };
+}
+
+const instantiateGroupTemplate = (config, newPosition) => {
+  const originalPos = config.position || { x: 0, y: 0 };
+  const dx = newPosition.x - originalPos.x;
+  const dy = newPosition.y - originalPos.y;
+
+  const idMap = {};
+  const internalNodes = (config.internal_nodes || []).map(n => {
+    const oldId = n.id;
+    const type = n.data?.type || 'node';
+    const newId = `${type}_${Math.random().toString(36).substring(2, 7)}`;
+    idMap[oldId] = newId;
+
+    return {
+      ...n,
+      id: newId,
+      position: {
+        x: (n.position?.x ?? 0) + dx,
+        y: (n.position?.y ?? 0) + dy
+      },
+      data: {
+        ...n.data,
+        id: newId
+      }
+    };
+  });
+
+  const mapEdges = (edges) => (edges || []).map(e => ({
+    ...e,
+    id: `e_${idMap[e.source] || e.source}_to_${idMap[e.target] || e.target}_${Math.random().toString(36).substring(2, 7)}`,
+    source: idMap[e.source] || e.source,
+    target: idMap[e.target] || e.target
+  }));
+
+  const internalEdges = mapEdges(config.internal_edges);
+  const originalEdges = mapEdges(config.original_edges);
+
+  return {
+    ...config,
+    internal_nodes: internalNodes,
+    internal_edges: internalEdges,
+    original_edges: originalEdges
+  };
+};
+
 export default function NodePalette({ onClose }) {
   const addNode = useWorkflowStore((s) => s.addNode);
   const setNodeData = useWorkflowStore((s) => s.setNodeData);
   const mergeTemplateIntoEditor = useWorkflowStore((s) => s.mergeTemplateIntoEditor);
+  const nodes = useWorkflowStore((s) => s.nodes);
+  const setNodesDirty = useWorkflowStore((s) => s.setNodesDirty);
   
-  const [viewMode, setViewMode] = useState('nodes'); // 'nodes' | 'agents' | 'apis' | 'tools' | 'skills' | 'templates'
+  const [viewMode, setViewMode] = useState('nodes'); // 'nodes' | 'custom_nodes' | 'agents' | 'apis' | 'tools' | 'skills' | 'templates'
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -216,6 +268,10 @@ export default function NodePalette({ onClose }) {
           res = await listAgentTemplates({ page: currentPage, limit, search: debouncedSearch }, { signal });
           newItems = res.templates || [];
           total = res.total || 0;
+        } else if (viewMode === 'custom_nodes') {
+          res = await listComponentTemplates({ exclude_type: 'api_node', page: currentPage, limit, search: debouncedSearch }, { signal });
+          newItems = res.templates || [];
+          total = res.total || 0;
         } else if (viewMode === 'apis') {
           res = await listComponentTemplates({ type: 'api_node', page: currentPage, limit, search: debouncedSearch }, { signal });
           newItems = res.templates || [];
@@ -291,6 +347,14 @@ export default function NodePalette({ onClose }) {
           label: item.name || item.config.label
         }));
       }
+    } else if (mode === 'custom_nodes') {
+      const isCardboard = item.type === 'cardboard';
+      e.dataTransfer.setData('application/agentmesh-node', isCardboard ? 'cardboardNode' : 'agentNode');
+      e.dataTransfer.setData('application/agentmesh-config', JSON.stringify({
+        ...item.config,
+        type: item.type,
+        label: item.name || (item.config && item.config.label) || item.name
+      }));
     } else if (mode === 'apis') {
       e.dataTransfer.setData('application/agentmesh-node', 'api_node');
       if (item.config) {
@@ -318,6 +382,33 @@ export default function NodePalette({ onClose }) {
   const handleBackendClick = async (item, mode) => {
     if (mode === 'agents') {
       setAgentTypeToSelect(item);
+    } else if (mode === 'custom_nodes') {
+      let config = item.config || {};
+      const type = item.type || 'llm_agent';
+      
+      const lastNode = nodes[nodes.length - 1];
+      const position = lastNode 
+        ? { x: lastNode.position.x + 60, y: lastNode.position.y + 60 }
+        : { x: 200 + Math.random() * 300, y: 100 + Math.random() * 200 };
+
+      if (type === 'group') {
+        config = instantiateGroupTemplate(config, position);
+      }
+
+      const id = `${type}_${Math.random().toString(36).substring(2, 7)}`;
+      const newNode = {
+        id,
+        type: 'agentNode',
+        position,
+        data: {
+          ...config,
+          id,
+          type,
+          label: item.name || config.label || item.name
+        }
+      };
+      setNodesDirty([...nodes, newNode]);
+      onClose?.();
     } else if (mode === 'apis') {
       const config = item.config || {};
       const id = addNode('api_node', { x: 200 + Math.random() * 300, y: 100 + Math.random() * 200 });
@@ -386,6 +477,7 @@ export default function NodePalette({ onClose }) {
           >
             <span>
               {viewMode === 'nodes' && `Node library (${filteredNodes.length})`}
+              {viewMode === 'custom_nodes' && `Nodes (${totalCount})`}
               {viewMode === 'agents' && `Agents (${totalCount})`}
               {viewMode === 'apis' && `APIs (${totalCount})`}
               {viewMode === 'tools' && `Tools (${totalCount})`}
@@ -399,6 +491,7 @@ export default function NodePalette({ onClose }) {
             <div className="absolute left-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1.5 animate-fade-in">
               {[
                 { id: 'nodes', label: 'Node Library', icon: FiBox },
+                { id: 'custom_nodes', label: 'Nodes', icon: FiLayers },
                 { id: 'agents', label: 'Agents', icon: FiCpu },
                 { id: 'apis', label: 'APIs', icon: FiGlobe },
                 { id: 'tools', label: 'Tools', icon: FiSliders },
@@ -530,6 +623,12 @@ export default function NodePalette({ onClose }) {
                 bg = '#C9DEFF';
                 color = '#1A56DB';
                 typeLabel = item.category || 'Agent';
+              } else if (viewMode === 'custom_nodes') {
+                const details = getNodeDetails(item.type);
+                Icon = details.icon;
+                bg = details.bg || '#E0F2FE';
+                color = details.color || '#0EA5E9';
+                typeLabel = details.label || 'Node';
               } else if (viewMode === 'apis') {
                 Icon = FiGlobe;
                 bg = '#E0F2FE';

@@ -119,6 +119,7 @@ export default function IngestionAdapterConfig({ data, update }) {
         hint="The context field where the normalized payload will be saved."
       >
         <Input
+          stripBraces
           value={data.destination_key || "normalized_payload"}
           onChange={(v) => update({ destination_key: v })}
           placeholder="e.g. normalized_payload"

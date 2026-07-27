@@ -62,6 +62,7 @@ export default function ReportGeneratorConfig({ data, update }) {
         hint="Context key to save the generated report details."
       >
         <Input
+          stripBraces
           value={data.report_destination_key || "generated_report"}
           onChange={(v) => update({ report_destination_key: v })}
           placeholder="generated_report"

@@ -289,7 +289,7 @@ const EntityView = () => {
                             <div className="text-sm text-red-500 p-4">Failed to load entity data.</div>
                         ) : (
                             <>
-                                <div className="flex gap-1 border-b border-[#CCCCCC] mb-4">
+                                <div className="flex gap-1 border-b border-[#CCCCCC] mb-4 overflow-x-auto scrollbar-hide">
                                     {tabs.map((tab) => (
                                         <button
                                             key={tab}

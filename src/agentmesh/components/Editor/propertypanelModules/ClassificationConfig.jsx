@@ -178,6 +178,7 @@ export default function ClassificationConfig({ data, update }) {
           Input Field Path (Optional)
         </label>
         <Input
+          stripBraces
           value={data.classification_input_field || ""}
           onChange={(v) => update({ classification_input_field: v })}
           placeholder="e.g. context.customer_query"

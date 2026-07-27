@@ -48,6 +48,7 @@ export default function TemplateNodeConfig({ data, update }) {
         hint="Specify the context key (e.g., enriched_transaction) from which to extract variables to inject into the template context. If it points to a dictionary, those fields are merged into the template variables."
       >
         <Input
+          stripBraces
           value={data.template_data_key ?? ""}
           onChange={(v) => update({ template_data_key: v })}
           placeholder="e.g. enriched_transaction"
@@ -59,6 +60,7 @@ export default function TemplateNodeConfig({ data, update }) {
         hint="Context key to save the final rendered string output. Defaults to rendered_template."
       >
         <Input
+          stripBraces
           value={data.template_output_key ?? "rendered_template"}
           onChange={(v) => update({ template_output_key: v })}
           placeholder="rendered_template"

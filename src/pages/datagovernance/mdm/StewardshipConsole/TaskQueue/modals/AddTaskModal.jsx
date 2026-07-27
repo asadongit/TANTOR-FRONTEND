@@ -17,8 +17,8 @@ const labelBase =
 
 const TASK_TYPE_OPTIONS = [
     { value: 'Match Review',   label: 'Match Review',   apiValue: 'MATCH_REVIEW'   },
-    { value: 'Data Quality',   label: 'Data Quality',   apiValue: 'DATA_QUALITY'   },
-    { value: 'Merge Approval', label: 'Merge Approval', apiValue: 'MERGE_APPROVAL' },
+    // { value: 'Data Quality',   label: 'Data Quality',   apiValue: 'DATA_QUALITY'   },
+    // { value: 'Merge Approval', label: 'Merge Approval', apiValue: 'MERGE_APPROVAL' },
 ];
 
 const PRIORITY_OPTIONS = [
@@ -213,7 +213,7 @@ const AddTaskModal = ({ isOpen, onClose, onSuccess }) => {
             task_subtype:  taskOption?.apiValue || formData.task_type,
             assigned_to:   formData.assigned_to,
             assigned_role: formData.assigned_role,
-            priority:      formData.priority,
+            priority:      formData.priority.toUpperCase(),
             due_date:      formData.due_date ? `${formData.due_date}T00:00:00` : undefined,
             description:   formData.description || undefined,
             created_by:    decodedToken?.preferred_username || 'admin',
@@ -222,6 +222,7 @@ const AddTaskModal = ({ isOpen, onClose, onSuccess }) => {
         if (isMatchReview) {
             const detail        = matchRecords?.[formData.match_result_id];
             payload.match_result_id = formData.match_result_id;
+            payload.entity_id         = detail?.target_golden_id;
             payload.domain_code     = detail?.source_domain || 'CUST';
         } else {
             payload.entity_id   = formData.entity_id;
@@ -243,7 +244,6 @@ const AddTaskModal = ({ isOpen, onClose, onSuccess }) => {
         formData.task_type &&
         formData.assigned_to &&
         formData.priority &&
-        formData.due_date &&
         (isMatchReview ? formData.match_result_id : formData.entity_id);
 
     if (!isOpen) return null;
@@ -339,7 +339,7 @@ const AddTaskModal = ({ isOpen, onClose, onSuccess }) => {
                         />
                     </div>
 
-                    <div className="flex flex-col gap-1.5">
+                    {/* <div className="flex flex-col gap-1.5">
                         <label className={labelBase}>
                             Due Date <span className="text-[#E05252]">*</span>
                         </label>
@@ -351,7 +351,7 @@ const AddTaskModal = ({ isOpen, onClose, onSuccess }) => {
                             className={inputBase}
                             style={{ height: '40px', colorScheme: 'light' }}
                         />
-                    </div>
+                    </div> */}
 
                     <div className="flex flex-col gap-1.5 col-span-2">
                         <label className={labelBase}>Description</label>

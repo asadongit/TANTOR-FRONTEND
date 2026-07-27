@@ -15,6 +15,7 @@ const Navbar             = lazyWithRetry(() => import('../../Editor/Navbar'));
 const WorkflowCanvas     = lazyWithRetry(() => import('../../Editor/WorkflowCanvas'));
 const RunPanel           = lazyWithRetry(() => import('../../Editor/RunPanel'));
 const WorkflowNotesModal = lazyWithRetry(() => import('../../Editor/WorkflowNotesModal'));
+const FlowchartModal     = lazyWithRetry(() => import('../../Editor/FlowchartModal'));
 const WorkflowVariablesPanel = lazyWithRetry(() => import('../../Editor/WorkflowVariablesPanel'));
 const NotificationsModal = lazyWithRetry(() => import('../../Editor/NotificationsModal'));
 const DashboardPage      = lazyWithRetry(() => import('./DashboardPage'));
@@ -138,6 +139,7 @@ export default function MainComponent() {
         {activePage === 'canvas' && (
           <>
             <WorkflowNotesModal />
+            <FlowchartModal />
             <WorkflowVariablesPanel />
           </>
         )}
