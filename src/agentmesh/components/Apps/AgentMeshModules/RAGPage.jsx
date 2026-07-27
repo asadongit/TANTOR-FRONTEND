@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { ingestData, listAvailableModels } from '../../../api/agentmesh';
-import { FiBookOpen, FiType, FiUpload, FiCheck, FiAlertCircle, FiInfo, FiFileText, FiX, FiLayers, FiDatabase, FiScissors, FiMic, FiActivity, FiVideo, FiShare2 } from 'react-icons/fi';
+import { ingestData, listAvailableModels, listCollections, getCollectionDetails, deleteCollection } from '../../../api/agentmesh';
+import { FiBookOpen, FiType, FiUpload, FiCheck, FiAlertCircle, FiInfo, FiFileText, FiX, FiLayers, FiDatabase, FiScissors, FiMic, FiActivity, FiVideo, FiShare2, FiTrash2, FiSearch, FiChevronDown } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import PageHeader from '../../Common/PageHeader';
 
@@ -145,6 +145,7 @@ TooltipLabel.propTypes = {
 };
 
 export default function RAGPage() {
+  const [mainNav, setMainNav] = useState('ingest');
   const [tab, setTab] = useState('text');
   const [text, setText] = useState('');
   const [files, setFiles] = useState([]);
@@ -172,6 +173,43 @@ export default function RAGPage() {
   const fileInputRef = useRef(null);
   const audioInputRef = useRef(null);
   const videoInputRef = useRef(null);
+
+  const [existingCollections, setExistingCollections] = useState([]);
+  const [collectionDetails, setCollectionDetails] = useState(null);
+  const [activeChunkModal, setActiveChunkModal] = useState(null);
+  const [collectionSearchQuery, setCollectionSearchQuery] = useState('');
+  const [isCollectionDropdownOpen, setIsCollectionDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    const fetchCollections = async () => {
+      try {
+        const res = await listCollections(vectorStore);
+        if (res && res.collections) {
+          setExistingCollections(res.collections);
+        }
+      } catch (err) {
+        console.error("Failed to load collections:", err);
+      }
+    };
+    if (targetType === 'vector') {
+      fetchCollections();
+    }
+  }, [vectorStore, targetType]);
+
+  useEffect(() => {
+    const fetchDetails = async () => {
+      if (!collection || targetType !== 'vector') return;
+      try {
+        const res = await getCollectionDetails(collection, vectorStore);
+        if (res && res.details) {
+          setCollectionDetails(res.details);
+        }
+      } catch (err) {
+        console.error("Failed to load collection details:", err);
+      }
+    };
+    fetchDetails();
+  }, [collection, vectorStore, targetType, result]);
 
   useEffect(() => {
     const fetchModels = async () => {
@@ -442,7 +480,350 @@ export default function RAGPage() {
         </div>
       </div>
 
-      {/* ── Tabs ── */}
+      {/* ── Main Knowledge Views Switcher (Knowledge Ingestion vs Knowledges Table) ── */}
+      <div style={{ padding: '0 40px', background: 'white', borderBottom: '1px solid var(--border)', display: 'flex', gap: 24, alignItems: 'center' }}>
+        {[
+          { key: 'ingest', label: 'Knowledge Ingestion', icon: FiUpload },
+          { key: 'browse', label: 'Knowledges & Collections', icon: FiDatabase },
+        ].map(({ key, label: l, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setMainNav(key)}
+            style={{
+              background: 'none', border: 'none', padding: '14px 4px', fontSize: 14, fontWeight: 700,
+              color: mainNav === key ? 'var(--theme-primary)' : 'var(--text-muted)',
+              cursor: 'pointer', position: 'relative', transition: 'color 0.2s', fontFamily: 'inherit'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Icon size={16} />
+              {l}
+            </div>
+            {mainNav === key && (
+              <motion.div
+                layoutId="activeMainNav"
+                style={{
+                  position: 'absolute', bottom: 0, left: 0, right: 0, height: 3,
+                  background: 'var(--theme-primary)', borderRadius: '3px 3px 0 0'
+                }}
+              />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {mainNav === 'browse' ? (
+        /* ── Knowledges & Collections Table View ── */
+        <div style={{ flex: 1, padding: '24px 40px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Top Filters bar */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white', padding: '16px 20px', borderRadius: 14, border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Vector Engine:</div>
+              <select
+                value={vectorStore}
+                onChange={(e) => setVectorStore(e.target.value)}
+                style={{ ...inputClass, width: 160 }}
+              >
+                <option value="chroma">Chroma DB</option>
+                <option value="qdrant">Qdrant DB</option>
+              </select>
+
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginLeft: 16 }}>Collection:</div>
+              <div style={{ position: 'relative', width: 220 }}>
+                {/* Trigger Button */}
+                <div
+                  onClick={() => setIsCollectionDropdownOpen(!isCollectionDropdownOpen)}
+                  style={{
+                    padding: '8px 12px', background: 'white', border: '1px solid var(--border)',
+                    borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center',
+                    justify: 'space-between', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',
+                    boxShadow: 'var(--shadow-sm)'
+                  }}
+                >
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {collection}
+                  </span>
+                  <FiChevronDown size={16} color="var(--text-muted)" style={{ transform: isCollectionDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                </div>
+
+                {/* Dropdown Menu Popup */}
+                <AnimatePresence>
+                  {isCollectionDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 4 }}
+                      style={{
+                        position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0,
+                        background: 'white', border: '1px solid var(--border)', borderRadius: 10,
+                        boxShadow: 'var(--shadow-lg)', zIndex: 100, overflow: 'hidden'
+                      }}
+                    >
+                      {/* Search Bar Input */}
+                      <div style={{ padding: '8px', borderBottom: '1px solid var(--border)', background: '#F8FAFC', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <FiSearch size={14} color="#64748B" />
+                        <input
+                          type="text"
+                          value={collectionSearchQuery}
+                          onChange={(e) => setCollectionSearchQuery(e.target.value)}
+                          placeholder="Search collections..."
+                          autoFocus
+                          style={{
+                            border: 'none', background: 'transparent', outline: 'none',
+                            fontSize: 12, width: '100%', color: 'var(--text-primary)'
+                          }}
+                        />
+                      </div>
+
+                      {/* Scrollable Collection Options List */}
+                      <div style={{ maxHeight: '200px', overflowY: 'auto', padding: '4px 0' }}>
+                        {existingCollections
+                          .filter(col => col.toLowerCase().includes(collectionSearchQuery.toLowerCase()))
+                          .map((col, idx) => (
+                            <div
+                              key={idx}
+                              onClick={() => {
+                                setCollection(col);
+                                setIsCollectionDropdownOpen(false);
+                                setCollectionSearchQuery('');
+                              }}
+                              style={{
+                                padding: '8px 12px', fontSize: 13, cursor: 'pointer',
+                                background: collection === col ? '#E0F2FE' : 'transparent',
+                                color: collection === col ? '#0369A1' : 'var(--text-primary)',
+                                fontWeight: collection === col ? 700 : 400,
+                                transition: 'background 0.15s'
+                              }}
+                              onMouseEnter={e => { if (collection !== col) e.currentTarget.style.background = '#F1F5F9'; }}
+                              onMouseLeave={e => { if (collection !== col) e.currentTarget.style.background = 'transparent'; }}
+                            >
+                              {col}
+                            </div>
+                          ))}
+                        {existingCollections.filter(col => col.toLowerCase().includes(collectionSearchQuery.toLowerCase())).length === 0 && (
+                          <div style={{ padding: '12px', textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
+                            No collections found
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <div style={{ padding: '6px 12px', background: '#F1F5F9', borderRadius: 8, fontSize: 12, fontWeight: 700, color: '#334155' }}>
+                Total Vector Chunks: {collectionDetails?.total_chunks || 0}
+              </div>
+              <div style={{ padding: '6px 12px', background: '#E0F2FE', borderRadius: 8, fontSize: 12, fontWeight: 700, color: '#0369A1' }}>
+                Vector Size: {collectionDetails?.vector_size || 384}
+              </div>
+              <button
+                onClick={async () => {
+                  if (window.confirm(`Are you sure you want to permanently delete the collection '${collection}' from ${vectorStore}?`)) {
+                    try {
+                      await deleteCollection(collection, vectorStore);
+                      setCollectionDetails(null);
+                      const res = await listCollections(vectorStore);
+                      if (res && res.collections) {
+                        setExistingCollections(res.collections);
+                        if (res.collections.length > 0) setCollection(res.collections[0]);
+                      }
+                    } catch (e) {
+                      alert(`Failed to delete collection: ${e.message}`);
+                    }
+                  }
+                }}
+                title="Delete Collection"
+                style={{
+                  padding: '7px 14px', borderRadius: 8, border: '1px solid #FECACA',
+                  background: '#FEF2F2', color: '#DC2626', fontSize: 12, fontWeight: 700,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.15s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#FEE2E2'}
+                onMouseLeave={e => e.currentTarget.style.background = '#FEF2F2'}
+              >
+                <FiTrash2 size={14} color="#DC2626" />
+                Delete Collection
+              </button>
+            </div>
+          </div>
+
+          {/* Data Table */}
+          <div style={{ background: 'white', borderRadius: 14, border: '1px solid var(--border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Collection Chunks Table ({collectionDetails?.chunks?.length || 0} Records Loaded)</span>
+              
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', maxHeight: '550px' }}>
+              {collectionDetails?.chunks && collectionDetails.chunks.length > 0 ? (
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
+                  <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: '#F8FAFC' }}>
+                    <tr style={{ borderBottom: '1px solid var(--border)', color: '#64748B', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>
+                      <th style={{ padding: '12px 16px', width: '150px' }}>Chunk ID</th>
+                      <th style={{ padding: '12px 16px', width: '200px' }}>Source File</th>
+                      <th style={{ padding: '12px 16px' }}>Text Content Preview</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {collectionDetails.chunks.map((row, idx) => {
+                      let rawText = typeof row.content === 'object' ? JSON.stringify(row.content, null, 2) : String(row.content || '');
+                      let previewText = rawText.length > 180 ? rawText.substring(0, 180) + '...' : rawText;
+
+                      return (
+                        <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                          <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: 11, color: '#64748B' }}>{row.id.substring(0, 16)}...</td>
+                          <td style={{ padding: '12px 16px', fontWeight: 600, color: '#1E293B' }}>{row.filename}</td>
+                          <td style={{ padding: '12px 16px', color: '#334155', lineHeight: 1.5 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                              <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '600px' }}>
+                                {previewText}
+                              </span>
+                              <button
+                                onClick={() => setActiveChunkModal(row)}
+                                style={{
+                                  padding: '4px 10px', borderRadius: 6, border: '1px solid #CBD5E1',
+                                  background: '#F8FAFC', color: '#0F172A', fontSize: 11, fontWeight: 700,
+                                  cursor: 'pointer', flexShrink: 0, transition: 'all 0.15s'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = '#E2E8F0'}
+                                onMouseLeave={e => e.currentTarget.style.background = '#F8FAFC'}
+                              >
+                                Inspect Full Chunk
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '340px', gap: 16, color: '#64748B', padding: '40px' }}>
+                  <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <FiDatabase size={32} color="#94A3B8" strokeWidth={1.5} />
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#1E293B', marginBottom: 4 }}>
+                      No vector records found in '{collection}'
+                    </div>
+                  
+                  </div>
+                  <button
+                    onClick={() => setMainNav('ingest')}
+                    style={{
+                      padding: '9px 18px', background: 'var(--theme-primary-glow)', color: 'var(--theme-primary)',
+                      border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                      cursor: 'pointer', transition: 'all 0.2s', marginTop: 4
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--theme-primary)'; e.currentTarget.style.color = 'white'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'var(--theme-primary-glow)'; e.currentTarget.style.color = 'var(--theme-primary)'; }}
+                  >
+                    Go to Knowledge Ingestion
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── Full Chunk Inspector Modal ── */}
+          <AnimatePresence>
+            {activeChunkModal && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                style={{
+                  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                  background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  zIndex: 2000, padding: 24
+                }}
+                onClick={() => setActiveChunkModal(null)}
+              >
+                <motion.div
+                  initial={{ scale: 0.95, y: 10 }}
+                  animate={{ scale: 1, y: 0 }}
+                  exit={{ scale: 0.95, y: 10 }}
+                  onClick={e => e.stopPropagation()}
+                  style={{
+                    background: 'white', borderRadius: 16, border: '1px solid var(--border)',
+                    maxWidth: 800, width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+                    boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+                    overflow: 'hidden'
+                  }}
+                >
+                  {/* Modal Header */}
+                  <div style={{ padding: '18px 24px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F8FAFC' }}>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: '#0F172A' }}>Chunk Inspector</div>
+                      <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                        Source: <span style={{ fontWeight: 600, color: '#1E293B' }}>{activeChunkModal.filename}</span> • ID: <span style={{ fontFamily: 'monospace' }}>{activeChunkModal.id}</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setActiveChunkModal(null)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, borderRadius: '50%', color: '#64748B' }}
+                    >
+                      <FiX size={18} />
+                    </button>
+                  </div>
+
+                  {/* Modal Content */}
+                  <div style={{ padding: 24, overflowY: 'auto', flex: 1, background: '#FAFAF9' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.5px' }}>
+                      Full Content Payload
+                    </div>
+                    <pre style={{
+                      background: '#0F172A', color: '#38BDF8', padding: '16px', borderRadius: 12,
+                      fontSize: 12, fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                      overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0,
+                      maxHeight: '400px', lineHeight: 1.6
+                    }}>
+                      <code>
+                        {typeof activeChunkModal.content === 'object'
+                          ? JSON.stringify(activeChunkModal.content, null, 2)
+                          : activeChunkModal.content}
+                      </code>
+                    </pre>
+
+                    {activeChunkModal.metadata && (
+                      <div style={{ marginTop: 20 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.5px' }}>
+                          Chunk Metadata
+                        </div>
+                        <pre style={{
+                          background: '#F1F5F9', color: '#334155', padding: '12px', borderRadius: 8,
+                          fontSize: 11, fontFamily: 'monospace', margin: 0, overflowX: 'auto'
+                        }}>
+                          <code>{JSON.stringify(activeChunkModal.metadata, null, 2)}</code>
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div style={{ padding: '14px 24px', borderTop: '1px solid #E2E8F0', background: 'white', display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={() => setActiveChunkModal(null)}
+                      style={{
+                        padding: '8px 18px', borderRadius: 8, border: '1px solid #CBD5E1',
+                        background: '#0F172A', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer'
+                      }}
+                    >
+                      Close Inspector
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      ) : (
+      <>
+      {/* ── Ingestion Tabs ── */}
       <div style={{ padding: '0 40px', background: 'white', borderBottom: '1px solid var(--border)', display: 'flex' }}>
         <div style={{ display: 'flex', gap: 32 }}>
           {[
@@ -843,13 +1224,83 @@ export default function RAGPage() {
                     </div>
                     <div>
                       {labelNode('Collection name')}
-                      <input value={collection} onChange={(e) => setCollection(e.target.value)} placeholder="e.g. documentation"
+                      <input 
+                        value={collection} 
+                        onChange={(e) => setCollection(e.target.value)} 
+                        placeholder="e.g. default"
+                        list="existing-collections-list"
                         style={inputClass}
                         onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent-btn)'}
                         onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
                       />
+                      <datalist id="existing-collections-list">
+                        {existingCollections.map((col, idx) => (
+                          <option key={idx} value={col} />
+                        ))}
+                      </datalist>
+                      {existingCollections.length > 0 && (
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                          <span>Existing collections:</span>
+                          {existingCollections.map((c, i) => (
+                            <span 
+                              key={i} 
+                              onClick={() => setCollection(c)}
+                              style={{
+                                cursor: 'pointer', background: '#E2E8F0', padding: '2px 6px', borderRadius: 4,
+                                color: '#1E293B', fontWeight: 600
+                              }}
+                            >
+                              {c}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
+
+                  {/* ── Collection Metrics & File Breakdown ── */}
+                  {collectionDetails && collectionDetails.exists && (
+                    <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px dashed var(--border)' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>
+                        <div style={{ padding: '10px 12px', background: '#F1F5F9', borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Total Chunks</span>
+                          <span style={{ fontSize: 16, fontWeight: 800, color: '#0F172A' }}>{collectionDetails.total_chunks}</span>
+                        </div>
+                        <div style={{ padding: '10px 12px', background: '#F1F5F9', borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Vector Dim</span>
+                          <span style={{ fontSize: 16, fontWeight: 800, color: '#0F172A' }}>{collectionDetails.vector_size || 384}</span>
+                        </div>
+                        <div style={{ padding: '10px 12px', background: '#F1F5F9', borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Metric</span>
+                          <span style={{ fontSize: 16, fontWeight: 800, color: '#0F172A' }}>{collectionDetails.distance || 'COSINE'}</span>
+                        </div>
+                      </div>
+
+                      {collectionDetails.files && collectionDetails.files.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span>Ingested Files ({collectionDetails.files.length})</span>
+                            <span style={{ fontSize: 10, color: '#94A3B8' }}>Chunks per file</span>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 130, overflowY: 'auto' }}>
+                            {collectionDetails.files.map((fileObj, fIdx) => (
+                              <div key={fIdx} style={{
+                                padding: '6px 10px', background: 'white', border: '1px solid #E2E8F0', borderRadius: 8,
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12
+                              }}>
+                                <span style={{ color: '#334155', fontWeight: 600, maxWidth: '75%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {fileObj.filename}
+                                </span>
+                                <span style={{ background: '#E0F2FE', color: '#0369A1', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 12 }}>
+                                  {fileObj.chunks} chunks
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1000,6 +1451,8 @@ export default function RAGPage() {
 
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

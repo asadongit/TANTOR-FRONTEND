@@ -125,7 +125,15 @@ export const listMCPServers = () => request('/tools/mcp/list');
 export const deleteMCPServer = (name) => request(`/tools/mcp/${name}`, { method: 'DELETE' });
 export const syncMCPTools = () => request('/tools/mcp/sync', { method: 'POST' });
 
-// ─── RAG ──────────────────────────────────────────────────────────────────────
+export const listCollections = (vectorStore = 'chroma') =>
+  request(`/rag/collections?vector_store=${vectorStore}`);
+
+export const getCollectionDetails = (collectionName, vectorStore = 'chroma', limit = 50, offset = 0) =>
+  request(`/rag/collections/details?collection_name=${encodeURIComponent(collectionName)}&vector_store=${vectorStore}&limit=${limit}&offset=${offset}`);
+
+export const deleteCollection = (collectionName, vectorStore = 'chroma') =>
+  request(`/rag/collections?collection_name=${encodeURIComponent(collectionName)}&vector_store=${vectorStore}`, { method: 'DELETE' });
+
 export const ingestData = (formData) => {
   return fetch(`${BASE}/rag/ingest`, {
     method: 'POST',
