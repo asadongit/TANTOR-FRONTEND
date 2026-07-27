@@ -614,7 +614,7 @@ export function BusinessFooter() {
       extra_info: {
         queryType: modalState.queryType,
         view_name: finalPayload.view_name,
-        isMateralizedView: finalPayload.isMateralizedView ?? false,
+        isMaterializedView: finalPayload.isMaterializedView ?? false,
         isCaching: finalPayload.isCaching ?? false,
         ...(finalPayload.complex_query !== undefined && { complex_query: finalPayload.complex_query }),
         ...(finalPayload.grace_period !== undefined && { grace_period: finalPayload.grace_period }),
