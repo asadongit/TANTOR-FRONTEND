@@ -20,7 +20,7 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
   const [errorMsg, setErrorMsg] = useState("");
 
   const [isMaterializedView, setIsMaterializedView] = useState(() => {
-    const val = finalPayload?.isMateralizedView;
+    const val = finalPayload?.isMaterializedView;
     if (val === true || val === "true") return true;
     return false;
   });
@@ -43,7 +43,7 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
     if (finalPayload) {
       const updatedPayload = {
         ...finalPayload,
-        isMateralizedView: isMaterializedView,
+        isMaterializedView: isMaterializedView,
         isCaching: isCaching,
       };
 

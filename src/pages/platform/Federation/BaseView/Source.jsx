@@ -477,7 +477,7 @@ export default function Source() {
           queryType: modalState.queryType,
           viewType: apiPayload.view_type,
           view_name: apiPayload.view_name,
-          isMateralizedView: apiPayload.isMateralizedView ?? false,
+          isMaterializedView: apiPayload.isMaterializedView ?? false,
           isCaching: apiPayload.isCaching ?? false,
           ...(apiPayload.complex_query !== undefined && { complex_query: apiPayload.complex_query }),
           ...(apiPayload.grace_period !== undefined && { grace_period: apiPayload.grace_period }),

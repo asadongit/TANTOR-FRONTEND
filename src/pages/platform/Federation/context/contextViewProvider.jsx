@@ -82,7 +82,7 @@ export const ContextViewProvider = ({ children }) => {
         if (editFlow.defs) payload.defs = editFlow.defs;
         const viewName = sessionStorage.getItem("editViewName") || extraInfo.view_name || editFlow.view_name;
         if (viewName) payload.view_name = viewName;
-        if (extraInfo.isMateralizedView !== undefined) payload.isMateralizedView = extraInfo.isMateralizedView;
+        if (extraInfo.isMaterializedView !== undefined) payload.isMaterializedView = extraInfo.isMaterializedView;
         if (extraInfo.isCaching !== undefined) payload.isCaching = extraInfo.isCaching;
         if (extraInfo.grace_period !== undefined) payload.grace_period = extraInfo.grace_period;
         if (extraInfo.cache_ttl !== undefined) payload.cache_ttl = extraInfo.cache_ttl;
