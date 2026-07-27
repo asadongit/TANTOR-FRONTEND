@@ -1238,69 +1238,8 @@ export default function RAGPage() {
                           <option key={idx} value={col} />
                         ))}
                       </datalist>
-                      {existingCollections.length > 0 && (
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                          <span>Existing collections:</span>
-                          {existingCollections.map((c, i) => (
-                            <span 
-                              key={i} 
-                              onClick={() => setCollection(c)}
-                              style={{
-                                cursor: 'pointer', background: '#E2E8F0', padding: '2px 6px', borderRadius: 4,
-                                color: '#1E293B', fontWeight: 600
-                              }}
-                            >
-                              {c}
-                            </span>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </div>
-
-                  {/* ── Collection Metrics & File Breakdown ── */}
-                  {collectionDetails && collectionDetails.exists && (
-                    <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px dashed var(--border)' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>
-                        <div style={{ padding: '10px 12px', background: '#F1F5F9', borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Total Chunks</span>
-                          <span style={{ fontSize: 16, fontWeight: 800, color: '#0F172A' }}>{collectionDetails.total_chunks}</span>
-                        </div>
-                        <div style={{ padding: '10px 12px', background: '#F1F5F9', borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Vector Dim</span>
-                          <span style={{ fontSize: 16, fontWeight: 800, color: '#0F172A' }}>{collectionDetails.vector_size || 384}</span>
-                        </div>
-                        <div style={{ padding: '10px 12px', background: '#F1F5F9', borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Metric</span>
-                          <span style={{ fontSize: 16, fontWeight: 800, color: '#0F172A' }}>{collectionDetails.distance || 'COSINE'}</span>
-                        </div>
-                      </div>
-
-                      {collectionDetails.files && collectionDetails.files.length > 0 && (
-                        <div>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span>Ingested Files ({collectionDetails.files.length})</span>
-                            <span style={{ fontSize: 10, color: '#94A3B8' }}>Chunks per file</span>
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 130, overflowY: 'auto' }}>
-                            {collectionDetails.files.map((fileObj, fIdx) => (
-                              <div key={fIdx} style={{
-                                padding: '6px 10px', background: 'white', border: '1px solid #E2E8F0', borderRadius: 8,
-                                display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12
-                              }}>
-                                <span style={{ color: '#334155', fontWeight: 600, maxWidth: '75%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {fileObj.filename}
-                                </span>
-                                <span style={{ background: '#E0F2FE', color: '#0369A1', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 12 }}>
-                                  {fileObj.chunks} chunks
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               )}
 
