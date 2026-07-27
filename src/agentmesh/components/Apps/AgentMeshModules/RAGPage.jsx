@@ -12,7 +12,7 @@ const scrollableSelectInputClass = {
   fontFamily: 'inherit',
 };
 
-function ScrollableSelect({ value, onChange, options, placeholder }) {
+const ScrollableSelect = React.memo(function ScrollableSelect({ value, onChange, options, placeholder }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -25,6 +25,8 @@ function ScrollableSelect({ value, onChange, options, placeholder }) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const selectedOpt = options.find((o) => o.value === value);
 
   return (
     <div ref={dropdownRef} style={{ position: 'relative', width: '100%' }}>
@@ -41,8 +43,8 @@ function ScrollableSelect({ value, onChange, options, placeholder }) {
           userSelect: 'none'
         }}
       >
-        <span>{options.find(o => o.value === value)?.label || value || placeholder}</span>
-        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>▼</span>
+        <span>{selectedOpt?.label || value || placeholder}</span>
+        <FiChevronDown size={16} color="var(--text-muted)" style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
       </div>
       {isOpen && (
         <div
@@ -90,7 +92,7 @@ function ScrollableSelect({ value, onChange, options, placeholder }) {
       )}
     </div>
   );
-}
+});
 
 ScrollableSelect.propTypes = {
   value: PropTypes.string,
@@ -102,14 +104,14 @@ ScrollableSelect.propTypes = {
   placeholder: PropTypes.string,
 };
 
-function TooltipLabel({ label, tooltipText }) {
+const TooltipLabel = React.memo(function TooltipLabel({ label, tooltipText }) {
   const [show, setShow] = useState(false);
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, position: 'relative' }}>
       <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500, margin: 0 }}>
         {label}
       </label>
-      <div 
+      <div
         onMouseEnter={() => setShow(true)}
         onMouseLeave={() => setShow(false)}
         style={{ cursor: 'help', display: 'flex', alignItems: 'center' }}
@@ -137,7 +139,7 @@ function TooltipLabel({ label, tooltipText }) {
       )}
     </div>
   );
-}
+});
 
 TooltipLabel.propTypes = {
   label: PropTypes.string.isRequired,
@@ -179,37 +181,59 @@ export default function RAGPage() {
   const [activeChunkModal, setActiveChunkModal] = useState(null);
   const [collectionSearchQuery, setCollectionSearchQuery] = useState('');
   const [isCollectionDropdownOpen, setIsCollectionDropdownOpen] = useState(false);
+  const [chunksPage, setChunksPage] = useState(0);
+  const [chunksLimit] = useState(50);
+  const [collectionFetchError, setCollectionFetchError] = useState(null);
 
   useEffect(() => {
     const fetchCollections = async () => {
       try {
+        setCollectionFetchError(null);
         const res = await listCollections(vectorStore);
-        if (res && res.collections) {
+        if (res && res.collections && res.collections.length > 0) {
+          setExistingCollections(res.collections);
+          setCollection(prevCol => {
+            if (res.collections.includes(prevCol)) return prevCol;
+            return res.collections.includes('default') ? 'default' : res.collections[0];
+          });
+        } else if (res && res.collections) {
           setExistingCollections(res.collections);
         }
       } catch (err) {
         console.error("Failed to load collections:", err);
+        setCollectionFetchError("Failed to load list of collections.");
       }
     };
-    if (targetType === 'vector') {
+    if (targetType === 'vector' && (mainNav === 'browse' || existingCollections.length === 0)) {
       fetchCollections();
     }
-  }, [vectorStore, targetType]);
+  }, [vectorStore, targetType, mainNav]);
+
+  useEffect(() => {
+    setChunksPage(0);
+  }, [collection, vectorStore]);
 
   useEffect(() => {
     const fetchDetails = async () => {
-      if (!collection || targetType !== 'vector') return;
+      if (!collection || targetType !== 'vector' || mainNav !== 'browse') return;
       try {
-        const res = await getCollectionDetails(collection, vectorStore);
+        setCollectionFetchError(null);
+        const offset = chunksPage * chunksLimit;
+        const res = await getCollectionDetails(collection, vectorStore, chunksLimit, offset);
         if (res && res.details) {
+          if (res.details.total_chunks > 0 && (!res.details.chunks || res.details.chunks.length === 0) && chunksPage > 0) {
+            setChunksPage(0);
+            return;
+          }
           setCollectionDetails(res.details);
         }
       } catch (err) {
         console.error("Failed to load collection details:", err);
+        setCollectionFetchError(`Failed to load details for collection '${collection}'.`);
       }
     };
     fetchDetails();
-  }, [collection, vectorStore, targetType, result]);
+  }, [collection, vectorStore, targetType, mainNav, chunksPage, chunksLimit]);
 
   useEffect(() => {
     const fetchModels = async () => {
@@ -219,7 +243,7 @@ export default function RAGPage() {
           setAvailableModels(res.models);
           const uniqueProviders = Array.from(new Set(res.models.map(m => m.provider)));
           setProviders(uniqueProviders);
-          
+
           if (uniqueProviders.includes('openai')) {
             setLlmProvider('openai');
             const openaiModels = res.models.filter(m => m.provider === 'openai');
@@ -281,7 +305,7 @@ export default function RAGPage() {
       formData.append('chunk_size', finalChunkSize);
       formData.append('chunk_overlap', finalOverlap);
       formData.append('chunking_strategy', chunkingStrategy);
-      
+
       if (targetType === 'graph') {
         formData.append('llm_provider', llmProvider);
         formData.append('llm_model', llmModel);
@@ -300,45 +324,42 @@ export default function RAGPage() {
         const formData = new FormData();
         formData.append('text', text);
         appendFormParameters(formData);
-        
+
         const res = await ingestData(formData);
         setResult(res);
       } else if (tab === 'file') {
-        let totalChunks = 0;
-        for (const file of files) {
+        const uploadPromises = files.map(file => {
           const formData = new FormData();
           formData.append('file', file);
           appendFormParameters(formData);
-
-          const res = await ingestData(formData);
-          totalChunks += res.chunks_ingested;
-        }
+          return ingestData(formData);
+        });
+        const results = await Promise.all(uploadPromises);
+        const totalChunks = results.reduce((acc, res) => acc + (res?.chunks_ingested || 0), 0);
         setResult({ chunks_ingested: totalChunks, file_count: files.length });
         setFiles([]); // Clear after success
       } else if (tab === 'audio') {
-        let totalChunks = 0;
-        for (const file of audioFiles) {
+        const uploadPromises = audioFiles.map(file => {
           const formData = new FormData();
           formData.append('file', file);
           formData.append('model_name', whisperModel);
           appendFormParameters(formData);
-
-          const res = await ingestData(formData);
-          totalChunks += res.chunks_ingested;
-        }
+          return ingestData(formData);
+        });
+        const results = await Promise.all(uploadPromises);
+        const totalChunks = results.reduce((acc, res) => acc + (res?.chunks_ingested || 0), 0);
         setResult({ chunks_ingested: totalChunks, file_count: audioFiles.length });
         setAudioFiles([]);
       } else if (tab === 'video') {
-        let totalChunks = 0;
-        for (const file of videoFiles) {
+        const uploadPromises = videoFiles.map(file => {
           const formData = new FormData();
           formData.append('file', file);
           formData.append('model_name', whisperModel);
           appendFormParameters(formData);
-
-          const res = await ingestData(formData);
-          totalChunks += res.chunks_ingested;
-        }
+          return ingestData(formData);
+        });
+        const results = await Promise.all(uploadPromises);
+        const totalChunks = results.reduce((acc, res) => acc + (res?.chunks_ingested || 0), 0);
         setResult({ chunks_ingested: totalChunks, file_count: videoFiles.length });
         setVideoFiles([]);
       }
@@ -424,15 +445,15 @@ export default function RAGPage() {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-primary)', fontFamily: "'Google Sans','Roboto',sans-serif" }}>
       {/* ── Standard Header ── */}
       <div style={{ padding: '16px 40px 8px 40px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white' }}>
-        <PageHeader 
-          title="Knowledge Base" 
-          description="Manage and index documents, PDFs, web contents, and vectors for semantic retrieval (RAG) during execution." 
+        <PageHeader
+          title="Knowledge Base"
+          description="Manage and index documents, PDFs, web contents, and vectors for semantic retrieval (RAG) during execution."
         />
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'relative' }}>
-          <div 
+          <div
             onMouseEnter={() => setShowRagInfo(true)}
             onMouseLeave={() => setShowRagInfo(false)}
-            style={{ 
+            style={{
               display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px',
               border: '1px solid var(--border)', borderRadius: 20, color: 'var(--text-muted)',
               fontSize: 13, fontWeight: 500, cursor: 'help', transition: 'all 0.2s',
@@ -441,7 +462,7 @@ export default function RAGPage() {
           >
             <FiInfo size={16} color="var(--theme-primary)" />
             How it works
-            
+
             <AnimatePresence>
               {showRagInfo && (
                 <motion.div
@@ -616,9 +637,10 @@ export default function RAGPage() {
               <div style={{ padding: '6px 12px', background: '#F1F5F9', borderRadius: 8, fontSize: 12, fontWeight: 700, color: '#334155' }}>
                 Total Vector Chunks: {collectionDetails?.total_chunks || 0}
               </div>
-              <div style={{ padding: '6px 12px', background: '#E0F2FE', borderRadius: 8, fontSize: 12, fontWeight: 700, color: '#0369A1' }}>
+              <div style={{ padding: '6px 12px', background: '#F1F5F9', borderRadius: 8, fontSize: 12, fontWeight: 700, color: '#334155' }}>
                 Vector Size: {collectionDetails?.vector_size || 384}
               </div>
+              <div style={{ width: 1, height: 24, background: '#E2E8F0', flexShrink: 0 }} />
               <button
                 onClick={async () => {
                   if (window.confirm(`Are you sure you want to permanently delete the collection '${collection}' from ${vectorStore}?`)) {
@@ -650,11 +672,47 @@ export default function RAGPage() {
             </div>
           </div>
 
+          {/* Error Banner for Collection Fetching */}
+          {collectionFetchError && (
+            <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10, padding: '12px 16px', color: '#991B1B', fontSize: 13, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <FiAlertCircle size={16} color="#DC2626" />
+              <span>{collectionFetchError}</span>
+            </div>
+          )}
+
           {/* Data Table */}
           <div style={{ background: 'white', borderRadius: 14, border: '1px solid var(--border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>Collection Chunks Table ({collectionDetails?.chunks?.length || 0} Records Loaded)</span>
-              
+
+              {/* Pagination Controls */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, fontWeight: 600 }}>
+                <button
+                  disabled={chunksPage === 0}
+                  onClick={() => setChunksPage(p => Math.max(0, p - 1))}
+                  style={{
+                    padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)',
+                    background: chunksPage === 0 ? '#F1F5F9' : 'white',
+                    color: chunksPage === 0 ? '#94A3B8' : 'var(--text-primary)',
+                    cursor: chunksPage === 0 ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Previous
+                </button>
+                <span>Page {chunksPage + 1}</span>
+                <button
+                  disabled={!collectionDetails?.chunks || (chunksPage + 1) * chunksLimit >= (collectionDetails?.total_chunks || 0)}
+                  onClick={() => setChunksPage(p => p + 1)}
+                  style={{
+                    padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)',
+                    background: (!collectionDetails?.chunks || (chunksPage + 1) * chunksLimit >= (collectionDetails?.total_chunks || 0)) ? '#F1F5F9' : 'white',
+                    color: (!collectionDetails?.chunks || (chunksPage + 1) * chunksLimit >= (collectionDetails?.total_chunks || 0)) ? '#94A3B8' : 'var(--text-primary)',
+                    cursor: (!collectionDetails?.chunks || (chunksPage + 1) * chunksLimit >= (collectionDetails?.total_chunks || 0)) ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Next
+                </button>
+              </div>
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', maxHeight: '550px' }}>
@@ -709,7 +767,7 @@ export default function RAGPage() {
                     <div style={{ fontSize: 15, fontWeight: 700, color: '#1E293B', marginBottom: 4 }}>
                       No vector records found in '{collection}'
                     </div>
-                  
+
                   </div>
                   <button
                     onClick={() => setMainNav('ingest')}
@@ -822,575 +880,575 @@ export default function RAGPage() {
           </AnimatePresence>
         </div>
       ) : (
-      <>
-      {/* ── Ingestion Tabs ── */}
-      <div style={{ padding: '0 40px', background: 'white', borderBottom: '1px solid var(--border)', display: 'flex' }}>
-        <div style={{ display: 'flex', gap: 32 }}>
-          {[
-            { key: 'text', label: 'Text', icon: FiType },
-            { key: 'file', label: 'File', icon: FiUpload },
-            { key: 'audio', label: 'Audio', icon: FiMic },
-            { key: 'video', label: 'Video', icon: FiVideo },
-          ].map(({ key, label: l, icon: Icon }) => (
-            <button 
-              key={key} 
-              onClick={() => { setTab(key); setResult(null); setError(null); }} 
-              style={{
-                background: 'none', border: 'none', padding: '12px 4px', fontSize: 14, fontWeight: 600,
-                color: tab === key ? 'var(--text-primary)' : 'var(--text-muted)',
-                cursor: 'pointer', position: 'relative', transition: 'color 0.2s', fontFamily: 'inherit'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Icon size={14} />
-                {l}
-              </div>
-              {tab === key && (
-                <motion.div
-                  layoutId="activeTabRAG"
-                  style={{
-                    position: 'absolute', bottom: 0, left: 0, right: 0, height: 2,
-                    background: 'var(--accent-btn)',
-                    boxShadow: '0 0 8px var(--accent-glow)'
-                  }}
-                />
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Content */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '40px', display: 'flex', flexDirection: 'column', gap: 32 }}>
-        {/* ── Left: Form ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          style={{ flex: 1, width: '100%', minWidth: 360 }}
-        >
-          <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 24, overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ padding: '32px' }}>
-              {/* Text Tab */}
-              {tab === 'text' && (
-                <div style={{ marginBottom: 20 }}>
-                  {labelNode('Source content')}
-                  <textarea
-                    value={text} onChange={(e) => setText(e.target.value)} rows={12}
-                    placeholder="Paste documentation, policies, or any text content. AgentMesh will chunk and vectorize it automatically…"
-                    style={{ ...inputClass, resize: 'vertical', lineHeight: 1.6 }}
-                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent-btn)'}
-                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
-                  />
-                </div>
-              )}
-
-              {/* File Tab */}
-              {tab === 'file' && (
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  style={{
-                    padding: '32px 24px',
-                    border: files.length > 0 ? '1.5px solid var(--accent-btn)' : '1.5px dashed var(--border)',
-                    borderRadius: 12,
-                    textAlign: 'center',
-                    background: files.length > 0 ? 'var(--accent-glow)' : '#FAFAF8',
-                    marginBottom: 20,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    minHeight: 180
-                  }}
-                  onMouseEnter={(e) => { if (files.length === 0) e.currentTarget.style.borderColor = '#4285F4'; }}
-                  onMouseLeave={(e) => { if (files.length === 0) e.currentTarget.style.borderColor = 'var(--border)'; }}
-                >
-                  <input type="file" ref={fileInputRef} onChange={onFileChange} style={{ display: 'none' }} accept=".pdf,.txt,.md,.docx,.json" multiple />
-
-                  {files.length > 0 ? (
-                    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <FiFileText size={32} color="#4285F4" style={{ marginBottom: 16 }} />
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#1C1C1E', marginBottom: 12 }}>{files.length} file(s) selected</div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', width: '100%' }}>
-                        {files.map((f, i) => (
-                          <div key={i} style={{
-                            background: 'white', padding: '6px 10px', borderRadius: 8, border: '1px solid #E0E7FF',
-                            fontSize: 11, color: '#1E293B', display: 'flex', alignItems: 'center', gap: 6,
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-                          }}>
-                            <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
-                            <FiX size={12} style={{ cursor: 'pointer' }} onClick={(e) => removeFile(i, e)} />
-                          </div>
-                        ))}
-                      </div>
-                      <div style={{ fontSize: 11, color: '#6366F1', marginTop: 12, fontWeight: 600 }}>Click to add more files</div>
-                    </div>
-                  ) : (
-                    <>
-                      <FiUpload size={32} color="#D4D4CC" style={{ marginBottom: 14 }} />
-                      <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 6 }}>Click to upload files</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                        Support for PDF, TXT, MD, DOCX, and JSON<br />You can select multiple files
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* Audio Tab */}
-              {tab === 'audio' && (
-                <div style={{ marginBottom: 20 }}>
-                  <div
-                    onClick={() => audioInputRef.current?.click()}
-                    style={{
-                      padding: '32px 24px',
-                      border: audioFiles.length > 0 ? '1.5px solid var(--accent-btn)' : '1.5px dashed var(--border)',
-                      borderRadius: 12,
-                      textAlign: 'center',
-                      background: audioFiles.length > 0 ? 'var(--accent-glow)' : '#FAFAF8',
-                      marginBottom: 16,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      minHeight: 180
-                    }}
-                  >
-                    <input type="file" ref={audioInputRef} onChange={onAudioChange} style={{ display: 'none' }} accept=".mp3,.wav,.webm,.m4a,.ogg" multiple />
-
-                    {audioFiles.length > 0 ? (
-                      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <FiActivity size={32} color="#4285F4" style={{ marginBottom: 16 }} />
-                        <div style={{ fontSize: 13, fontWeight: 700, color: '#1C1C1E', marginBottom: 12 }}>{audioFiles.length} audio file(s) selected</div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', width: '100%' }}>
-                          {audioFiles.map((f, i) => (
-                            <div key={i} style={{
-                              background: 'white', padding: '6px 10px', borderRadius: 8, border: '1px solid #E0E7FF',
-                              fontSize: 11, color: '#1E293B', display: 'flex', alignItems: 'center', gap: 6,
-                            }}>
-                              <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
-                              <FiX size={12} style={{ cursor: 'pointer' }} onClick={(e) => removeAudioFile(i, e)} />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <FiMic size={32} color="#D4D4CC" style={{ marginBottom: 14 }} />
-                        <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 6 }}>Upload audio for transcription</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                          Supports MP3, WAV, WebM, M4A<br />Transcribed via OpenAI Whisper
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  <div style={{ padding: '16px', background: 'white', border: '1px solid var(--border)', borderRadius: 12 }}>
-                    {labelNode('Whisper Model')}
-                    <select
-                      value={whisperModel}
-                      onChange={(e) => setWhisperModel(e.target.value)}
-                      style={{ ...inputClass }}
-                    >
-                      <option value="tiny">Tiny (Fastest)</option>
-                      <option value="base">Base (Good balance)</option>
-                      <option value="small">Small</option>
-                      <option value="medium">Medium</option>
-                      <option value="large">Large (Best accuracy)</option>
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              {/* Video Tab */}
-              {tab === 'video' && (
-                <div style={{ marginBottom: 20 }}>
-                  <div
-                    onClick={() => videoInputRef.current?.click()}
-                    style={{
-                      padding: '32px 24px',
-                      border: videoFiles.length > 0 ? '1.5px solid var(--accent-btn)' : '1.5px dashed var(--border)',
-                      borderRadius: 12,
-                      textAlign: 'center',
-                      background: videoFiles.length > 0 ? 'var(--accent-glow)' : '#FAFAF8',
-                      marginBottom: 16,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      minHeight: 180
-                    }}
-                  >
-                    <input type="file" ref={videoInputRef} onChange={onVideoChange} style={{ display: 'none' }} accept=".mp4,.avi,.mov,.mkv" multiple />
-
-                    {videoFiles.length > 0 ? (
-                      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <FiVideo size={32} color="#4285F4" style={{ marginBottom: 16 }} />
-                        <div style={{ fontSize: 13, fontWeight: 700, color: '#1C1C1E', marginBottom: 12 }}>{videoFiles.length} video file(s) selected</div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', width: '100%' }}>
-                          {videoFiles.map((f, i) => (
-                            <div key={i} style={{
-                              background: 'white', padding: '6px 10px', borderRadius: 8, border: '1px solid #E0E7FF',
-                              fontSize: 11, color: '#1E293B', display: 'flex', alignItems: 'center', gap: 6,
-                            }}>
-                              <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
-                              <FiX size={12} style={{ cursor: 'pointer' }} onClick={(e) => removeVideoFile(i, e)} />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <FiVideo size={32} color="#D4D4CC" style={{ marginBottom: 14 }} />
-                        <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 6 }}>Upload video for transcription</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                          Supports MP4, AVI, MOV, MKV<br />AgentMesh extracts audio and transcribes it
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  <div style={{ padding: '16px', background: 'white', border: '1px solid var(--border)', borderRadius: 12 }}>
-                    {labelNode('Whisper Model')}
-                    <select
-                      value={whisperModel}
-                      onChange={(e) => setWhisperModel(e.target.value)}
-                      style={{ ...inputClass }}
-                    >
-                      <option value="tiny">Tiny (Fastest)</option>
-                      <option value="base">Base (Good balance)</option>
-                      <option value="small">Small</option>
-                      <option value="medium">Medium</option>
-                      <option value="large">Large (Best accuracy)</option>
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              {/* ── Chunking Strategy Segment ── */}
-              <div style={{ marginBottom: 24, padding: '18px', background: '#FAFAF9', border: '1px solid var(--border)', borderRadius: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
-                  <FiScissors size={18} color="var(--text-primary)" />
-                  Content Chunking Strategy
-                </div>
-
-                <div style={{ marginBottom: 16 }}>
-                  {labelNode('Chunking technique')}
-                  <select
-                    value={chunkingStrategy}
-                    onChange={(e) => setChunkingStrategy(e.target.value)}
-                    style={{ ...inputClass, border: '1.5px solid var(--accent-btn)', background: 'white' }}
-                  >
-                    <option value="recursive">Recursive Character (General Purpose)</option>
-                    <option value="token">Token-based (LLM Context Optimized)</option>
-                    <option value="json">JSON Object (Structured RAG)</option>
-                    <option value="markdown_heading">Format Markdown Chunk Splitter</option>
-                    <option value="none">None (Upload whole document)</option>
-                  </select>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, display: 'flex', alignItems: 'flex-start', gap: 6, lineHeight: 1.4 }}>
-                    <FiInfo size={12} style={{ marginTop: 2, flexShrink: 0 }} />
-                    <div style={{ flex: 1 }}>
-                      {chunkingStrategy === 'json' && 'Optimized for structured JSON files. Splits only by major objects to preserve data hierarchy.'}
-                      {chunkingStrategy === 'recursive' && 'The industry standard. Splits by paragraphs, lines, then spaces to keep semantic meaning.'}
-                      {chunkingStrategy === 'token' && 'Calculates chunks based on token counts. Recommended for long contexts in OpenAI/Mistral.'}
-                      {chunkingStrategy === 'markdown_heading' && 'Splits Markdown document dynamically by headings and subheadings with a 2000 character limit.'}
-                      {chunkingStrategy === 'none' && 'Doc will be treated as one single block. Use only for very small documents.'}
-                    </div>
-                  </div>
-                </div>
-
-                {chunkingStrategy !== 'none' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        {labelNode('Chunk size')}
-                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-btn)' }}>
-                          {chunkingStrategy === 'markdown_heading' ? 2000 : chunkSize} chars
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                        <input
-                          type="range" min={100} max={10000} step={100}
-                          value={chunkingStrategy === 'markdown_heading' ? 2000 : chunkSize}
-                          onChange={(e) => setChunkSize(Number(e.target.value))}
-                          disabled={chunkingStrategy === 'none' || chunkingStrategy === 'markdown_heading'}
-                          style={{ flex: 1, accentColor: 'var(--accent-btn)', cursor: chunkingStrategy === 'markdown_heading' ? 'not-allowed' : 'pointer', height: 4 }}
-                        />
-                        <input type="number"
-                          value={chunkingStrategy === 'markdown_heading' ? 2000 : chunkSize}
-                          onChange={(e) => setChunkSize(Number(e.target.value))}
-                          disabled={chunkingStrategy === 'none' || chunkingStrategy === 'markdown_heading'}
-                          min={100} max={10000}
-                          style={{ ...inputClass, width: 80, padding: '6px 8px', textAlign: 'center', opacity: (chunkingStrategy === 'none' || chunkingStrategy === 'markdown_heading') ? 0.6 : 1 }}
-                        />
-                      </div>
-                    </div>
-
-                    {chunkingStrategy !== 'markdown_heading' && (
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                          {labelNode('Overlap (tokens/chars)')}
-                          <span style={{ fontSize: 11, fontWeight: 700, color: '#F59E0B' }}>{chunkOverlap} chars</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                          <input
-                            type="range" min={0} max={Math.min(2000, chunkSize)} step={10}
-                            value={chunkOverlap} onChange={(e) => setChunkOverlap(Number(e.target.value))}
-                            disabled={chunkingStrategy === 'none'}
-                            style={{ flex: 1, accentColor: '#F59E0B', cursor: 'pointer', height: 4 }}
-                          />
-                          <input type="number" value={chunkOverlap} onChange={(e) => setChunkOverlap(Number(e.target.value))}
-                            disabled={chunkingStrategy === 'none'}
-                            min={0}
-                            style={{ ...inputClass, width: 80, padding: '6px 8px', textAlign: 'center', opacity: chunkingStrategy === 'none' ? 0.6 : 1 }}
-                          />
-                        </div>
-                        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 6 }}>
-                          Overlap should be ~10-15% of chunk size for best context retrieval.
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* ── Storage Target Switcher ── */}
-              <div style={{ marginBottom: 24, padding: '18px', background: '#FAFAF9', border: '1px solid var(--border)', borderRadius: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
-                  <FiLayers size={18} color="var(--text-primary)" />
-                  Knowledge Storage Model
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                  <div
-                    onClick={() => { setTargetType('vector'); setResult(null); setError(null); }}
-                    style={{
-                      display: 'flex', flexDirection: 'column', gap: 12, padding: 16, borderRadius: 16, border: '2px solid ' + (targetType === 'vector' ? 'var(--theme-primary)' : 'var(--border)'),
-                      background: targetType === 'vector' ? 'var(--theme-primary-glow)' : 'white', cursor: 'pointer', transition: 'all 0.25s',
-                      boxShadow: targetType === 'vector' ? 'var(--shadow-sm)' : 'none', textAlign: 'left'
-                    }}
-                  >
-                    <div style={{ width: 40, height: 40, borderRadius: 10, background: targetType === 'vector' ? 'var(--theme-primary)' : '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: targetType === 'vector' ? 'white' : 'var(--text-muted)' }}>
-                      <FiDatabase size={20} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Classic RAG</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>Embed document chunks into a vector space to retrieve facts using semantic similarity searches.</div>
-                    </div>
-                  </div>
-                  <div
-                    onClick={() => { setTargetType('graph'); setResult(null); setError(null); }}
-                    style={{
-                      display: 'flex', flexDirection: 'column', gap: 12, padding: 16, borderRadius: 16, border: '2px solid ' + (targetType === 'graph' ? 'var(--theme-primary)' : 'var(--border)'),
-                      background: targetType === 'graph' ? 'var(--theme-primary-glow)' : 'white', cursor: 'pointer', transition: 'all 0.25s',
-                      boxShadow: targetType === 'graph' ? 'var(--shadow-sm)' : 'none', textAlign: 'left'
-                    }}
-                  >
-                    <div style={{ width: 40, height: 40, borderRadius: 10, background: targetType === 'graph' ? 'var(--theme-primary)' : '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: targetType === 'graph' ? 'white' : 'var(--text-muted)' }}>
-                      <FiShare2 size={20} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Knowledge Graph</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>Extract entities and relationship networks to construct a structured graph index for complex reasoning.</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* ── Vector Database Configuration (Conditional) ── */}
-              {targetType === 'vector' && (
-                <div style={{ marginBottom: 24, padding: '18px', background: '#FAFAF9', border: '1px solid var(--border)', borderRadius: 16 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
-                    <FiDatabase size={18} color="var(--text-primary)" />
-                    Vector Database Configuration
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                    <div>
-                      {labelNode('Vector engine')}
-                      <select value={vectorStore} onChange={(e) => setVectorStore(e.target.value)}
-                        style={{ ...inputClass }}
-                        onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent-btn)'}
-                        onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
-                      >
-                        <option value="chroma">chroma</option>
-                        <option value="qdrant">qdrant</option>
-                        <option value="pinecone">pinecone</option>
-                      </select>
-                    </div>
-                    <div>
-                      {labelNode('Collection name')}
-                      <input 
-                        value={collection} 
-                        onChange={(e) => setCollection(e.target.value)} 
-                        placeholder="e.g. default"
-                        list="existing-collections-list"
-                        style={inputClass}
-                        onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent-btn)'}
-                        onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
-                      />
-                      <datalist id="existing-collections-list">
-                        {existingCollections.map((col, idx) => (
-                          <option key={idx} value={col} />
-                        ))}
-                      </datalist>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ── Graph Extraction Configuration (Conditional) ── */}
-              {targetType === 'graph' && (
-                <div style={{ marginBottom: 24, padding: '18px', background: '#FAFAF9', border: '1px solid var(--border)', borderRadius: 16 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
-                    <FiDatabase size={18} color="var(--text-primary)" />
-                    Graph Extractor Configuration
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-                    <div>
-                      {labelNode('LLM Provider')}
-                      <ScrollableSelect
-                        value={llmProvider}
-                        onChange={(newProv) => {
-                          setLlmProvider(newProv);
-                          const provModels = availableModels.filter(m => m.provider === newProv);
-                          if (provModels.length > 0) {
-                            setLlmModel(provModels[0].model);
-                          }
-                        }}
-                        options={providers.map(p => ({
-                          value: p,
-                          label: p.charAt(0).toUpperCase() + p.slice(1)
-                        }))}
-                        placeholder="Select Provider"
-                      />
-                    </div>
-                    <div>
-                      {labelNode('Model Name')}
-                      <ScrollableSelect
-                        value={llmModel}
-                        onChange={(val) => setLlmModel(val)}
-                        options={availableModels.filter(m => m.provider === llmProvider).map(m => ({
-                          value: m.model,
-                          label: m.label || m.model
-                        }))}
-                        placeholder="Select Model"
-                      />
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <div>
-                      {labelNode('Tenant Database / Graph Name')}
-                      <input value={graphDatabase} onChange={(e) => setGraphDatabase(e.target.value)} placeholder="e.g. neo4j"
-                        style={inputClass}
-                      />
-                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
-                        Set a custom tenant database name to physically isolate this ingestion in Neo4j (Default: neo4j).
-                      </div>
-                    </div>
-                    <div>
-                      <TooltipLabel 
-                        label="Context Hint / Subject Anchor (Optional)" 
-                        tooltipText="Declare the main entity/subject of the document (e.g. 'Tata Motors' or 'Mahindra'). This guides the LLM to link every extracted node back to this central entity, preventing orphan nodes and improving connectivity." 
-                      />
-                      <input value={contextHint} onChange={(e) => setContextHint(e.target.value)} placeholder="e.g. Tata Motors"
-                        style={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <TooltipLabel 
-                        label="Allowed Node Labels (Optional)" 
-                        tooltipText="Specifies the target entity types the LLM should extract (e.g., Person, Organization, Location). If left empty, the model will dynamically extract any labels it identifies." 
-                      />
-                      <input value={allowedNodes} onChange={(e) => setAllowedNodes(e.target.value)} placeholder="e.g. Person, Company, Product"
-                        style={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <TooltipLabel 
-                        label="Allowed Relationship Types (Optional)" 
-                        tooltipText="Defines the specific connection types between nodes that the LLM should identify (e.g., WORKS_FOR, LIVES_IN, OWNED_BY). If left empty, the model will dynamically name relationships." 
-                      />
-                      <input value={allowedRelationships} onChange={(e) => setAllowedRelationships(e.target.value)} placeholder="e.g. WORKS_FOR, HAS_METRIC"
-                        style={inputClass}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <button
-                onClick={handleIngest}
-                disabled={isIngestDisabled}
-                style={{
-                  width: '100%', height: 48, borderRadius: 12, border: 'none',
-                  fontSize: 15, fontWeight: 700,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                  transition: 'all 0.2s',
-                  background: isIngestDisabled ? '#E5E7EB' : 'var(--theme-primary-glow)',
-                  color: isIngestDisabled ? '#9CA3AF' : 'var(--theme-primary)',
-                  cursor: isIngestDisabled ? 'not-allowed' : 'pointer',
-                }}
-                onMouseEnter={e => { if (!isIngestDisabled) e.currentTarget.style.filter = 'brightness(0.95)'; }}
-                onMouseLeave={e => { if (!isIngestDisabled) e.currentTarget.style.filter = 'none'; }}
-              >
-                {loading ? (
-                  <><div className="loading-spinner" style={{ borderTopColor: 'var(--theme-primary)' }} /> Processing…</>
-                ) : targetType === 'graph' ? (
-                  'Extract & Ingest to Graph'
-                ) : (
-                  'Ingest into Knowledge Base'
-                )}
-              </button>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* ── Right: Results + Info ── */}
-        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {result && (
-            <div style={{ background: '#F0FEF5', border: '1px solid #BBF7D0', borderRadius: 14, padding: '20px 22px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <FiCheck size={14} color="white" />
-                </div>
-                <span style={{ fontSize: 14, fontWeight: 600, color: '#15803D' }}>Ingestion complete</span>
-              </div>
+        <>
+          {/* ── Ingestion Tabs ── */}
+          <div style={{ padding: '0 40px', background: 'white', borderBottom: '1px solid var(--border)', display: 'flex' }}>
+            <div style={{ display: 'flex', gap: 32 }}>
               {[
-                { label: targetType === 'graph' ? 'Nodes Ingested' : 'Chunks indexed', value: result.chunks_ingested },
-                ...(result.file_count ? [{ label: 'Files processed', value: result.file_count }] : []),
-                ...(targetType === 'graph' ? [
-                  { label: 'LLM Extractor', value: `${llmProvider} (${llmModel})` }
-                ] : [
-                  { label: 'Collection', value: collection },
-                  { label: 'Engine', value: vectorStore }
-                ]),
-              ].map(({ label: l, value: v }) => (
-                <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #D1FAE5', fontSize: 13 }}>
-                  <span style={{ color: '#5F5F6B' }}>{l}</span>
-                  <span style={{ fontWeight: 600, color: '#15803D' }}>{v}</span>
-                </div>
+                { key: 'text', label: 'Text', icon: FiType },
+                { key: 'file', label: 'File', icon: FiUpload },
+                { key: 'audio', label: 'Audio', icon: FiMic },
+                { key: 'video', label: 'Video', icon: FiVideo },
+              ].map(({ key, label: l, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => { setTab(key); setResult(null); setError(null); }}
+                  style={{
+                    background: 'none', border: 'none', padding: '12px 4px', fontSize: 14, fontWeight: 600,
+                    color: tab === key ? 'var(--text-primary)' : 'var(--text-muted)',
+                    cursor: 'pointer', position: 'relative', transition: 'color 0.2s', fontFamily: 'inherit'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Icon size={14} />
+                    {l}
+                  </div>
+                  {tab === key && (
+                    <motion.div
+                      layoutId="activeTabRAG"
+                      style={{
+                        position: 'absolute', bottom: 0, left: 0, right: 0, height: 2,
+                        background: 'var(--accent-btn)',
+                        boxShadow: '0 0 8px var(--accent-glow)'
+                      }}
+                    />
+                  )}
+                </button>
               ))}
             </div>
-          )}
+          </div>
 
-          {error && (
-            <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 14, padding: '18px 20px', display: 'flex', gap: 12 }}>
-              <FiAlertCircle color="#DC2626" size={18} style={{ flexShrink: 0, marginTop: 1 }} />
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#DC2626', marginBottom: 4 }}>Ingestion failed</div>
-                <div style={{ fontSize: 12, color: '#B91C1C', lineHeight: 1.5 }}>{error}</div>
+          {/* Content */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '40px', display: 'flex', flexDirection: 'column', gap: 32 }}>
+            {/* ── Left: Form ── */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              style={{ flex: 1, width: '100%', minWidth: 360 }}
+            >
+              <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 24, overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+                <div style={{ padding: '32px' }}>
+                  {/* Text Tab */}
+                  {tab === 'text' && (
+                    <div style={{ marginBottom: 20 }}>
+                      {labelNode('Source content')}
+                      <textarea
+                        value={text} onChange={(e) => setText(e.target.value)} rows={12}
+                        placeholder="Paste documentation, policies, or any text content. AgentMesh will chunk and vectorize it automatically…"
+                        style={{ ...inputClass, resize: 'vertical', lineHeight: 1.6 }}
+                        onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent-btn)'}
+                        onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+                      />
+                    </div>
+                  )}
+
+                  {/* File Tab */}
+                  {tab === 'file' && (
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      style={{
+                        padding: '32px 24px',
+                        border: files.length > 0 ? '1.5px solid var(--accent-btn)' : '1.5px dashed var(--border)',
+                        borderRadius: 12,
+                        textAlign: 'center',
+                        background: files.length > 0 ? 'var(--accent-glow)' : '#FAFAF8',
+                        marginBottom: 20,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minHeight: 180
+                      }}
+                      onMouseEnter={(e) => { if (files.length === 0) e.currentTarget.style.borderColor = '#4285F4'; }}
+                      onMouseLeave={(e) => { if (files.length === 0) e.currentTarget.style.borderColor = 'var(--border)'; }}
+                    >
+                      <input type="file" ref={fileInputRef} onChange={onFileChange} style={{ display: 'none' }} accept=".pdf,.txt,.md,.docx,.json" multiple />
+
+                      {files.length > 0 ? (
+                        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          <FiFileText size={32} color="#4285F4" style={{ marginBottom: 16 }} />
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#1C1C1E', marginBottom: 12 }}>{files.length} file(s) selected</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', width: '100%' }}>
+                            {files.map((f, i) => (
+                              <div key={i} style={{
+                                background: 'white', padding: '6px 10px', borderRadius: 8, border: '1px solid #E0E7FF',
+                                fontSize: 11, color: '#1E293B', display: 'flex', alignItems: 'center', gap: 6,
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                              }}>
+                                <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
+                                <FiX size={12} style={{ cursor: 'pointer' }} onClick={(e) => removeFile(i, e)} />
+                              </div>
+                            ))}
+                          </div>
+                          <div style={{ fontSize: 11, color: '#6366F1', marginTop: 12, fontWeight: 600 }}>Click to add more files</div>
+                        </div>
+                      ) : (
+                        <>
+                          <FiUpload size={32} color="#D4D4CC" style={{ marginBottom: 14 }} />
+                          <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 6 }}>Click to upload files</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                            Support for PDF, TXT, MD, DOCX, and JSON<br />You can select multiple files
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Audio Tab */}
+                  {tab === 'audio' && (
+                    <div style={{ marginBottom: 20 }}>
+                      <div
+                        onClick={() => audioInputRef.current?.click()}
+                        style={{
+                          padding: '32px 24px',
+                          border: audioFiles.length > 0 ? '1.5px solid var(--accent-btn)' : '1.5px dashed var(--border)',
+                          borderRadius: 12,
+                          textAlign: 'center',
+                          background: audioFiles.length > 0 ? 'var(--accent-glow)' : '#FAFAF8',
+                          marginBottom: 16,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minHeight: 180
+                        }}
+                      >
+                        <input type="file" ref={audioInputRef} onChange={onAudioChange} style={{ display: 'none' }} accept=".mp3,.wav,.webm,.m4a,.ogg" multiple />
+
+                        {audioFiles.length > 0 ? (
+                          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <FiActivity size={32} color="#4285F4" style={{ marginBottom: 16 }} />
+                            <div style={{ fontSize: 13, fontWeight: 700, color: '#1C1C1E', marginBottom: 12 }}>{audioFiles.length} audio file(s) selected</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', width: '100%' }}>
+                              {audioFiles.map((f, i) => (
+                                <div key={i} style={{
+                                  background: 'white', padding: '6px 10px', borderRadius: 8, border: '1px solid #E0E7FF',
+                                  fontSize: 11, color: '#1E293B', display: 'flex', alignItems: 'center', gap: 6,
+                                }}>
+                                  <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
+                                  <FiX size={12} style={{ cursor: 'pointer' }} onClick={(e) => removeAudioFile(i, e)} />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <FiMic size={32} color="#D4D4CC" style={{ marginBottom: 14 }} />
+                            <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 6 }}>Upload audio for transcription</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                              Supports MP3, WAV, WebM, M4A<br />Transcribed via OpenAI Whisper
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      <div style={{ padding: '16px', background: 'white', border: '1px solid var(--border)', borderRadius: 12 }}>
+                        {labelNode('Whisper Model')}
+                        <select
+                          value={whisperModel}
+                          onChange={(e) => setWhisperModel(e.target.value)}
+                          style={{ ...inputClass }}
+                        >
+                          <option value="tiny">Tiny (Fastest)</option>
+                          <option value="base">Base (Good balance)</option>
+                          <option value="small">Small</option>
+                          <option value="medium">Medium</option>
+                          <option value="large">Large (Best accuracy)</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Video Tab */}
+                  {tab === 'video' && (
+                    <div style={{ marginBottom: 20 }}>
+                      <div
+                        onClick={() => videoInputRef.current?.click()}
+                        style={{
+                          padding: '32px 24px',
+                          border: videoFiles.length > 0 ? '1.5px solid var(--accent-btn)' : '1.5px dashed var(--border)',
+                          borderRadius: 12,
+                          textAlign: 'center',
+                          background: videoFiles.length > 0 ? 'var(--accent-glow)' : '#FAFAF8',
+                          marginBottom: 16,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minHeight: 180
+                        }}
+                      >
+                        <input type="file" ref={videoInputRef} onChange={onVideoChange} style={{ display: 'none' }} accept=".mp4,.avi,.mov,.mkv" multiple />
+
+                        {videoFiles.length > 0 ? (
+                          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <FiVideo size={32} color="#4285F4" style={{ marginBottom: 16 }} />
+                            <div style={{ fontSize: 13, fontWeight: 700, color: '#1C1C1E', marginBottom: 12 }}>{videoFiles.length} video file(s) selected</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', width: '100%' }}>
+                              {videoFiles.map((f, i) => (
+                                <div key={i} style={{
+                                  background: 'white', padding: '6px 10px', borderRadius: 8, border: '1px solid #E0E7FF',
+                                  fontSize: 11, color: '#1E293B', display: 'flex', alignItems: 'center', gap: 6,
+                                }}>
+                                  <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
+                                  <FiX size={12} style={{ cursor: 'pointer' }} onClick={(e) => removeVideoFile(i, e)} />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <FiVideo size={32} color="#D4D4CC" style={{ marginBottom: 14 }} />
+                            <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 6 }}>Upload video for transcription</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                              Supports MP4, AVI, MOV, MKV<br />AgentMesh extracts audio and transcribes it
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      <div style={{ padding: '16px', background: 'white', border: '1px solid var(--border)', borderRadius: 12 }}>
+                        {labelNode('Whisper Model')}
+                        <select
+                          value={whisperModel}
+                          onChange={(e) => setWhisperModel(e.target.value)}
+                          style={{ ...inputClass }}
+                        >
+                          <option value="tiny">Tiny (Fastest)</option>
+                          <option value="base">Base (Good balance)</option>
+                          <option value="small">Small</option>
+                          <option value="medium">Medium</option>
+                          <option value="large">Large (Best accuracy)</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Chunking Strategy Segment ── */}
+                  <div style={{ marginBottom: 24, padding: '18px', background: '#FAFAF9', border: '1px solid var(--border)', borderRadius: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                      <FiScissors size={18} color="var(--text-primary)" />
+                      Content Chunking Strategy
+                    </div>
+
+                    <div style={{ marginBottom: 16 }}>
+                      {labelNode('Chunking technique')}
+                      <select
+                        value={chunkingStrategy}
+                        onChange={(e) => setChunkingStrategy(e.target.value)}
+                        style={{ ...inputClass, border: '1.5px solid var(--accent-btn)', background: 'white' }}
+                      >
+                        <option value="recursive">Recursive Character (General Purpose)</option>
+                        <option value="token">Token-based (LLM Context Optimized)</option>
+                        <option value="json">JSON Object (Structured RAG)</option>
+                        <option value="markdown_heading">Format Markdown Chunk Splitter</option>
+                        <option value="none">None (Upload whole document)</option>
+                      </select>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, display: 'flex', alignItems: 'flex-start', gap: 6, lineHeight: 1.4 }}>
+                        <FiInfo size={12} style={{ marginTop: 2, flexShrink: 0 }} />
+                        <div style={{ flex: 1 }}>
+                          {chunkingStrategy === 'json' && 'Optimized for structured JSON files. Splits only by major objects to preserve data hierarchy.'}
+                          {chunkingStrategy === 'recursive' && 'The industry standard. Splits by paragraphs, lines, then spaces to keep semantic meaning.'}
+                          {chunkingStrategy === 'token' && 'Calculates chunks based on token counts. Recommended for long contexts in OpenAI/Mistral.'}
+                          {chunkingStrategy === 'markdown_heading' && 'Splits Markdown document dynamically by headings and subheadings with a 2000 character limit.'}
+                          {chunkingStrategy === 'none' && 'Doc will be treated as one single block. Use only for very small documents.'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {chunkingStrategy !== 'none' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                            {labelNode('Chunk size')}
+                            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-btn)' }}>
+                              {chunkingStrategy === 'markdown_heading' ? 2000 : chunkSize} chars
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                            <input
+                              type="range" min={100} max={10000} step={100}
+                              value={chunkingStrategy === 'markdown_heading' ? 2000 : chunkSize}
+                              onChange={(e) => setChunkSize(Number(e.target.value))}
+                              disabled={chunkingStrategy === 'none' || chunkingStrategy === 'markdown_heading'}
+                              style={{ flex: 1, accentColor: 'var(--accent-btn)', cursor: chunkingStrategy === 'markdown_heading' ? 'not-allowed' : 'pointer', height: 4 }}
+                            />
+                            <input type="number"
+                              value={chunkingStrategy === 'markdown_heading' ? 2000 : chunkSize}
+                              onChange={(e) => setChunkSize(Number(e.target.value))}
+                              disabled={chunkingStrategy === 'none' || chunkingStrategy === 'markdown_heading'}
+                              min={100} max={10000}
+                              style={{ ...inputClass, width: 80, padding: '6px 8px', textAlign: 'center', opacity: (chunkingStrategy === 'none' || chunkingStrategy === 'markdown_heading') ? 0.6 : 1 }}
+                            />
+                          </div>
+                        </div>
+
+                        {chunkingStrategy !== 'markdown_heading' && (
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                              {labelNode('Overlap (tokens/chars)')}
+                              <span style={{ fontSize: 11, fontWeight: 700, color: '#F59E0B' }}>{chunkOverlap} chars</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                              <input
+                                type="range" min={0} max={Math.min(2000, chunkSize)} step={10}
+                                value={chunkOverlap} onChange={(e) => setChunkOverlap(Number(e.target.value))}
+                                disabled={chunkingStrategy === 'none'}
+                                style={{ flex: 1, accentColor: '#F59E0B', cursor: 'pointer', height: 4 }}
+                              />
+                              <input type="number" value={chunkOverlap} onChange={(e) => setChunkOverlap(Number(e.target.value))}
+                                disabled={chunkingStrategy === 'none'}
+                                min={0}
+                                style={{ ...inputClass, width: 80, padding: '6px 8px', textAlign: 'center', opacity: chunkingStrategy === 'none' ? 0.6 : 1 }}
+                              />
+                            </div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 6 }}>
+                              Overlap should be ~10-15% of chunk size for best context retrieval.
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Storage Target Switcher ── */}
+                  <div style={{ marginBottom: 24, padding: '18px', background: '#FAFAF9', border: '1px solid var(--border)', borderRadius: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                      <FiLayers size={18} color="var(--text-primary)" />
+                      Knowledge Storage Model
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                      <div
+                        onClick={() => { setTargetType('vector'); setResult(null); setError(null); }}
+                        style={{
+                          display: 'flex', flexDirection: 'column', gap: 12, padding: 16, borderRadius: 16, border: '2px solid ' + (targetType === 'vector' ? 'var(--theme-primary)' : 'var(--border)'),
+                          background: targetType === 'vector' ? 'var(--theme-primary-glow)' : 'white', cursor: 'pointer', transition: 'all 0.25s',
+                          boxShadow: targetType === 'vector' ? 'var(--shadow-sm)' : 'none', textAlign: 'left'
+                        }}
+                      >
+                        <div style={{ width: 40, height: 40, borderRadius: 10, background: targetType === 'vector' ? 'var(--theme-primary)' : '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: targetType === 'vector' ? 'white' : 'var(--text-muted)' }}>
+                          <FiDatabase size={20} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Classic RAG</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>Embed document chunks into a vector space to retrieve facts using semantic similarity searches.</div>
+                        </div>
+                      </div>
+                      <div
+                        onClick={() => { setTargetType('graph'); setResult(null); setError(null); }}
+                        style={{
+                          display: 'flex', flexDirection: 'column', gap: 12, padding: 16, borderRadius: 16, border: '2px solid ' + (targetType === 'graph' ? 'var(--theme-primary)' : 'var(--border)'),
+                          background: targetType === 'graph' ? 'var(--theme-primary-glow)' : 'white', cursor: 'pointer', transition: 'all 0.25s',
+                          boxShadow: targetType === 'graph' ? 'var(--shadow-sm)' : 'none', textAlign: 'left'
+                        }}
+                      >
+                        <div style={{ width: 40, height: 40, borderRadius: 10, background: targetType === 'graph' ? 'var(--theme-primary)' : '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: targetType === 'graph' ? 'white' : 'var(--text-muted)' }}>
+                          <FiShare2 size={20} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Knowledge Graph</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>Extract entities and relationship networks to construct a structured graph index for complex reasoning.</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Vector Database Configuration (Conditional) ── */}
+                  {targetType === 'vector' && (
+                    <div style={{ marginBottom: 24, padding: '18px', background: '#FAFAF9', border: '1px solid var(--border)', borderRadius: 16 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                        <FiDatabase size={18} color="var(--text-primary)" />
+                        Vector Database Configuration
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                        <div>
+                          {labelNode('Vector engine')}
+                          <select value={vectorStore} onChange={(e) => setVectorStore(e.target.value)}
+                            style={{ ...inputClass }}
+                            onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent-btn)'}
+                            onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+                          >
+                            <option value="chroma">chroma</option>
+                            <option value="qdrant">qdrant</option>
+                            <option value="pinecone">pinecone</option>
+                          </select>
+                        </div>
+                        <div>
+                          {labelNode('Collection name')}
+                          <input
+                            value={collection}
+                            onChange={(e) => setCollection(e.target.value)}
+                            placeholder="e.g. default"
+                            list="existing-collections-list"
+                            style={inputClass}
+                            onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent-btn)'}
+                            onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+                          />
+                          <datalist id="existing-collections-list">
+                            {existingCollections.map((col, idx) => (
+                              <option key={idx} value={col} />
+                            ))}
+                          </datalist>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Graph Extraction Configuration (Conditional) ── */}
+                  {targetType === 'graph' && (
+                    <div style={{ marginBottom: 24, padding: '18px', background: '#FAFAF9', border: '1px solid var(--border)', borderRadius: 16 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                        <FiDatabase size={18} color="var(--text-primary)" />
+                        Graph Extractor Configuration
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                        <div>
+                          {labelNode('LLM Provider')}
+                          <ScrollableSelect
+                            value={llmProvider}
+                            onChange={(newProv) => {
+                              setLlmProvider(newProv);
+                              const provModels = availableModels.filter(m => m.provider === newProv);
+                              if (provModels.length > 0) {
+                                setLlmModel(provModels[0].model);
+                              }
+                            }}
+                            options={providers.map(p => ({
+                              value: p,
+                              label: p.charAt(0).toUpperCase() + p.slice(1)
+                            }))}
+                            placeholder="Select Provider"
+                          />
+                        </div>
+                        <div>
+                          {labelNode('Model Name')}
+                          <ScrollableSelect
+                            value={llmModel}
+                            onChange={(val) => setLlmModel(val)}
+                            options={availableModels.filter(m => m.provider === llmProvider).map(m => ({
+                              value: m.model,
+                              label: m.label || m.model
+                            }))}
+                            placeholder="Select Model"
+                          />
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        <div>
+                          {labelNode('Tenant Database / Graph Name')}
+                          <input value={graphDatabase} onChange={(e) => setGraphDatabase(e.target.value)} placeholder="e.g. neo4j"
+                            style={inputClass}
+                          />
+                          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
+                            Set a custom tenant database name to physically isolate this ingestion in Neo4j (Default: neo4j).
+                          </div>
+                        </div>
+                        <div>
+                          <TooltipLabel
+                            label="Context Hint / Subject Anchor (Optional)"
+                            tooltipText="Declare the main entity/subject of the document (e.g. 'Tata Motors' or 'Mahindra'). This guides the LLM to link every extracted node back to this central entity, preventing orphan nodes and improving connectivity."
+                          />
+                          <input value={contextHint} onChange={(e) => setContextHint(e.target.value)} placeholder="e.g. Tata Motors"
+                            style={inputClass}
+                          />
+                        </div>
+                        <div>
+                          <TooltipLabel
+                            label="Allowed Node Labels (Optional)"
+                            tooltipText="Specifies the target entity types the LLM should extract (e.g., Person, Organization, Location). If left empty, the model will dynamically extract any labels it identifies."
+                          />
+                          <input value={allowedNodes} onChange={(e) => setAllowedNodes(e.target.value)} placeholder="e.g. Person, Company, Product"
+                            style={inputClass}
+                          />
+                        </div>
+                        <div>
+                          <TooltipLabel
+                            label="Allowed Relationship Types (Optional)"
+                            tooltipText="Defines the specific connection types between nodes that the LLM should identify (e.g., WORKS_FOR, LIVES_IN, OWNED_BY). If left empty, the model will dynamically name relationships."
+                          />
+                          <input value={allowedRelationships} onChange={(e) => setAllowedRelationships(e.target.value)} placeholder="e.g. WORKS_FOR, HAS_METRIC"
+                            style={inputClass}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleIngest}
+                    disabled={isIngestDisabled}
+                    style={{
+                      width: '100%', height: 48, borderRadius: 12, border: 'none',
+                      fontSize: 15, fontWeight: 700,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                      transition: 'all 0.2s',
+                      background: isIngestDisabled ? '#E5E7EB' : 'var(--theme-primary-glow)',
+                      color: isIngestDisabled ? '#9CA3AF' : 'var(--theme-primary)',
+                      cursor: isIngestDisabled ? 'not-allowed' : 'pointer',
+                    }}
+                    onMouseEnter={e => { if (!isIngestDisabled) e.currentTarget.style.filter = 'brightness(0.95)'; }}
+                    onMouseLeave={e => { if (!isIngestDisabled) e.currentTarget.style.filter = 'none'; }}
+                  >
+                    {loading ? (
+                      <><div className="loading-spinner" style={{ borderTopColor: 'var(--theme-primary)' }} /> Processing…</>
+                    ) : targetType === 'graph' ? (
+                      'Extract & Ingest to Graph'
+                    ) : (
+                      'Ingest into Knowledge Base'
+                    )}
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            </motion.div>
 
-        </div>
-      </div>
-      </>
+            {/* ── Right: Results + Info ── */}
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {result && (
+                <div style={{ background: '#F0FEF5', border: '1px solid #BBF7D0', borderRadius: 14, padding: '20px 22px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <FiCheck size={14} color="white" />
+                    </div>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: '#15803D' }}>Ingestion complete</span>
+                  </div>
+                  {[
+                    { label: targetType === 'graph' ? 'Nodes Ingested' : 'Chunks indexed', value: result.chunks_ingested },
+                    ...(result.file_count ? [{ label: 'Files processed', value: result.file_count }] : []),
+                    ...(targetType === 'graph' ? [
+                      { label: 'LLM Extractor', value: `${llmProvider} (${llmModel})` }
+                    ] : [
+                      { label: 'Collection', value: collection },
+                      { label: 'Engine', value: vectorStore }
+                    ]),
+                  ].map(({ label: l, value: v }) => (
+                    <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #D1FAE5', fontSize: 13 }}>
+                      <span style={{ color: '#5F5F6B' }}>{l}</span>
+                      <span style={{ fontWeight: 600, color: '#15803D' }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {error && (
+                <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 14, padding: '18px 20px', display: 'flex', gap: 12 }}>
+                  <FiAlertCircle color="#DC2626" size={18} style={{ flexShrink: 0, marginTop: 1 }} />
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#DC2626', marginBottom: 4 }}>Ingestion failed</div>
+                    <div style={{ fontSize: 12, color: '#B91C1C', lineHeight: 1.5 }}>{error}</div>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
