@@ -7,7 +7,7 @@ import {
   FiTarget, FiShare2, FiBookOpen, FiLink, FiZap,
   FiSearch, FiGlobe, FiClock, FiVolume2, FiRepeat, FiFileText, FiBell, FiUser, FiAlertTriangle,
   FiLayers, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiCamera, FiDownload, FiDatabase, FiInbox, FiServer,
-  FiHelpCircle, FiCode, FiSliders, FiMic, FiEye, FiVideo, FiMail
+  FiHelpCircle, FiCode, FiSliders, FiMic, FiEye, FiVideo, FiMail, FiUploadCloud
 } from 'react-icons/fi';
 
 const NODE_CONFIGS = {
@@ -31,6 +31,7 @@ const NODE_CONFIGS = {
   banking_enrichment: { bg: '#F5F3FF', color: '#7C3AED', icon: FiServer, round: 14 },
   beneficiary_risk: { bg: '#FEF2F2', color: '#EF4444', icon: FiGitBranch, round: 14 },
   ocr_node: { bg: '#FDF2F8', color: '#DB2777', icon: FiEye, round: 14 },
+  multi_file_ingestion: { bg: '#EEF2FF', color: '#4F46E5', icon: FiUploadCloud, round: 14 },
   signature_stamp_extractor: { bg: '#FDF2F8', color: '#DB2777', icon: FiEdit, round: 14 },
   vision_intelligence: { bg: '#F3E8FF', color: '#7E22CE', icon: FiEye, round: 14 },
   subgraph: { bg: '#F0FDFA', color: '#14B8A6', icon: FiLink, round: 14 },

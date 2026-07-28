@@ -10,8 +10,9 @@
  */
 export const PAUSE_NODE_TYPES = {
   form_node:           { hidesInput: true,  showsHitl: false, isStartingTrigger: false, autoInject: true  },
+  multi_file_ingestion:{ hidesInput: true,  showsHitl: false, isStartingTrigger: true,  autoInject: false },
   camera:              { hidesInput: true,  showsHitl: false, isStartingTrigger: true,  autoInject: true  },
-  ocr_node:            { hidesInput: true,  showsHitl: false, isStartingTrigger: true,  autoInject: false },
+  ocr_node:            { hidesInput: true,  showsHitl: false, isStartingTrigger: true,  autoInject: true  },
   stt_trigger:         { hidesInput: true,  showsHitl: false, isStartingTrigger: true,  autoInject: true  },
   followup_form:       { hidesInput: true,  showsHitl: false, isStartingTrigger: false, autoInject: false },
   followup_selection:  { hidesInput: false, showsHitl: false, isStartingTrigger: false, autoInject: false },

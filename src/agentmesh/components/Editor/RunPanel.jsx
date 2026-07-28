@@ -21,6 +21,7 @@ import FormRenderer from './RunPanelModules/FormRenderer';
 import SpeechRecorder from './RunPanelModules/SpeechRecorder';
 import CameraRenderer from './RunPanelModules/CameraRenderer';
 import OcrRenderer from './RunPanelModules/OcrRenderer';
+import MultiFileUploadRenderer from './RunPanelModules/MultiFileUploadRenderer';
 import FollowupRenderer from './RunPanelModules/FollowupRenderer';
 import TurnRenderer from './RunPanelModules/TurnRenderer';
 import ChatInput from './RunPanelModules/ChatInput';
@@ -1007,6 +1008,22 @@ export default function RunPanel({ onClose }) {
         bodyPadding="20px"
       >
         <OcrRenderer
+          config={pausedInfo.nodeConfig || {}}
+          context={pausedInfo.context || {}}
+          isLoading={running}
+          onSubmit={(data) => onResume(data)}
+        />
+      </PauseModal>
+
+      {/* Multi-File Ingestion Overlay */}
+      <PauseModal
+        isOpen={pausedInfo.isPaused && pausedInfo.nodeType === 'multi_file_ingestion'}
+        title={pausedInfo.nodeConfig?.form_title || 'Multi-File Batch Upload'}
+        icon={FiPaperclip}
+        maxWidth={540}
+        bodyPadding="20px"
+      >
+        <MultiFileUploadRenderer
           config={pausedInfo.nodeConfig || {}}
           context={pausedInfo.context || {}}
           isLoading={running}

@@ -55,8 +55,13 @@ export function resolvePauseConfig(res, storeNodes, pausedOriginalNodeId) {
     nodeConfig = res.context.paused_subgraph_node_config || {};
   } else if (!nodeType) {
     const pausedNode = storeNodes.find(n => n.id === pausedOriginalNodeId);
-    nodeType = pausedNode?.type === 'customNode' ? pausedNode.data?.type : (pausedNode?.data?.type || pausedNode?.type);
-    nodeConfig = pausedNode?.data || {};
+    nodeType = nodeType || (pausedNode?.type === 'customNode' ? pausedNode.data?.type : (pausedNode?.data?.type || pausedNode?.type));
+    nodeConfig = { ...(pausedNode?.data || {}), ...(nodeConfig || {}) };
+  } else if (pausedOriginalNodeId) {
+    const pausedNode = storeNodes.find(n => n.id === pausedOriginalNodeId);
+    if (pausedNode?.data) {
+      nodeConfig = { ...pausedNode.data, ...nodeConfig };
+    }
   }
   return { nodeType, nodeConfig };
 }

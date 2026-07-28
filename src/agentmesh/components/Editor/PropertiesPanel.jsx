@@ -112,6 +112,9 @@ const LAZY_CONFIGS = {
   ),
   rag_node: lazy(() => import("./propertypanelModules/RagNodeConfig")),
   ocr_node: lazy(() => import("./propertypanelModules/OcrNodeConfig")),
+  multi_file_ingestion: lazy(
+    () => import("./propertypanelModules/MultiFileIngestionConfig"),
+  ),
   vision_intelligence: lazy(
     () => import("./propertypanelModules/VisionIntelligenceConfig")
   ),
