@@ -32,7 +32,8 @@ const NODE_DEFAULTS = {
   data_cleaning: { label: 'Data Cleaning', data_cleaning_rules: ['GEN_TRIM_WHITESPACE'], data_cleaning_target: 'latest_message', data_cleaning_input_key: '', data_cleaning_output_key: 'cleaned_data' },
   graph_ingestion: { label: 'Graph Ingestion', graph_target_key: 'latest_message', graph_neo4j_uri: '', graph_neo4j_user: '', graph_neo4j_password: '', graph_ingestion_mode: 'visual', graph_cypher_query: '', graph_nodes_schema: [], graph_relations_schema: [] },
   db_node: { label: 'Database', db_engine: 'mongodb', db_operation: 'insert_one', db_output_key: 'db_result', db_limit: 100 },
-  ocr_node: { label: 'OCR Node', ocr_input_key: 'latest_file_path', ocr_prompt: 'Please perform OCR on this document and return the full text accurately.', llm: { provider: 'groq', model: 'llama-3.2-90b-vision-preview', temperature: 0 }, interrupt_before: false, interrupt_after: false },
+  ocr_node: { label: 'OCR Node', ocr_input_key: '', ocr_prompt: 'Please perform OCR on this document and return the full text accurately.', llm: { provider: 'groq', model: 'llama-3.2-90b-vision-preview', temperature: 0 }, interrupt_before: false, interrupt_after: false },
+  multi_file_ingestion: { label: 'Multi-File Ingestion', allowed_extensions: ['pdf', 'jpg', 'jpeg', 'png', 'webp'], max_file_size_mb: 25.0, max_files_count: 10, pdf_processing_mode: 'whole_file', strategy_rules: [], interrupt_before: true, interrupt_after: false },
   signature_stamp_extractor: { label: 'Signature & Stamp Extractor', extractor_input_key: 'latest_file_path', extractor_output_key: 'extracted_elements', llm: { provider: 'groq', model: 'meta-llama/llama-4-scout-17b-16e-instruct', temperature: 0 }, interrupt_before: false, interrupt_after: false },
   pattern_extract: { label: 'Pattern Extractor', extract_mode: 'identifier', extract_patterns: [], extract_input_key: 'flattened_json', extract_output_key: 'extracted_identifiers', identifiers_input_key: 'extracted_identifiers' },
   api_node: { label: 'API Request', method: 'GET', url: '', headers: {}, params: {}, body: '', auth_method: 'none', api_auth_config: {}, use_curl: false, curl_command: '' },
@@ -226,6 +227,11 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
           vision_id_image_key: n.vision_id_image_key || n.data?.vision_id_image_key || 'latest_file_path',
           vision_selfie_image_key: n.vision_selfie_image_key || n.data?.vision_selfie_image_key || 'vcip_capture_path',
           vision_output_key: n.vision_output_key || n.data?.vision_output_key || 'vision_result',
+          allowed_extensions: n.allowed_extensions || n.data?.allowed_extensions || ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
+          max_file_size_mb: n.max_file_size_mb ?? n.data?.max_file_size_mb ?? 25.0,
+          max_files_count: n.max_files_count ?? n.data?.max_files_count ?? 10,
+          pdf_processing_mode: n.pdf_processing_mode || n.data?.pdf_processing_mode || 'whole_file',
+          strategy_rules: n.strategy_rules || n.data?.strategy_rules || [],
         },
       };
     });
@@ -1123,7 +1129,9 @@ export const useWorkflowStore = create((set, get) => ({
           // Vision Intelligence
           'vision_mode', 'vision_face_match_threshold', 'vision_quality_min_score',
           'vision_quality_blur_threshold', 'vision_quality_min_contrast', 'vision_quality_max_contrast',
-          'vision_id_image_key', 'vision_selfie_image_key', 'vision_output_key'
+          'vision_id_image_key', 'vision_selfie_image_key', 'vision_output_key',
+          // Multi-File Ingestion Configs
+          'allowed_extensions', 'max_file_size_mb', 'max_files_count', 'pdf_processing_mode', 'file_strategies', 'strategy_rules'
         ];
 
         const nodeConfig = {};
