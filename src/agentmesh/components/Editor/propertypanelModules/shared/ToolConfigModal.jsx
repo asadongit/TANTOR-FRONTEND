@@ -125,9 +125,18 @@ export const ToolConfigModal = memo(function ToolConfigModal({ toolName, config 
                 <Field key={f.name} label={f.name.replace(/_/g, ' ')} hint={f.description}>
                   {f.options && f.options.length > 0 ? (
                     <Select
-                      value={config[f.name] || f.default}
+                      value={config[f.name] ?? f.default ?? ''}
                       onChange={(v) => set(f.name, f.type === 'number' ? parseFloat(v) : v)}
-                      options={f.options.map(o => ({ value: o, label: o }))}
+                      options={f.options.map(o => ({ value: o, label: String(o) }))}
+                    />
+                  ) : f.type === 'boolean' ? (
+                    <Select
+                      value={String(config[f.name] ?? f.default ?? 'false')}
+                      onChange={(v) => set(f.name, v === 'true')}
+                      options={[
+                        { value: 'true', label: 'true' },
+                        { value: 'false', label: 'false' }
+                      ]}
                     />
                   ) : f.type === 'textarea' ? (
                     <Textarea
