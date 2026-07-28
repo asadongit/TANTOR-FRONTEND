@@ -240,6 +240,11 @@ export default function Builder({ handleSwitch, checked }) {
     const handleRefresh = async (e) => {
         if (e) e.stopPropagation();
         setIsRefreshing(true);
+        setSelectedView("");
+        setColumnDefs([]);
+        setData([]);
+        setShowResults(false);
+        setViewsDetails(null);
         try {
             await refetchPolicyIds();
             await refetchViews();

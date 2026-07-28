@@ -77,7 +77,7 @@ const FederationDashBoard = () => {
     viewData: null
   });
 
-  const { isFetching: isFetchingPolicies, refetch: fetchPolicyIds } = useFederationPolicyIds();
+  const { isFetching: isFetchingPolicies, isLoading: isLoadingPolicies, refetch: fetchPolicyIds } = useFederationPolicyIds();
   const { data: dashboardDataRaw, isLoading, isFetching, refetch: fetchDashboardData } = useFederationDashboardData();
 
   const dashboardData = dashboardDataRaw || {
@@ -88,8 +88,8 @@ const FederationDashBoard = () => {
     views_details: []
   };
 
-  const isCardsLoading = isLoading || isFetching;
-  const isTableLoading = isLoading || isFetching;
+  const isCardsLoading = isLoading || isFetching || isFetchingPolicies || isLoadingPolicies;
+  const isTableLoading = isLoading || isFetching || isFetchingPolicies || isLoadingPolicies;
   const [resetSortTrigger, setResetSortTrigger] = useState(0);
 
   const [searchTerm, setSearchTerm] = useState("");
