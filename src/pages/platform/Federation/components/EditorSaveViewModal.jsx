@@ -17,6 +17,7 @@ const EditorSaveViewModal = ({ isOpen, onClose, query, securedQuery, project, po
   const [isMaterializedView, setIsMaterializedView] = useState(false);
   const [isCaching, setIsCaching] = useState(false);
   const [gracePeriod, setGracePeriod] = useState("");
+  const [gracePeriodUnit, setGracePeriodUnit] = useState("HOUR");
   const [cacheTtl, setCacheTtl] = useState("");
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -30,12 +31,14 @@ const EditorSaveViewModal = ({ isOpen, onClose, query, securedQuery, project, po
       setIsMaterializedView(editOriginalPayload.materalized === true);
       setIsCaching(editOriginalPayload.cached === true);
       setGracePeriod(editOriginalPayload?.grace_period || "");
+      setGracePeriodUnit(editOriginalPayload?.grace_period_unit || "HOUR");
       setCacheTtl(editOriginalPayload?.cache_ttl || "");
     } else {
       setViewName("");
       setIsMaterializedView(false);
       setIsCaching(false);
       setGracePeriod("");
+      setGracePeriodUnit("HOUR");
       setCacheTtl("");
     }
     setErrorMsg("");
@@ -90,6 +93,7 @@ const EditorSaveViewModal = ({ isOpen, onClose, query, securedQuery, project, po
         view_name: viewName.trim().toLowerCase(),
         isMaterializedView: isMaterializedView,
         grace_period: isMaterializedView && gracePeriod ? Number(gracePeriod) : null,
+        grace_period_unit: isMaterializedView && gracePeriod ? gracePeriodUnit : null,
         isCaching: isCaching,
         cache_ttl: isCaching && cacheTtl ? Number(cacheTtl) : null,
         created_by: decodedToken?.preferred_username,
@@ -99,6 +103,7 @@ const EditorSaveViewModal = ({ isOpen, onClose, query, securedQuery, project, po
 
       // Clean up nulls
       if (payload.grace_period === null) delete payload.grace_period;
+      if (payload.grace_period_unit === null) delete payload.grace_period_unit;
       if (payload.cache_ttl === null) delete payload.cache_ttl;
 
       const endpoint = isEditMode ? `${hostnameV2}/edit-editor-view` : `${hostnameV2}/save-editor-view`;
@@ -171,19 +176,39 @@ const EditorSaveViewModal = ({ isOpen, onClose, query, securedQuery, project, po
               </label>
             )}
             {isMaterializedView && (
-              <div className="w-full mt-1">
-                <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Grace Period (hr)
+              <div className="w-full mt-2">
+                <label className="block text-[#282F49] text-sm font-medium text-gray-600 mb-1">
+                  Grace period
                 </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={gracePeriod}
-                  onChange={(e) => setGracePeriod(e.target.value)}
-                  disabled={saving}
-                  className="w-full p-2 border border-gray-300 rounded-md text-gray-700 focus:ring-2 focus:ring-[#8E77BB] focus:outline-none"
-                  placeholder="e.g. 60"
-                />
+                <div className="flex items-stretch rounded-lg border border-gray-300 overflow-hidden focus-within:ring-2 focus-within:ring-[#8E77BB] focus-within:border-[#8E77BB] transition-all">
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={gracePeriod}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "") { setGracePeriod(""); return; }
+                      setGracePeriod(String(Math.max(1, Math.floor(Number(val)))));
+                    }}
+                    disabled={saving}
+                    className="flex-1 px-3 py-2 text-gray-700 bg-white outline-none text-sm min-w-0"
+                    placeholder="Enter value"
+                  />
+                  <div className="w-px bg-gray-300" />
+                  <select
+                    id="grace-period-unit"
+                    value={gracePeriodUnit}
+                    onChange={(e) => setGracePeriodUnit(e.target.value)}
+                    disabled={saving}
+                    className="px-2 py-2 text-sm text-gray-700 bg-gray-50 outline-none cursor-pointer border-0"
+                  >
+                    <option value="SECOND">Second</option>
+                    <option value="MINUTE">Minute</option>
+                    <option value="HOUR">Hour</option>
+                    <option value="DAY">Day</option>
+                  </select>
+                </div>
               </div>
             )}
 
