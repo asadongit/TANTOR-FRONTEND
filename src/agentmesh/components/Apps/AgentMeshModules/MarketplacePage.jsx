@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWorkflowStore, useUIStore, useRunStore } from '../../../store';
 import { listMarketplaceUsecases, listWorkflowCategories, getWorkflow } from '../../../api/agentmesh';
-import { FiUser, FiMessageSquare, FiInfo, FiTag, FiX, FiZap, FiBookOpen, FiLoader } from 'react-icons/fi';
+import { FiUser, FiMessageSquare, FiInfo, FiTag, FiX, FiZap, FiBookOpen, FiLoader, FiGrid } from 'react-icons/fi';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import bannerImage from '../../../assets/data/Stack-p-2000.png';
 import Pagination from '../../Common/Pagination';
