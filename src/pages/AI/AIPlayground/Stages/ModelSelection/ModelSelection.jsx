@@ -5,6 +5,7 @@ import classificationAlgorithmsData from '../../../../../components/classificati
 import regressionAlgorithmsData from '../../../../../components/regression_models_hyperparameters.json';
 import univariateAlgorithmsData from '../../../../../components/univariate_models_hyperparameter.json';
 import multivariateAlgorithmsData from '../../../../../components/multivariate_models_hyperparameter.json';
+import multiseriesAlgorithmsData from '../../../../../components/multiseries_models_hyperparameter.json';
 import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 import AlgorithmCard from './AlgorithmCard';
@@ -133,7 +134,8 @@ function ModelSelection() {
     // In view mode, saved config typically stores `modelling_type`.
     const classificationType = modelGenesisConfig?.modelling_type || modelGenesisConfig?.classification;
     // Multiseries forecasting (multivariate_multiseries / univariate_multiseries) targets a
-    // continuous value, so it reuses the regression algorithm set and metrics throughout this page.
+    // continuous value, so it has its own algorithm/hyperparameter set (multiseriesAlgorithmsData)
+    // but still reuses the regression metrics throughout this page (isRegression stays true below).
     const isMultiseries = String(classificationType || '').trim().toLowerCase() === 'multivariate_multiseries' ||
         String(classificationType || '').trim().toLowerCase() === 'univariate_multiseries';
     const isRegression = String(classificationType || '').trim().toLowerCase() === 'regression' || isMultiseries;
@@ -163,6 +165,9 @@ function ModelSelection() {
 }
 else if (isMultivariate) {
     algorithmData = multivariateAlgorithmsData;
+}
+else if (isMultiseries) {
+    algorithmData = multiseriesAlgorithmsData;
 }
 else if (isRegression) {
     algorithmData = regressionAlgorithmsData;
