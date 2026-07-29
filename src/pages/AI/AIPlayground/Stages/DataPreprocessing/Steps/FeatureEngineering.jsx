@@ -402,7 +402,9 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
     const [isLoading, setIsLoading] = useState(false);
     const [showFieldErrors, setShowFieldErrors] = useState(false);
 
-    const numericColumns = workflowState?.dataPreprocessing?.step1?.apiResponse?.numerical_columns || [];
+    const entityColumns = workflowState?.modelGenesis?.config?.entity_cols || [];
+    const numericColumns = (workflowState?.dataPreprocessing?.step1?.apiResponse?.numerical_columns || [])
+        .filter(col => !entityColumns.includes(col));
     const categoricalColumns = workflowState?.dataPreprocessing?.step2?.apiResponse?.categorical_columns || [];
     const hasCategoricalColumns = categoricalColumns.length > 0;
 

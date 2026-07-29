@@ -1,0 +1,198 @@
+{
+  "Linear Regression": {
+    "category": "Linear",
+    "backend_key": "LinearRegression",
+    "info": "Predicts a continuous target by fitting a linear equation to observed data, assuming a straight-line relationship between features and the outcome.",
+    "hyperparameters": {
+      "fit_intercept": "true, false",
+      "copy_X": "true, false",
+      "positive": "true, false"
+    }
+  },
+
+  "ElasticNet": {
+    "category": "Linear",
+    "backend_key": "ElasticNet",
+    "info": "Combines L1 and L2 regularization, making it effective when there are multiple correlated features.",
+    "hyperparameters": {
+      "alpha": { "low": "0.0001", "high": "10" },
+      "l1_ratio": { "low": "0.0", "high": "1.0" },
+      "max_iter": { "low": "500", "high": "5000" }
+    }
+  },
+
+  "Random Forest": {
+    "category": "Tree-based",
+    "backend_key": "RandomForestRegressor",
+    "info": "Ensemble of decision trees that improves predictive accuracy by averaging multiple results.",
+    "hyperparameters": {
+      "n_estimators": { "low": "50", "high": "1000" },
+      "max_depth": { "low": "3", "high": "50", "special": ["None"] },
+      "bootstrap": "true, false"
+    }
+  },
+
+  "XGBoost": {
+    "category": "Tree-based",
+    "backend_key": "XGBRegressor",
+    "info": "Optimized distributed gradient boosting library designed to be highly efficient and flexible.",
+    "hyperparameters": {
+      "n_estimators": { "low": "50", "high": "1000" },
+      "max_depth": { "low": "3", "high": "15" },
+      "learning_rate": { "low": "0.01", "high": "0.3" },
+      "gamma": { "low": "0", "high": "5" }
+    }
+  },
+
+  "LightGBM": {
+    "category": "Tree-based",
+    "backend_key": "LightGBMRegressor",
+    "info": "Fast, distributed gradient boosting framework that uses tree-based learning algorithms with leaf-wise growth.",
+    "hyperparameters": {
+      "n_estimators": { "low": "50", "high": "1000" },
+      "num_leaves": { "low": "15", "high": "100" },
+      "learning_rate": { "low": "0.01", "high": "0.3" },
+      "boosting_type": "gbdt, dart, goss"
+    }
+  },
+
+  "CatBoost": {
+    "category": "Tree-based",
+    "backend_key": "CatBoostRegressor",
+    "info": "Gradient boosting on decision trees with native support for categorical features.",
+    "hyperparameters": {
+      "iterations": { "low": "100", "high": "1000" },
+      "depth": { "low": "4", "high": "10" },
+      "learning_rate": { "low": "0.01", "high": "0.3" },
+      "l2_leaf_reg": { "low": "1", "high": "10" }
+    }
+  },
+
+  "LSTM": {
+    "category": "Deep Learning",
+    "backend_key": "LSTM",
+    "info": "Long Short-Term Memory network is a recurrent neural network architecture capable of learning long-term temporal dependencies in sequential data.",
+    "hyperparameters": {
+      "units": { "low": "32", "high": "512" },
+      "layers": { "low": "1", "high": "5" },
+      "dropout": { "low": "0.0", "high": "0.5" }
+    }
+  },
+
+  "TCN": {
+    "category": "Temporal Convolutional",
+    "backend_key": "TCN",
+    "info": "Temporal Convolutional Network uses causal and dilated convolutions to model long-range temporal dependencies efficiently.",
+    "hyperparameters": {
+      "nb_filters": { "low": "16", "high": "256" },
+      "kernel_size": { "low": "2", "high": "10" },
+      "dilations": { "low": "1", "high": "64" }
+    }
+  },
+
+  
+  
+
+  "DeepAR": {
+    "category": "Deep Learning",
+    "backend_key": "DeepAR",
+    "info": "Autoregressive recurrent network that produces probabilistic multi-step forecasts by learning a global model across related time series.",
+    "hyperparameters": {
+      "num_layers": { "low": "1", "high": "4" },
+      "hidden_size": { "low": "32", "high": "256" },
+      "dropout_rate": { "low": "0.0", "high": "0.5" }
+    }
+  },
+
+  "TFT": {
+    "category": "Transformer-based",
+    "backend_key": "TFT",
+    "info": "Temporal Fusion Transformer combines LSTM encoders, gating layers, and interpretable multi-head attention to model static, known, and observed inputs for multi-horizon forecasting.",
+    "hyperparameters": {
+      "hidden_size": { "low": "16", "high": "256" },
+      "num_attention_heads": { "low": "1", "high": "8" },
+      "num_lstm_layers": { "low": "1", "high": "4" },
+      "dropout_rate": { "low": "0.0", "high": "0.5" }
+    }
+  },
+
+  "PatchTST": {
+    "category": "Transformer-based",
+    "backend_key": "PatchTST",
+    "info": "Splits each time series into patches processed independently per channel by a Transformer encoder, improving long-horizon forecasting accuracy and efficiency.",
+    "hyperparameters": {
+      "patch_len": { "low": "8", "high": "64" },
+      "stride": { "low": "1", "high": "32" },
+      "d_model": { "low": "32", "high": "512", "warning": "d_model must be exactly divisible by n_heads." },
+      "n_heads": { "low": "1", "high": "16" },
+      "num_layers": { "low": "1", "high": "6" }
+    }
+  },
+
+  "TimesNet": {
+    "category": "Deep Learning",
+    "backend_key": "TimesNet",
+    "info": "Transforms 1D time series into 2D tensors based on discovered periodicities and applies Inception-style convolution blocks to capture intra- and inter-period variations.",
+    "hyperparameters": {
+      "d_model": { "low": "32", "high": "512" },
+      "top_k": { "low": "1", "high": "5" },
+      "num_kernels": { "low": "1", "high": "6" },
+      "e_layers": { "low": "1", "high": "6" }
+    }
+  },
+
+  "DLinear": {
+    "category": "Linear",
+    "backend_key": "DLinear",
+    "info": "Decomposes the series into trend and seasonal components, each modeled by a single linear layer, offering a strong lightweight baseline for long-term forecasting.",
+    "hyperparameters": {
+      "kernel_size": { "low": "3", "high": "51" },
+      "individual": "true, false"
+    }
+  },
+
+  "Transformer": {
+    "category": "Transformer-based",
+    "backend_key": "Transformer",
+    "info": "Transformer architecture relies on self-attention mechanisms to capture long-range dependencies and relationships within sequential data.",
+    "hyperparameters": {
+      "d_model": { "low": "32", "high": "512", "warning": "d_model must be exactly divisible by nhead." },
+      "nhead": { "low": "1", "high": "16" },
+      "num_layers": { "low": "1", "high": "12" }
+    }
+  },
+
+  "Informer": {
+    "category": "Transformer-based",
+    "backend_key": "Informer",
+    "info": "Informer is an efficient Transformer variant specifically designed for long-sequence time-series forecasting using ProbSparse attention.",
+    "hyperparameters": {
+      "d_model": { "low": "32", "high": "512", "warning": "d_model must be exactly divisible by n_heads." },
+      "n_heads": { "low": "1", "high": "16" },
+      "e_layers": { "low": "1", "high": "6" }
+    }
+  },
+
+  "Autoformer": {
+    "category": "Transformer-based",
+    "backend_key": "Autoformer",
+    "info": "Combines series decomposition with an auto-correlation mechanism in place of self-attention to efficiently capture period-based dependencies for long-term forecasting.",
+    "hyperparameters": {
+      "d_model": { "low": "32", "high": "512", "warning": "d_model must be exactly divisible by n_heads." },
+      "n_heads": { "low": "1", "high": "16" },
+      "e_layers": { "low": "1", "high": "6" },
+      "moving_avg": { "low": "3", "high": "51" }
+    }
+  },
+
+  "FEDformer": {
+    "category": "Transformer-based",
+    "backend_key": "FEDformer",
+    "info": "Frequency Enhanced Decomposed Transformer improves long-term forecasting by combining decomposition methods with frequency-domain attention.",
+    "hyperparameters": {
+      "d_model": { "low": "32", "high": "512", "warning": "d_model must be exactly divisible by n_heads." },
+      "n_heads": { "low": "1", "high": "16" },
+      "modes": { "low": "8", "high": "128" }
+    }
+  }
+}
