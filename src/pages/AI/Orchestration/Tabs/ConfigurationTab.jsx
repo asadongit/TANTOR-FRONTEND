@@ -257,20 +257,22 @@ const ConfigurationTab = ({ onValidationErrors }) => {
             }
             case 'model': {
                 const selectedValues = Array.isArray(value) ? value : [value].filter(Boolean);
+                const selectedValuesSet = new Set(selectedValues);
 
+                // `models` is ordered by workflow_seq_number (see fetchModelsByEnsemble), so filtering it
+                // - rather than reusing the raw selection order - keeps model/model_id aligned to that order.
                 const selectedModels = models.filter(
-                    m => selectedValues.includes(m.value || m.model_name)
+                    m => selectedValuesSet.has(m.value || m.model_name)
                 );
 
-                const selectedModelIds = selectedModels.map(
-                    m => m.model_id || ''
-                );
+                const orderedModelNames = selectedModels.map(m => m.value || m.model_name);
+                const selectedModelIds = selectedModels.map(m => m.model_id || '');
 
                 const selectedModel = selectedModels[0];
 
                 setSchedulerState(prev => ({
                     ...prev,
-                    model: Array.isArray(value) ? value : value,
+                    model: isEnsembleEnabled ? orderedModelNames : value,
                     model_id: isEnsembleEnabled
                         ? selectedModelIds
                         : (selectedModelIds[0] || ''),
@@ -568,27 +570,38 @@ const ConfigurationTab = ({ onValidationErrors }) => {
                 ? data.workflow_models
                 : {};
 
-            const normalizedWorkflowModels = Object.entries(rawWorkflowModels).reduce((acc, [workflowName, modelList]) => {
-                const normalizedModels = Array.isArray(modelList)
-                    ? modelList
-                        .map(modelItem => {
-                            if (typeof modelItem === 'string') return modelItem;
-                            if (modelItem && typeof modelItem === 'object') {
-                                return modelItem.model_name || modelItem.name || modelItem.value || '';
-                            }
-                            return '';
-                        })
-                        .filter(Boolean)
-                    : [];
+            // Workflows with a numeric workflow_seq_number are ordered by it (1st, 2nd, ...);
+            // workflows with a null seq number keep their original response order, placed after the numbered ones.
+            const orderedWorkflowEntries = Object.entries(rawWorkflowModels)
+                .map(([workflowName, workflowData], index) => ({ workflowName, workflowData, index }))
+                .sort((a, b) => {
+                    const seqA = a.workflowData?.workflow_seq_number;
+                    const seqB = b.workflowData?.workflow_seq_number;
+                    if (seqA == null && seqB == null) return a.index - b.index;
+                    if (seqA == null) return 1;
+                    if (seqB == null) return -1;
+                    return seqA - seqB;
+                });
 
-                acc[workflowName] = normalizedModels;
+            const getWorkflowModelList = (workflowData) => Array.isArray(workflowData?.models) ? workflowData.models : [];
+
+            const normalizedWorkflowModels = orderedWorkflowEntries.reduce((acc, { workflowName, workflowData }) => {
+                acc[workflowName] = getWorkflowModelList(workflowData)
+                    .map(modelItem => {
+                        if (typeof modelItem === 'string') return modelItem;
+                        if (modelItem && typeof modelItem === 'object') {
+                            return modelItem.model_name || modelItem.name || modelItem.value || '';
+                        }
+                        return '';
+                    })
+                    .filter(Boolean);
                 return acc;
             }, {});
 
             setWorkflowModelMap(normalizedWorkflowModels);
 
-            const flattenedModels = Object.entries(normalizedWorkflowModels).flatMap(([workflowName, modelList]) =>
-                (Array.isArray(rawWorkflowModels[workflowName]) ? rawWorkflowModels[workflowName] : [])
+            const flattenedModels = orderedWorkflowEntries.flatMap(({ workflowName, workflowData }) =>
+                getWorkflowModelList(workflowData)
                     .map(modelItem => {
                         if (typeof modelItem === 'string') {
                             return modelItem ? {

@@ -11,15 +11,18 @@ const CreateViewDialog = ({ isModalOpen, toggleModal, modalState, setModalState 
     sessionStorage.removeItem("editViewName");
     sessionStorage.removeItem("editFlowData");
     sessionStorage.removeItem("editOriginalPayload");
+    sessionStorage.setItem("createQueryType", "Regular");
     
-    if (modalState.viewType === "Source" && (modalState.queryType === "Regular" || modalState.queryType === "Complex")) {
+    const updatedModalState = { ...modalState, queryType: "Regular" };
+
+    if (modalState.viewType === "Source") {
       navigate("/federation/view/source", {
-        state: modalState,
+        state: updatedModalState,
       });
     }
-    if (modalState.viewType === "Business" && (modalState.queryType === "Regular" || modalState.queryType === "Complex")) {
+    if (modalState.viewType === "Business") {
       navigate("/viewcanvas", {
-        state: modalState,
+        state: updatedModalState,
       });
     }
   };
@@ -37,34 +40,6 @@ const CreateViewDialog = ({ isModalOpen, toggleModal, modalState, setModalState 
         </div>
 
         <div>
-          {/* Query Type */}
-          <div className="mb-4">
-            <label className="block text-[#282F49] text-lg font-semibold">
-              Select Query Type
-            </label>
-            <div className="flex mt-2">
-              <button
-                onClick={() => setModalState({ ...modalState, queryType: "Regular" })}
-                className={`w-[7rem] h-[2.5rem] py-1.5 rounded-full border transition-all duration-300 flex items-center justify-center ${
-                  modalState.queryType === "Regular"
-                    ? "border-[#8E77BB] text-[#8E77BB]"
-                    : "border-transparent text-gray-700"
-                }`}
-              >
-                Regular
-              </button>
-              <button
-                onClick={() => setModalState({ ...modalState, queryType: "Complex" })}
-                className={`w-[7rem] h-[2.5rem] py-1.5 rounded-full border transition-all duration-300 flex items-center justify-center ${
-                  modalState.queryType === "Complex"
-                    ? "border-[#8E77BB] text-[#8E77BB]"
-                    : "border-transparent text-gray-700"
-                }`}
-              >
-                Complex
-              </button>
-            </div>
-          </div>
 
           {/* View Type */}
           <div className="mb-6">

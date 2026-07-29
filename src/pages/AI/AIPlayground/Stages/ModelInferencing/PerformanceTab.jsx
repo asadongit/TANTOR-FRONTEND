@@ -63,6 +63,27 @@ const TIMESERIES_METRICS = [
     trainKey: 'trainMASE',
     isLowerBetter: true,
   },
+  {
+    key: 'R2',
+    label: 'R²',
+    testKey: 'testR2',
+    trainKey: 'trainR2',
+    isLowerBetter: false,
+  },
+  {
+    key: 'QuantileLoss',
+    label: 'Quantile Loss',
+    testKey: 'testQuantileLoss',
+    trainKey: 'trainQuantileLoss',
+    isLowerBetter: true,
+  },
+  {
+    key: 'HuberLoss',
+    label: 'Huber Loss',
+    testKey: 'testHuberLoss',
+    trainKey: 'trainHuberLoss',
+    isLowerBetter: true,
+  },
 ];
 
 

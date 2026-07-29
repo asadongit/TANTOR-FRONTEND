@@ -12,7 +12,7 @@ import { useFederationPolicyIds } from "../../../../hooks/platform/federation";
 
 export function BusinessFooter() {
   const navigate = useNavigate();
-  const { finalPayload, handleFinalPayload, connectionPayload, viewPayload, columnSettings, consolidationPayload, nodeCount, nodes, edges, isEditMode, editViewName, clearEditMode } = useStateContext("");
+  const { finalPayload, handleFinalPayload, connectionPayload, viewPayload, columnSettings, consolidationPayload, nodeCount, nodes, edges, isEditMode, editViewName, clearEditMode, complexQueryVersion, hideBusinessPreview, setHideBusinessPreview } = useStateContext("");
     const { data: policyIds } = useFederationPolicyIds();
   const [preview, setPreview] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -20,10 +20,22 @@ export function BusinessFooter() {
   const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
 
-  const modalState = useLocation().state || {
-    queryType: "Regular",
-    viewType: "Business",
-  };
+  const locationState = useLocation().state;
+  const resolvedQueryType = (() => {
+    if (locationState?.queryType) return locationState.queryType;
+    const editPayloadStr = sessionStorage.getItem("editOriginalPayload");
+    if (editPayloadStr) {
+      try {
+        const p = JSON.parse(editPayloadStr);
+        const cq = p?.extra_info?.complex_query ?? p?.complex_query;
+        if (cq) return "Complex";
+      } catch (_) {}
+    }
+    const createQueryType = sessionStorage.getItem("createQueryType");
+    if (createQueryType) return createQueryType;
+    return "Regular";
+  })();
+  const modalState = { ...(locationState || {}), queryType: resolvedQueryType };
 
   const [colOrder, setColOrder] = useState([]);
   const [dragOverCol, setDragOverCol] = useState(null);
@@ -548,6 +560,16 @@ export function BusinessFooter() {
     }
   };
 
+  const isFirstComplexQueryVersion = useRef(true);
+  useEffect(() => {
+    if (complexQueryVersion === 0) return; // skip initial mount
+    if (isFirstComplexQueryVersion.current) {
+      isFirstComplexQueryVersion.current = false;
+      return;
+    }
+    handleClick();
+  }, [complexQueryVersion]);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const toggleModal = () => setIsModalOpen(prev => !prev);
 
@@ -570,15 +592,11 @@ export function BusinessFooter() {
       });
 
       if (viewExistsResponse.status !== 200) {
-        setToast({ show: true, message: "Error checking if view exists", type: "error" });
-        setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-        return null;
+        return { success: false, error: "Error checking if view exists" };
       }
       const viewExists = await viewExistsResponse.json();
       if (viewExists["result"]) {
-        setToast({ show: true, message: "View already exists", type: "error" });
-        setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-        return null;
+        return { success: false, error: "View already exists" };
       }
     }
 
@@ -596,7 +614,7 @@ export function BusinessFooter() {
       extra_info: {
         queryType: modalState.queryType,
         view_name: finalPayload.view_name,
-        isMateralizedView: finalPayload.isMateralizedView ?? false,
+        isMaterializedView: finalPayload.isMaterializedView ?? false,
         isCaching: finalPayload.isCaching ?? false,
         ...(finalPayload.complex_query !== undefined && { complex_query: finalPayload.complex_query }),
         ...(finalPayload.grace_period !== undefined && { grace_period: finalPayload.grace_period }),
@@ -620,29 +638,33 @@ export function BusinessFooter() {
 
     const endpoint = isEditMode ? `${hostnameV2}/edit-view` : `${hostnameV2}/save-view`;
 
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(newPayload),
-    });
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(newPayload),
+      });
 
-    const data = await response.json();
-
-    if (response.ok) {
-      setToast({ show: true, message: isEditMode ? "View Edited Successfully." : "View Saved Successfully.", type: "success" });
-      if (isEditMode) {
-        clearEditMode();
+      if (response.ok) {
+        setToast({ show: true, message: isEditMode ? "View Edited Successfully." : "View Saved Successfully.", type: "success" });
+        if (isEditMode) {
+          clearEditMode();
+        }
+        setTimeout(() => { setToast({ show: false, message: "", type: "" }); navigate("/federation"); }, 3000);
+        return { success: true };
+      } else {
+        const data = await response.json().catch(() => null);
+        const errText = data?.detail || (isEditMode ? "Error while editing view.." : "Error while saving view..");
+        return { success: false, error: errText };
       }
-      setTimeout(() => { setToast({ show: false, message: "", type: "" }); navigate("/federation"); }, 3000);
-    } else {
-      setToast({ show: true, message: isEditMode ? "Error while editing view.." : "Error while saving view..", type: "error" });
-      setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+    } catch (err) {
+      return { success: false, error: errText.message || "An unexpected error occurred" };
     }
   };
 
   return (
     <>
-      {preview && (
+      {preview && !hideBusinessPreview && (
         <>
           <div className="text-black mt-2 mb-2 ml-2 font-semibold">Output Preview</div>
           <div className="bg-white shadow overflow-hidden h-[32%] z-50 flex flex-col">

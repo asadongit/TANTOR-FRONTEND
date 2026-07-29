@@ -32,10 +32,22 @@ const getId = () => `node_${id++}`;
 export default function Source() {
   const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
   const { data: policyIds } = useFederationPolicyIds();
-  const modalState = useLocation().state || {
-    queryType: "Regular",
-    viewType: "Source",
-  };
+  const locationState = useLocation().state;
+  const resolvedQueryType = (() => {
+    if (locationState?.queryType) return locationState.queryType;
+    const editPayloadStr = sessionStorage.getItem("editOriginalPayload");
+    if (editPayloadStr) {
+      try {
+        const p = JSON.parse(editPayloadStr);
+        const cq = p?.extra_info?.complex_query ?? p?.complex_query;
+        if (cq) return "Complex";
+      } catch (_) {}
+    }
+    const createQueryType = sessionStorage.getItem("createQueryType");
+    if (createQueryType) return createQueryType;
+    return "Regular";
+  })();
+  const modalState = { ...(locationState || {}), queryType: resolvedQueryType };
   const { userSelections, setUserSelections, nodes, setNodes, onNodesChange, edges, setEdges, onEdgesChange, isEditMode, editViewName, clearEditMode } = useStateContext();
   const navigate = useNavigate();
   const [userSelection, setUserSelection] = useState({});
@@ -43,6 +55,13 @@ export default function Source() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showQueryEditor, setShowQueryEditor] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+
+  const handleSetShowQueryEditor = (value) => {
+    setShowQueryEditor(value);
+    if (value) {
+      setShowPreview(false);
+    }
+  };
   const [previewData, setPreviewData] = useState([]);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filterModalColumns, setFilterModalColumns] = useState([]);
@@ -277,7 +296,11 @@ export default function Source() {
     ]);
     if (modalState.queryType === "Regular") return setIsFilterModalOpen(true);
 
-    fetchPreviewData(apiPayload, null);
+    const complexQuery = userSelections.get("complex_query");
+    const enrichedPayload = complexQuery
+      ? { ...apiPayload, complex_query: complexQuery }
+      : apiPayload;
+    fetchPreviewData(enrichedPayload, null);
   };
 
   const fetchPreviewData = async (payload = null, filterData = null) => {
@@ -403,15 +426,7 @@ export default function Source() {
     let apiPayload = { ...userSelections.get("apiPayload") };
 
     if (!apiPayload) {
-      setToast({
-        show: true,
-        message: "No API payload available",
-        type: "error",
-      });
-      setTimeout(() => {
-        setToast({ show: false, message: "", type: "" });
-      }, 3000);
-      return null;
+      return { success: false, error: "No API payload available" };
     }
 
     apiPayload.view_name = newViewName.toLowerCase();
@@ -439,29 +454,13 @@ export default function Source() {
         );
 
         if (!viewExistsResponse.ok) {
-          setToast({
-            show: true,
-            message: "Error checking if view exists",
-            type: "error",
-          });
-          setTimeout(() => {
-            setToast({ show: false, message: "", type: "" });
-          }, 3000);
-          return null;
+          return { success: false, error: "Error checking if view exists" };
         }
 
         const viewExists = await viewExistsResponse.json();
 
         if (viewExists.result) {
-          setToast({
-            show: true,
-            message: "View already exists",
-            type: "error",
-          });
-          setTimeout(() => {
-            setToast({ show: false, message: "", type: "" });
-          }, 3000);
-          return null;
+          return { success: false, error: "View already exists" };
         }
       }
 
@@ -478,7 +477,7 @@ export default function Source() {
           queryType: modalState.queryType,
           viewType: apiPayload.view_type,
           view_name: apiPayload.view_name,
-          isMateralizedView: apiPayload.isMateralizedView ?? false,
+          isMaterializedView: apiPayload.isMaterializedView ?? false,
           isCaching: apiPayload.isCaching ?? false,
           ...(apiPayload.complex_query !== undefined && { complex_query: apiPayload.complex_query }),
           ...(apiPayload.grace_period !== undefined && { grace_period: apiPayload.grace_period }),
@@ -510,15 +509,9 @@ export default function Source() {
       });
 
       if (!response.ok) {
-        setToast({
-          show: true,
-          message: isEditMode ? "Error while editing view.." : "Error while saving view..",
-          type: "error",
-        });
-        setTimeout(() => {
-          setToast({ show: false, message: "", type: "" });
-        }, 3000);
-        return null;
+        const errData = await response.json().catch(() => null);
+        const errText = errData?.detail || (isEditMode ? "Error while editing view.." : "Error while saving view..");
+        return { success: false, error: errText };
       }
 
       const data = await response.json();
@@ -537,18 +530,10 @@ export default function Source() {
         navigate("/federation");
       }, 3000);
 
-      return data;
+      return { success: true, data };
     } catch (error) {
       console.error("Error saving view:", error);
-      setToast({
-        show: true,
-        message: "Failed to save view",
-        type: "error",
-      });
-      setTimeout(() => {
-        setToast({ show: false, message: "", type: "" });
-      }, 3000);
-      return null;
+      return { success: false, error: error.message || "Failed to save view" };
     }
   };
 
@@ -576,7 +561,7 @@ export default function Source() {
               handleOk,
               deleteNode: (id) => setNodes((nds) => nds.filter((node) => node.id !== id)),
               handleColumnSetting,
-              setShowQueryEditor,
+              setShowQueryEditor: handleSetShowQueryEditor,
               queryType: modalState.queryType,
               setToast
             }
@@ -622,9 +607,9 @@ export default function Source() {
           deleteNode: (id) =>
             setNodes((nds) => nds.filter((node) => node.id !== id)),
           handleColumnSetting,
-          setShowQueryEditor,
+          setShowQueryEditor: handleSetShowQueryEditor,
           queryType: modalState.queryType,
-          setToast, // Updated to pass setToast instead of toast
+          setToast,
         },
       };
       setNodes((nds) => nds.concat(newNode));
@@ -732,7 +717,18 @@ export default function Source() {
         />
       )}
       {showQueryEditor && (
-        <ComplexQueryEditor setShowQueryEditor={setShowQueryEditor} />
+        <ComplexQueryEditor
+          setShowQueryEditor={handleSetShowQueryEditor}
+          onQuerySave={(savedQuery) => {
+            const currentPayload = userSelections.get("apiPayload");
+            if (currentPayload) {
+              const refreshPayload = savedQuery
+                ? { ...currentPayload, complex_query: savedQuery }
+                : (() => { const p = { ...currentPayload }; delete p.complex_query; return p; })();
+              fetchPreviewData(refreshPayload, null);
+            }
+          }}
+        />
       )}
       {isFilterModalOpen && (
         <FilterComponent

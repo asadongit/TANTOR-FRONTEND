@@ -29,6 +29,7 @@ import Breadcrumb from "../../../../components/Breadcrumb";
 import CardGrid from "../../../../components/CardGrid";
 import DataTable from "../../../../components/DataTable";
 import { useFederationDashboardData, useFederationPolicyIds } from "../../../../hooks/platform/federation";
+import { usePersonaStatuses } from "../../../../hooks/dataGovernance/Users/auth";
 
 const FederationDashBoard = () => {
   const navigate = useNavigate();
@@ -48,8 +49,11 @@ const FederationDashBoard = () => {
   };
 
   const { token, decodedToken, hostnameV1 } = useAuth();
+  const { personaStatuses } = usePersonaStatuses();
   const ExternalAPI = window._env_?.VITE_EXTERNAL_API;
   const KongAPI = window._env_?.VITE_KONG_API;
+
+  const isViewManager = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'persona:view manager') && personaStatuses?.['persona:view manager'] === true;
 
   const [isApiModalOpen, setIsApiModalOpen] = useState(false);
   const [apiModalData, setApiModalData] = useState({
@@ -73,7 +77,7 @@ const FederationDashBoard = () => {
     viewData: null
   });
 
-  const { isFetching: isFetchingPolicies, refetch: fetchPolicyIds } = useFederationPolicyIds();
+  const { isFetching: isFetchingPolicies, isLoading: isLoadingPolicies, refetch: fetchPolicyIds } = useFederationPolicyIds();
   const { data: dashboardDataRaw, isLoading, isFetching, refetch: fetchDashboardData } = useFederationDashboardData();
 
   const dashboardData = dashboardDataRaw || {
@@ -84,8 +88,8 @@ const FederationDashBoard = () => {
     views_details: []
   };
 
-  const isCardsLoading = isLoading || isFetching;
-  const isTableLoading = isLoading || isFetching;
+  const isCardsLoading = isLoading || isFetching || isFetchingPolicies || isLoadingPolicies;
+  const isTableLoading = isLoading || isFetching || isFetchingPolicies || isLoadingPolicies;
   const [resetSortTrigger, setResetSortTrigger] = useState(0);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -222,7 +226,7 @@ const FederationDashBoard = () => {
       try {
         const username = decodedToken?.preferred_username || "sanitycheck";
         const keyResponse = await fetch(
-          `${KongAPI}/consumers/${username}/key-auth`,
+          `${hostnameV1}/kong/key-auth/${username}`,
           { method: "GET" }
         );
         if (keyResponse.ok) {
@@ -258,6 +262,14 @@ const FederationDashBoard = () => {
       return;
     }
 
+    if (row.type === "Custom View") {
+      sessionStorage.setItem("editMode", "true");
+      sessionStorage.setItem("editViewName", row.view_name);
+      sessionStorage.setItem("editOriginalPayload", JSON.stringify(row));
+      navigate("/editor");
+      return;
+    }
+
     const viewName = row.view_name;
     const toastId = toast.loading("Loading view data...");
     try {
@@ -268,22 +280,22 @@ const FederationDashBoard = () => {
           Authorization: `Bearer ${token}`
         }
       });
-      
+
       if (response.ok) {
         const data = await response.json();
-        
+
         sessionStorage.setItem("editMode", "true");
         sessionStorage.setItem("editViewName", viewName);
         sessionStorage.setItem("editOriginalPayload", JSON.stringify(data));
-        
+
         if (data.extra_info?.edit_flow) {
           sessionStorage.setItem("editFlowData", JSON.stringify(data.extra_info.edit_flow));
         }
 
         toast.success("View data loaded", { id: toastId });
-        
+
         const queryType = data?.extra_info?.queryType || (data.complex_query ? "Complex" : "Regular");
-        
+
         if (data.view_type === "Base") {
           navigate("/federation/view/source", { state: { viewType: data.view_type, queryType: queryType } });
         } else {
@@ -296,7 +308,7 @@ const FederationDashBoard = () => {
       console.error("Error loading view details:", error);
       toast.error("An error occurred while fetching view data", { id: toastId });
     }
-  };
+};
 
   useEffect(() => {
     // Initial fetch is handled automatically by useFederationDashboardData hook
@@ -348,10 +360,22 @@ const FederationDashBoard = () => {
       render: (row) => row.status === 'refreshing' ? '-' : (row.expiry_time_left || '-')
     },
     {
+      label: "Created By",
+      key: "created_by",
+      sortable: true,
+      render: (row) => row.created_by || "-"
+    },
+    {
       label: "Created At",
       key: "created_at",
       sortable: true,
       render: (row) => formatDate(row.created_at)
+    },
+    {
+      label: "Updated At",
+      key: "updated_at",
+      sortable: true,
+      render: (row) => formatDate(row.updated_at)
     },
     { label: "Action", sortable: false }
   ];
@@ -365,17 +389,19 @@ const FederationDashBoard = () => {
     {
       label: "Refresh MV",
       icon: <RotateCw size={16} />,
-      show: (row) => row.materalized,
+      show: (row) => row.materalized && isViewManager,
       onClick: (row) => handleRefreshMV(row.view_name)
     },
     {
       label: "Delete",
       icon: <Trash2 size={16} />,
+      show: (row) => row.materalized ? isViewManager : true,
       onClick: (row) => handleDeleteView(row)
     },
     {
       label: "Edit",
       icon: <Pencil size={16} />,
+      show: (row) => row.materalized ? isViewManager : true,
       onClick: (row) => handleEditView(row)
     }
   ];
@@ -384,7 +410,7 @@ const FederationDashBoard = () => {
     { icon: "lucide:layout-dashboard", bgcolor: "bg-[#d8d3e4] bg-opacity-25", iconcolor: "text-purple-700", title: "Total Views", count: dashboardData.total_view || 0 },
     { icon: "lucide:database", bgcolor: "bg-[#96CF7B] bg-opacity-25", iconcolor: "text-green-700", title: "Base Views", count: dashboardData.base_view || 0 },
     { icon: "lucide:briefcase", bgcolor: "bg-[#FFC93F] bg-opacity-25", iconcolor: "text-orange-700", title: "Business Views", count: dashboardData.business_view || 0 },
-    { icon: "lucide:layers", bgcolor: "bg-[#16ABC2] bg-opacity-25", iconcolor: "text-cyan-700", title: "Materialized Views", count: dashboardData.materalized_view || 0 }
+    { icon: "lucide:layers", bgcolor: "bg-[#16ABC2] bg-opacity-25", iconcolor: "text-cyan-700", title: "Custom Views", count: dashboardData.custom_view || 0 }
   ];
 
   const handleCardClick = () => {};
@@ -491,7 +517,12 @@ const FederationDashBoard = () => {
 
             <button
               type="button"
-              onClick={() => navigate('/editor')}
+              onClick={() => {
+                sessionStorage.removeItem('editMode');
+                sessionStorage.removeItem('editViewName');
+                sessionStorage.removeItem('editOriginalPayload');
+                navigate('/editor');
+              }}
               className="h-10 text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-4 flex items-center justify-center dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
             >
               <Code className="h-5 w-5 mr-2" />
@@ -522,15 +553,18 @@ const FederationDashBoard = () => {
 
         <DataTable
           columns={columns}
-          data={
-            searchTerm.trim()
-              ? dashboardData.views_details?.filter(row =>
-                  Object.values(row).some(value =>
-                    String(value).toLowerCase().includes(searchTerm.toLowerCase())
-                  )
-                ) || []
-              : dashboardData.views_details || []
-          }
+          data={(() => {
+            const views = dashboardData.views_details || [];
+            const sortedViews = [...views].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            if (searchTerm.trim()) {
+              return sortedViews.filter(row =>
+                Object.values(row).some(value =>
+                  String(value).toLowerCase().includes(searchTerm.toLowerCase())
+                )
+              );
+            }
+            return sortedViews;
+          })()}
           actions={actions}
           isLoading={isTableLoading}
           refetch={fetchDashboardData}
