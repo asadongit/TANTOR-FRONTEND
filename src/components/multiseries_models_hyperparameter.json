@@ -194,5 +194,61 @@
       "n_heads": { "low": "1", "high": "16" },
       "modes": { "low": "8", "high": "128" }
     }
+  },
+
+  "GRU": {
+    "category": "Deep Learning",
+    "backend_key": "GRU",
+    "info": "Gated Recurrent Unit network, a recurrent architecture similar to LSTM but with fewer gates, offering efficient modeling of sequential dependencies at reduced computational cost.",
+    "hyperparameters": {
+      "units": { "low": "32", "high": "512" },
+      "layers": { "low": "1", "high": "5" },
+      "dropout": { "low": "0.0", "high": "0.5" }
+    }
+  },
+
+  "N-BEATS": {
+    "category": "Deep Learning",
+    "backend_key": "NBeats",
+    "info": "Neural Basis Expansion Analysis for Time Series stacks fully connected layers with backward and forward residual links to model trend and seasonality without domain-specific components.",
+    "hyperparameters": {
+      "num_stacks": { "low": "1", "high": "5" },
+      "num_blocks": { "low": "1", "high": "5" },
+      "num_layers": { "low": "2", "high": "6" }
+    }
+  },
+
+  "N-HiTS": {
+    "category": "Deep Learning",
+    "backend_key": "NHiTS",
+    "info": "Neural Hierarchical Interpolation for Time Series decomposes the forecast across hierarchical stacks with multi-rate sampling, improving long-horizon accuracy and efficiency.",
+    "hyperparameters": {
+      "num_stacks": { "low": "1", "high": "5" },
+      "num_blocks": { "low": "1", "high": "5" },
+      "pooling_kernel_size": { "low": "2", "high": "16" }
+    }
+  },
+
+  "TiDE": {
+    "category": "Deep Learning",
+    "backend_key": "TiDE",
+    "info": "Time-series Dense Encoder-decoder architecture that uses stacked residual MLP blocks with dense encoding of covariates for efficient long-horizon forecasting.",
+    "hyperparameters": {
+      "hidden_size": { "low": "32", "high": "512" },
+      "num_encoder_layers": { "low": "1", "high": "6" },
+      "num_decoder_layers": { "low": "1", "high": "6" },
+      "dropout": { "low": "0.0", "high": "0.5" }
+    }
+  },
+
+  "TSMixer": {
+    "category": "Deep Learning",
+    "backend_key": "TSMixer",
+    "info": "All-MLP architecture that alternates time-mixing and feature-mixing layers to capture temporal and cross-variate dependencies without attention or recurrence.",
+    "hyperparameters": {
+      "hidden_size": { "low": "32", "high": "512" },
+      "num_blocks": { "low": "1", "high": "8" },
+      "dropout": { "low": "0.0", "high": "0.5" }
+    }
   }
 }
