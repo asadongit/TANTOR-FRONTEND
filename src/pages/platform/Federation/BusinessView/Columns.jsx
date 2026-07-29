@@ -313,7 +313,7 @@ export function Columns({ id, columnName, dataType, toggleModal, selectedColumns
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm text-gray-600 mb-1">Alias</label>
+                      <label className="block text-sm text-gray-600 mb-1">Alias <span className="text-red-500">*</span></label>
                       <input
                         type="text"
                         name="alias"
@@ -378,12 +378,12 @@ export function Columns({ id, columnName, dataType, toggleModal, selectedColumns
 
           {(() => {
             const validConfigs = configs.filter((c, i) => i > 0 || c.aggregate || c.alias || c.order || c.sort || c.aggregateDistinct === "Yes" || c.showOutputConfig);
-            const hasEmptyAggregate = validConfigs.some((config) => !config.aggregate);
+            const hasEmptyAggregate = validConfigs.some((config) => !config.aggregate || !config.alias?.trim());
             const isMaxConfigs = validConfigs.length >= 5;
             const isAddDisabled = isMaxConfigs || hasEmptyAggregate;
             let buttonText = "Add Configuration";
             if (isMaxConfigs) buttonText = "All Aggregates Used";
-            else if (hasEmptyAggregate) buttonText = "Select Aggregate First";
+            else if (hasEmptyAggregate) buttonText = "Complete Config First";
 
             return (
               <button
@@ -411,7 +411,7 @@ export function Columns({ id, columnName, dataType, toggleModal, selectedColumns
             </button>
             {(() => {
               const validConfigs = configs.filter((c, i) => i > 0 || c.aggregate || c.alias || c.order || c.sort || c.aggregateDistinct === "Yes" || c.showOutputConfig);
-              const isSaveDisabled = validConfigs.some((c) => !c.aggregate);
+              const isSaveDisabled = validConfigs.some((c) => !c.aggregate || !c.alias?.trim());
               return (
                 <button
                   className={`flex-1 py-1.5 px-3 rounded-lg transition-colors ${isSaveDisabled
@@ -420,7 +420,7 @@ export function Columns({ id, columnName, dataType, toggleModal, selectedColumns
                     }`}
                   onClick={handleSave}
                   disabled={isSaveDisabled}
-                  title={isSaveDisabled ? "Please select an aggregate for all configurations" : ""}
+                  title={isSaveDisabled ? "Please provide an aggregate and alias for all configurations" : ""}
                 >
                   Save Changes
                 </button>
