@@ -1031,7 +1031,8 @@ const SelectColumnsMultivariate = ({
 
   const getAvailableColumns = () => {
     const dropColumns = config.drop_columns || [];
-    const excludeColumns = [config.targetFeature, config.timeColumn, ...dropColumns];
+    const entityColumns = config.entity_cols || [];
+    const excludeColumns = [config.targetFeature, config.timeColumn, ...dropColumns, ...entityColumns];
     return columnNames.filter(name => !excludeColumns.includes(name));
   };
 

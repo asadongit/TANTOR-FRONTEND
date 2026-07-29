@@ -135,7 +135,7 @@ function ModelSelection() {
     const classificationType = modelGenesisConfig?.modelling_type || modelGenesisConfig?.classification;
     // Multiseries forecasting (multivariate_multiseries / univariate_multiseries) targets a
     // continuous value, so it has its own algorithm/hyperparameter set (multiseriesAlgorithmsData)
-    // but still reuses the regression metrics throughout this page (isRegression stays true below).
+    // but shares the timeseries metrics (isTimeSeries includes isMultiseries below).
     const isMultiseries = String(classificationType || '').trim().toLowerCase() === 'multivariate_multiseries' ||
         String(classificationType || '').trim().toLowerCase() === 'univariate_multiseries';
     const isRegression = String(classificationType || '').trim().toLowerCase() === 'regression' || isMultiseries;
@@ -147,7 +147,8 @@ function ModelSelection() {
     String(predictionType).trim().toLowerCase() === 'time series' ||
     String(predictionType).trim().toLowerCase() === 'timeseries' ||
     String(predictionType).trim().toLowerCase() === 'univariate_timeseries' ||
-    String(predictionType).trim().toLowerCase() === 'multivariate_timeseries';
+    String(predictionType).trim().toLowerCase() === 'multivariate_timeseries' ||
+    isMultiseries;
 
     // Forecast horizon is selected during Genesis; reuse it here rather than re-collecting it.
     const forecastHorizon = modelGenesisConfig?.timeSeriesLookback ?? '';
@@ -1019,7 +1020,7 @@ const defaultPerformanceMetrics = isTimeSeries
                     disabled={isInteractionLocked}
                     hasEnabledMetrics={hasEnabledMetrics}
                     showValidation={showValidation}
-                    metricFullFormMap={isRegression ? REGRESSION_METRIC_FULL_FORM : {}}
+                    metricFullFormMap={isTimeSeries ? {} : (isRegression ? REGRESSION_METRIC_FULL_FORM : {})}
                 />
             </div>
         </AIPlaygroundLayout>
