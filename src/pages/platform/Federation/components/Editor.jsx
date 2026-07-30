@@ -495,7 +495,6 @@ export default function Editor() {
   const [editViewName, setEditViewName] = useState("");
   const [editOriginalPayload, setEditOriginalPayload] = useState(null);
 
-  
   const downloadMenuRef = useRef(null);
   const ExternalAPI = window._env_?.VITE_EXTERNAL_API;
 
