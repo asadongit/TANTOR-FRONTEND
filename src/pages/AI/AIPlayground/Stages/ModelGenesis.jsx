@@ -534,7 +534,7 @@ const ModeSelection = ({ config, setConfig, readonly, onNotebookModeSelect }) =>
   );
 };
 
-const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, columnNames, tsColumnNames, entityColumnNames, hasError, errorMessage, sectionRef, activeWorkflowId, isValidating, setIsValidating, isTimeSeriesValidated, setIsTimeSeriesValidated, validationError, supervisedTargetFeatureError, timeSeriesTargetFeatureError, timeSeriesTimeColumnError, setValidationErrors }) => {
+const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, columnNames, tsColumnNames, entityColumnNames, hasError, errorMessage, sectionRef, activeWorkflowId, isValidating, setIsValidating, isTimeSeriesValidated, setIsTimeSeriesValidated, validationError, supervisedTargetFeatureError, timeSeriesTargetFeatureError, timeSeriesTimeColumnError, timeSeriesFrequencyError, setValidationErrors }) => {
   const hostnameAI = window._env_?.VITE_AI_API;
   const { datasetState } = useAIPlayground();
   // frequency modal state for validation in timeseries
@@ -596,6 +596,8 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
   if (result?.frequency_match === false) {
     setFrequencyValidationData(result);
     setShowFrequencyModal(true);
+  } else if (result?.status === 'error' && result?.message) {
+    setValidationErrors(prev => ({ ...prev, timeSeriesFrequency: result.message }));
   }
 };
 
@@ -919,12 +921,18 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
                       ...config,
                       frequency: newFrequency
                     });
+                    if (newFrequency) {
+                      setValidationErrors(prev => ({ ...prev, timeSeriesFrequency: undefined }));
+                    }
                   }}
                   options={['daily', 'weekly', 'monthly']}
                   placeholder="Select frequency..."
                   disabled={readonly}
                   readonly={readonly}
                 />
+                {timeSeriesFrequencyError && (
+                  <p className="mt-1 text-sm text-[#EF4D5F]">Data frequency mismatch. Please select the correct period.</p>
+                )}
               </div>
               )}
 
@@ -2205,6 +2213,7 @@ if (
             supervisedTargetFeatureError={validationErrors.supervisedTargetFeature}
             timeSeriesTargetFeatureError={validationErrors.timeSeriesTargetFeature}
             timeSeriesTimeColumnError={validationErrors.timeSeriesTimeColumn}
+            timeSeriesFrequencyError={validationErrors.timeSeriesFrequency}
             sectionRef={predictionTypeRef}
             activeWorkflowId={activeWorkflowId}
             isValidating={isValidating}
