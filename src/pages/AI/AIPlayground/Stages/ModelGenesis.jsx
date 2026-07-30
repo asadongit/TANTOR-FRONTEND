@@ -830,13 +830,6 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
                     name="timeseries-type"
                     readonly={readonly}
                   />
-                  <RadioButton
-                    label="Univariate Multiseries"
-                    checked={config.timeSeriesType === 'Univariate Multiseries'}
-                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Univariate Multiseries', multivariate_columns: [], entity_cols: [], frequency: '' })}
-                    name="timeseries-type"
-                    readonly={readonly}
-                  />
                 </div>
               </div>
 
@@ -1256,7 +1249,7 @@ const SplitSetting = ({ config, setConfig, readonly, hasError = false, errorMess
     if (readonly) return;
     if (
       config.predictionType === 'Time Series' &&
-      ['Univariate', 'Multivariate'].includes(config.timeSeriesType) &&
+      ['Univariate', 'Multivariate', 'Multivariate Multiseries', 'Univariate Multiseries'].includes(config.timeSeriesType) &&
       seriesLookbackMax === 2 &&
       config.lookback !== 2
     ) {
@@ -1318,7 +1311,7 @@ const SplitSetting = ({ config, setConfig, readonly, hasError = false, errorMess
           </div>
         </Section>
 
-        {['Univariate', 'Multivariate'].includes(config.timeSeriesType) && (
+        {['Univariate', 'Multivariate', 'Multivariate Multiseries', 'Univariate Multiseries'].includes(config.timeSeriesType) && (
           <Section title="Lookback" className="!bg-[#FAFAFA] p-4 rounded-lg">
             <div
               ref={sectionRef}
@@ -1978,7 +1971,7 @@ function ModelGenesis() {
 
     if (
     config.predictionType === 'Time Series' &&
-    ['Univariate', 'Multivariate'].includes(config.timeSeriesType) &&
+    ['Univariate', 'Multivariate', 'Multivariate Multiseries', 'Univariate Multiseries'].includes(config.timeSeriesType) &&
     isTimeSeriesValidated &&
     (config.lookback === undefined || config.lookback === null)
   ) {
@@ -2054,7 +2047,7 @@ function ModelGenesis() {
         time_column: config.predictionType === 'Time Series' ? config.timeColumn : null,
         frequency: config.predictionType === 'Time Series' ? config.frequency || null : null,
         timeseries_split: config.predictionType === 'Time Series' ? config.timeSeriesLookback : null,
-        lookback: config.predictionType === 'Time Series' && ['Univariate', 'Multivariate'].includes(config.timeSeriesType) ? config.lookback : null,
+        lookback: config.predictionType === 'Time Series' && ['Univariate', 'Multivariate', 'Multivariate Multiseries', 'Univariate Multiseries'].includes(config.timeSeriesType) ? config.lookback : null,
         selected_columns: config.predictionType === 'Time Series' && ['Multivariate', 'Multivariate Multiseries'].includes(config.timeSeriesType) ? (config.multivariate_columns || []) : [],
         entity_cols: config.predictionType === 'Time Series' && ['Multivariate Multiseries', 'Univariate Multiseries'].includes(config.timeSeriesType) ? (config.entity_cols || []) : [],
         fairness_columns: config.fairness_columns,

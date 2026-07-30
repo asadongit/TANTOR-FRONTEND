@@ -5,7 +5,9 @@ import {
     isRangeParameter,
     validateHyperparameterValue,
     validateMinPeriodsAgainstWindow,
-    validateDModelAgainstHeads
+    validateDModelAgainstHeads,
+    validateHiddenSizeAgainstHeads,
+    getEffectiveParamConfig
 } from './validationUtils';
 import { tw } from '../../../../../components/themeContext';
 
@@ -230,7 +232,7 @@ function GridSearchDropdown({ algo, paramName, options, readonly, disabled, onUp
     );
 }
 
-function AlgorithmCard({ algo, readonly, disabled, onToggle, onExpand, onUpdate, showValidation, onResetValidation, cardRef }) {
+function AlgorithmCard({ algo, readonly, disabled, onToggle, onExpand, onUpdate, showValidation, onResetValidation, cardRef, lookback }) {
     const handleConfigModeChange = (mode) => {
         if (readonly || disabled) return;
 
@@ -278,9 +280,10 @@ function AlgorithmCard({ algo, readonly, disabled, onToggle, onExpand, onUpdate,
 
     const handleHyperparameterBlur = (paramName, paramValue, currentValue) => {
         const newErrors = { ...algo.errors };
+        const effectiveParamValue = getEffectiveParamConfig(paramName, paramValue, lookback);
 
         if (currentValue && currentValue.trim() !== '') {
-            const validationResult = validateHyperparameterValue(paramName, paramValue, currentValue);
+            const validationResult = validateHyperparameterValue(paramName, effectiveParamValue, currentValue);
             if (validationResult !== true) {
                 newErrors[paramName] = validationResult;
             }
@@ -309,6 +312,19 @@ function AlgorithmCard({ algo, readonly, disabled, onToggle, onExpand, onUpdate,
                 newErrors.d_model = headsResult;
             } else if (!newErrors.d_model || newErrors.d_model === algo.hyperparameters?.d_model?.warning) {
                 delete newErrors.d_model;
+            }
+        }
+
+        if (paramName === 'hidden_size' || paramName === 'num_attention_heads') {
+            const headsResult = validateHiddenSizeAgainstHeads(algo.hyperparameters, {
+                ...algo.hyperparameterValues,
+                [paramName]: currentValue
+            });
+
+            if (headsResult !== true) {
+                newErrors.hidden_size = headsResult;
+            } else if (!newErrors.hidden_size || newErrors.hidden_size === algo.hyperparameters?.hidden_size?.warning) {
+                delete newErrors.hidden_size;
             }
         }
 
@@ -641,11 +657,12 @@ function AlgorithmCard({ algo, readonly, disabled, onToggle, onExpand, onUpdate,
                 </div>
             );
         } else if (isRangeParameter(paramValue)) {
-            const specialText = paramValue.special
-                ? Array.isArray(paramValue.special)
-                    ? paramValue.special.join(', ')
-                    : paramValue.special
-                : '';     
+            const effectiveParamValue = getEffectiveParamConfig(paramName, paramValue, lookback);
+            const specialText = effectiveParamValue.special
+                ? Array.isArray(effectiveParamValue.special)
+                    ? effectiveParamValue.special.join(', ')
+                    : effectiveParamValue.special
+                : '';
 
             return (
                 <div key={paramName}>
@@ -676,7 +693,7 @@ function AlgorithmCard({ algo, readonly, disabled, onToggle, onExpand, onUpdate,
                         value={algo.hyperparameterValues[paramName] || ''}
                         onChange={(e) => handleHyperparameterChange(paramName, paramValue, e.target.value)}
                         onBlur={(e) => handleHyperparameterBlur(paramName, paramValue, e.target.value)}
-                        placeholder={`${paramValue.low} - ${paramValue.high}${specialText ? ` or ${specialText}` : ''}`}
+                        placeholder={`${effectiveParamValue.low} - ${effectiveParamValue.high}${specialText ? ` or ${specialText}` : ''}`}
                         className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-0 focus:border-[#8e78b7] ${showError
                             ? 'border-[#EF4D5F] bg-[#FFF7F8] placeholder-[#EF4D5F]'
                             : 'border-gray-300'
@@ -689,7 +706,7 @@ function AlgorithmCard({ algo, readonly, disabled, onToggle, onExpand, onUpdate,
                         <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">{hasError}</p>
                     ) : !isEmpty && (
                         <p className="text-xs text-gray-500 mt-1">
-                            Range: {paramValue.low} to {paramValue.high}
+                            Range: {effectiveParamValue.low} to {effectiveParamValue.high}
                             {specialText && ` (or ${specialText})`}
                         </p>
                     )}
