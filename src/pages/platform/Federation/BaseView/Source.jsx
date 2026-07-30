@@ -5,6 +5,7 @@ import {
   Background,
   ReactFlow,
   Panel,
+  MiniMap,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { LayoutDashboard, X } from "lucide-react";
@@ -690,6 +691,7 @@ export default function Source() {
           >
             <Controls />
             <Background variant="solid" className="bg-[#F3F5F7]" />
+            <MiniMap />
             <Panel position="top-left">
               <SourceSidebar setUserSelection={setUserSelection} />
             </Panel>

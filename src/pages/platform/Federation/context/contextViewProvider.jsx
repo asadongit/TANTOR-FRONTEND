@@ -44,6 +44,7 @@ export const ContextViewProvider = ({ children }) => {
   }, []);
 
   const [hideBusinessPreview, setHideBusinessPreview] = useState(false);
+  const [reactFlowInstance, setReactFlowInstance] = useState(null);
 
   const [isEditMode, setIsEditMode] = useState(
     () => sessionStorage.getItem("editMode") === "true"
@@ -221,6 +222,8 @@ export const ContextViewProvider = ({ children }) => {
         notifyComplexQuerySaved,
         hideBusinessPreview,
         setHideBusinessPreview,
+        reactFlowInstance,
+        setReactFlowInstance,
       }}
     >
       {children}

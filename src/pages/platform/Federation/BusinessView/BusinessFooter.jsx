@@ -12,7 +12,7 @@ import { useFederationPolicyIds } from "../../../../hooks/platform/federation";
 
 export function BusinessFooter() {
   const navigate = useNavigate();
-  const { finalPayload, handleFinalPayload, connectionPayload, viewPayload, columnSettings, consolidationPayload, nodeCount, nodes, edges, isEditMode, editViewName, clearEditMode, complexQueryVersion, hideBusinessPreview, setHideBusinessPreview } = useStateContext("");
+  const { finalPayload, handleFinalPayload, connectionPayload, viewPayload, columnSettings, consolidationPayload, nodeCount, nodes, edges, isEditMode, editViewName, clearEditMode, complexQueryVersion, hideBusinessPreview, setHideBusinessPreview, reactFlowInstance } = useStateContext("");
     const { data: policyIds } = useFederationPolicyIds();
   const [preview, setPreview] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -622,6 +622,7 @@ export function BusinessFooter() {
         edit_flow: {
           nodes: cleanNodes,
           edges: edges || [],
+          viewport: reactFlowInstance ? reactFlowInstance.getViewport() : { x: 0, y: 0, zoom: 1 },
           columnSettings: columnSettings || {},
           filter_data: finalPayload.filter_data || [],
           columnsDataType: finalPayload.columnsDataType || [],
