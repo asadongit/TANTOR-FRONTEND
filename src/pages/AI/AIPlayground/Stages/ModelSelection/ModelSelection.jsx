@@ -777,7 +777,7 @@ const defaultPerformanceMetrics = isTimeSeries
 
             if (enabledAlgos.length === 0 || !hasEnabledMetrics) return false;
 
-            return enabledAlgos.every(algo => validateAlgorithm(algo));
+            return enabledAlgos.every(algo => validateAlgorithm(algo, { lookback: modelGenesisConfig?.lookback }));
         };
 
     const handleNextClick = async () => {
@@ -789,7 +789,7 @@ const defaultPerformanceMetrics = isTimeSeries
     setShowValidation(true);
 
             const enabledAlgos = Object.values(allAlgorithmsState).filter(algo => algo.enabled);
-            const invalidAlgo = enabledAlgos.find(algo => !validateAlgorithm(algo));
+            const invalidAlgo = enabledAlgos.find(algo => !validateAlgorithm(algo, { lookback: modelGenesisConfig?.lookback }));
 
             if (invalidAlgo) {
                 // Switch to the tab of the first invalid algorithm
@@ -906,7 +906,7 @@ const defaultPerformanceMetrics = isTimeSeries
         return Object.values(allAlgorithmsState).some(algo =>
             algo.category === category &&
             algo.enabled &&
-            !validateAlgorithm(algo)
+            !validateAlgorithm(algo, { lookback: modelGenesisConfig?.lookback })
         );
     };
 
@@ -1005,6 +1005,7 @@ const defaultPerformanceMetrics = isTimeSeries
                                     showValidation={showValidation}
                                     onResetValidation={() => setShowValidation(false)}
                                     cardRef={(el) => { cardRefs.current[algo.id] = el; }}
+                                    lookback={modelGenesisConfig?.lookback}
                                 />
                             ))
                         )}

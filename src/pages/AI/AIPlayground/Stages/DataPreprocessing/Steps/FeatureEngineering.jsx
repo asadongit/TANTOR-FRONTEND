@@ -560,7 +560,7 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
                             : { col: op.col, window: Number(op.window), agg: op.type, new_col: computeNewCol(op) }
                     )
                     : [],
-                time_series_entity_cols: ['brand', 'category'],
+                time_series_entity_cols: entityColumns,
                 time_series_sort_col: 'date',
             };
 

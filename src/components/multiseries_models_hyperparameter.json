@@ -109,7 +109,7 @@
     "backend_key": "TFT",
     "info": "Temporal Fusion Transformer combines LSTM encoders, gating layers, and interpretable multi-head attention to model static, known, and observed inputs for multi-horizon forecasting.",
     "hyperparameters": {
-      "hidden_size": { "low": "16", "high": "256" },
+      "hidden_size": { "low": "16", "high": "256", "warning": "hidden_size must be exactly divisible by num_attention_heads." },
       "num_attention_heads": { "low": "1", "high": "8" },
       "num_lstm_layers": { "low": "1", "high": "4" },
       "dropout_rate": { "low": "0.0", "high": "0.5" }
@@ -121,7 +121,7 @@
     "backend_key": "PatchTST",
     "info": "Splits each time series into patches processed independently per channel by a Transformer encoder, improving long-horizon forecasting accuracy and efficiency.",
     "hyperparameters": {
-      "patch_len": { "low": "8", "high": "64" },
+      "patch_len": { "low": "1", "high": "64", "warning": "patch_len must be less than the lookback window." },
       "stride": { "low": "1", "high": "32" },
       "d_model": { "low": "32", "high": "512", "warning": "d_model must be exactly divisible by n_heads." },
       "n_heads": { "low": "1", "high": "16" },
