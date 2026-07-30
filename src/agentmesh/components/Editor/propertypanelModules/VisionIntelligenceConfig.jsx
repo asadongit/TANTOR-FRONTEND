@@ -209,10 +209,10 @@ export default function VisionIntelligenceConfig({
         return value >= (data.vision_quality_blur_threshold ?? 100);
       case "contrast":
         return value >= (data.vision_quality_min_contrast ?? 0.10) &&
-               value <= (data.vision_quality_max_contrast ?? 0.45);
+          value <= (data.vision_quality_max_contrast ?? 0.45);
       case "brightness":
         return value >= (data.vision_quality_min_brightness ?? 40) &&
-               value <= (data.vision_quality_max_brightness ?? 215);
+          value <= (data.vision_quality_max_brightness ?? 215);
       case "resolution":
         return value >= (data.vision_quality_min_shortest_side ?? 600);
       default:
@@ -232,10 +232,6 @@ export default function VisionIntelligenceConfig({
 
   return (
     <>
-      <InfoBanner type="info">
-        <strong>Vision Intelligence Engine</strong> unifies 1:1 InsightFace biometric verification, signature/stamp detection, and document image quality gates.
-      </InfoBanner>
-
       <Field
         label="Vision Operation Mode"
         hint="Select the active computer vision task for this node."
@@ -440,18 +436,50 @@ export default function VisionIntelligenceConfig({
 
       {/* Mode 2: Signature & Stamp Detection */}
       {currentMode === "signature_stamp_detection" && (
-        <Field
-          label="Document Image Source Key"
-          hint="Context key containing the document image to scan for stamps and signatures."
-        >
-        <Input
-              value={data.vision_id_image_key || "latest_file_path"}
-              onChange={(v) => update({ vision_id_image_key: stripBraces(v) })}
+        <>
+          <Field
+            label="Document Image / PDF Source Key"
+            hint="Context key containing document file path (image/PDF) or base64 to scan."
+          >
+            <Input
+              value={data.vision_id_image_key || data.extractor_input_key || "latest_file_path"}
+              onChange={(v) =>
+                update({
+                  vision_id_image_key: stripBraces(v),
+                  extractor_input_key: stripBraces(v),
+                })
+              }
               placeholder="latest_file_path"
             />
           </Field>
-        )
-      }
+
+          <Field
+            label="Extraction Mode / AI Engine"
+            hint="Choose between fast local CV candidate bounding boxes or Vision LLM AI text OCR analysis."
+          >
+            <Select
+              value={data.vision_enable_llm ? "llm" : "cv"}
+              onChange={(v) => update({ vision_enable_llm: v === "llm" })}
+              options={[
+                {
+                  value: "llm",
+                  label: "Vision LLM Enabled (Deep AI OCR & Analysis)",
+                },
+                {
+                  value: "cv",
+                  label: "CV-Only Detection (Fast Local Ink Bounding Boxes)",
+                },
+              ]}
+            />
+          </Field>
+
+          {data.vision_enable_llm && (
+            <div style={{ marginTop: 12, padding: 12, border: "1px solid var(--border)", borderRadius: 8, background: "var(--bg-primary)" }}>
+              <LLMConfigSection data={data} update={update} />
+            </div>
+          )}
+        </>
+      )}
 
       {/* Mode 3: Document Quality Gate */}
       {currentMode === "document_quality_gate" && (
@@ -787,12 +815,12 @@ export default function VisionIntelligenceConfig({
           hint="Context key containing the image path or base64 to inspect."
         >
           <Input
-              value={data.vision_id_image_key || "latest_file_path"}
-              onChange={(v) => update({ vision_id_image_key: stripBraces(v) })}
-              placeholder="latest_file_path"
-            />
-          </Field>
-        )}
+            value={data.vision_id_image_key || "latest_file_path"}
+            onChange={(v) => update({ vision_id_image_key: stripBraces(v) })}
+            placeholder="latest_file_path"
+          />
+        </Field>
+      )}
 
       {/* Common Output Key */}
       <Field

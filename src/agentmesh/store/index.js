@@ -127,6 +127,7 @@ const NODE_DEFAULTS = {
   vision_intelligence: {
     label: 'Vision Intelligence',
     vision_mode: 'face_verification',
+    vision_enable_llm: false,
     vision_face_match_threshold: 0.65,
     vision_quality_min_score: 0.70,
     vision_quality_blur_threshold: 100,
@@ -134,7 +135,8 @@ const NODE_DEFAULTS = {
     vision_quality_max_contrast: 0.45,
     vision_id_image_key: 'latest_file_path',
     vision_selfie_image_key: 'vcip_capture_path',
-    vision_output_key: 'vision_result'
+    vision_output_key: 'vision_result',
+    llm: { provider: 'groq', model: 'meta-llama/llama-4-scout-17b-16e-instruct', temperature: 0 }
   }
 };
 
@@ -219,6 +221,7 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
           extractor_input_key: n.extractor_input_key || n.data?.extractor_input_key || 'latest_file_path',
           extractor_output_key: n.extractor_output_key || n.data?.extractor_output_key || 'extracted_elements',
           vision_mode: n.vision_mode || n.data?.vision_mode || 'face_verification',
+          vision_enable_llm: n.vision_enable_llm ?? n.data?.vision_enable_llm ?? false,
           vision_face_match_threshold: n.vision_face_match_threshold ?? n.data?.vision_face_match_threshold ?? 0.65,
           vision_quality_min_score: n.vision_quality_min_score ?? n.data?.vision_quality_min_score ?? 0.70,
           vision_quality_blur_threshold: n.vision_quality_blur_threshold ?? n.data?.vision_quality_blur_threshold ?? 100,
@@ -1127,7 +1130,7 @@ export const useWorkflowStore = create((set, get) => ({
           // STT Configs
           'auto_start', 'auto_stop', 'silence_delay', 'stt_lang',
           // Vision Intelligence
-          'vision_mode', 'vision_face_match_threshold', 'vision_quality_min_score',
+          'vision_mode', 'vision_enable_llm', 'vision_face_match_threshold', 'vision_quality_min_score',
           'vision_quality_blur_threshold', 'vision_quality_min_contrast', 'vision_quality_max_contrast',
           'vision_id_image_key', 'vision_selfie_image_key', 'vision_output_key',
           // Multi-File Ingestion Configs
