@@ -189,6 +189,23 @@ export const connectorConfig = {
             value: "Kerberos (Secured)",
           },
         },
+        {
+          name: "extra_info.cache_enabled",
+          label: "Enable Cache",
+          type: "checkbox",
+          required: false,
+        },
+        {
+          name: "extra_info.cache_max_sizes",
+          label: "Max Cache Size (GB)",
+          type: "number",
+          required: true,
+          placeholder: "e.g. 100",
+          conditionalOn: {
+            field: "extra_info.cache_enabled",
+            value: true,
+          },
+        },
       ],
       icon: hive
     },

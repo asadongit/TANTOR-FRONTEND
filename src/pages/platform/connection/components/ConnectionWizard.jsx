@@ -150,7 +150,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       field.conditionalOn;
 
     const currentValue = condField.startsWith("extra_info.")
-      ? formData.extra_info?.[condField.split(".")[1]]
+      ? formData.extra_info?.[condField.substring(11)]
       : formData[condField];
 
     if (condValues) return condValues.includes(currentValue);
@@ -162,7 +162,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     if (!field.requiredOn) return false;
     const { field: condField, value: condValue } = field.requiredOn;
     const currentValue = condField.startsWith("extra_info.")
-      ? formData.extra_info?.[condField.split(".")[1]]
+      ? formData.extra_info?.[condField.substring(11)]
       : formData[condField];
     return currentValue === condValue;
   };
@@ -463,7 +463,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
 
         if (field) {
           if (field.type === "file") {
-            const key = name.split(".")[1];
+            const key = name.substring(11);
             const existingValue = formData.extra_info?.[key];
 
             if (
@@ -528,7 +528,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     connectorFields.forEach((field) => {
       if (field.type === "file") {
         if (isFieldRequired(field) && isFieldVisible(field)) {
-          const key = field.name.split(".")[1];
+          const key = field.name.substring(11);
           const existingValue = formData.extra_info?.[key];
           if (!fileObjects[key] && !existingValue) {
             newErrors[field.name] = `${field.label} is required`;
@@ -541,7 +541,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       if (isFieldRequired(field) && isFieldVisible(field)) {
         let value;
         if (field.name.startsWith("extra_info.")) {
-          const key = field.name.split(".")[1];
+          const key = field.name.substring(11);
           value = formData.extra_info[key];
         } else {
           value = formData[field.name];
@@ -571,7 +571,9 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const target = e.target;
+    const name = target.name;
+    const value = target.type === "checkbox" ? target.checked : target.value;
 
     setIsTestSuccessful(false);
 
@@ -581,7 +583,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     }));
 
     if (name.startsWith("extra_info.")) {
-      const key = name.split(".")[1];
+      const key = name.substring(11);
 
       setFormData((prev) => {
         const updatedExtraInfo = {
@@ -1115,8 +1117,8 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
   const renderField = (field) => {
     const fieldName = field.name;
     const fieldValue = fieldName.startsWith("extra_info.")
-      ? formData.extra_info?.[fieldName.split(".")[1]] || ""
-      : formData[fieldName] || "";
+      ? (formData.extra_info?.[fieldName.substring(11)] !== undefined ? formData.extra_info?.[fieldName.substring(11)] : "")
+      : (formData[fieldName] !== undefined ? formData[fieldName] : "");
     const hasError = touchedFields[fieldName] && errors[fieldName];
 
     const baseInputClass = `w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 ${
@@ -1127,16 +1129,22 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
 
     return (
       <div key={fieldName}>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {field.label}
-          {isFieldRequired(field) && <span className="text-red-500">*</span>}
-        </label>
+        {field.type !== "checkbox" ? (
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {field.label}
+            {isFieldRequired(field) && <span className="text-red-500">*</span>}
+          </label>
+        ) : (
+          <label className="block text-sm font-medium text-transparent mb-1 select-none" aria-hidden="true">
+            Hidden Label
+          </label>
+        )}
 
         {/* ── File field ── */}
         {field.type === "file" ? (
           <div>
             {(() => {
-              const key = fieldName.split(".")[1];
+              const key = fieldName.substring(11);
               const hasNewFile = !!fileObjects[key];
               const existingValue = formData.extra_info?.[key];
               const prefix = `${formData.connection_name}_`;
@@ -1215,7 +1223,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
                     className="sr-only"
                     onChange={(e) => {
                       const file = e.target.files[0];
-                      const key = fieldName.split(".")[1];
+                      const key = fieldName.substring(11);
 
                       setIsTestSuccessful(false);
 
@@ -1321,6 +1329,21 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
               size={18}
             />
           </div>
+        ) : field.type === "checkbox" ? (
+          /* ── Checkbox field ── */
+          <div className="flex items-center h-[46px]">
+            <input
+              type="checkbox"
+              id={fieldName}
+              name={fieldName}
+              checked={!!fieldValue}
+              onChange={handleInputChange}
+              className="w-5 h-5 accent-[#8e78b7] cursor-pointer"
+            />
+            <label htmlFor={fieldName} className="ml-2 text-sm font-medium text-gray-700 cursor-pointer">
+              {field.label}
+            </label>
+          </div>
         ) : (
           /* ── Text / number / password field ── */
           <input
@@ -1328,10 +1351,19 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
             name={fieldName}
             value={fieldValue}
             onChange={handleInputChange}
+            onKeyDown={(e) => {
+              if (field.type === "number") {
+                if (["e", "E", "+", "-", "."].includes(e.key)) {
+                  e.preventDefault();
+                }
+              }
+            }}
             placeholder={
               field.placeholder || `Enter ${field.label.toLowerCase()}`
             }
             className={baseInputClass}
+            min={field.type === "number" ? "0" : undefined}
+            step={field.type === "number" ? "1" : undefined}
           />
         )}
 
@@ -1486,8 +1518,33 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
         </label>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
           {getConnectorFields(selectedConnector)
-            .filter((field) => isFieldVisible(field))
+            .filter((field) => isFieldVisible(field) && field.name !== "extra_info.cache_enabled" && field.name !== "extra_info.cache_max_sizes")
             .map((field) => renderField(field))}
+
+          {getConnectorFields(selectedConnector).find(f => f.name === "extra_info.cache_enabled") && (
+            <div className="col-span-1 md:col-span-3 mt-4">
+              <div className="flex items-center gap-3 mb-4">
+                <input
+                  type="checkbox"
+                  id="extra_info.cache_enabled"
+                  name="extra_info.cache_enabled"
+                  checked={!!(formData.extra_info && formData.extra_info.cache_enabled)}
+                  onChange={handleInputChange}
+                  className="w-5 h-5 accent-[#8e78b7] cursor-pointer"
+                />
+                <label htmlFor="extra_info.cache_enabled" className="block text-md text-[#8e78b7] font-bold cursor-pointer">
+                  Enable Cache
+                </label>
+              </div>
+              {isFieldVisible(getConnectorFields(selectedConnector).find(f => f.name === "extra_info.cache_max_sizes")) && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    {renderField(getConnectorFields(selectedConnector).find(f => f.name === "extra_info.cache_max_sizes"))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ── Custom type: new connection or switching to custom ── */}
           {(isKafkaCustom || isKafkaCustomNew) && (
