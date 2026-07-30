@@ -255,7 +255,11 @@ export default function RunPanel({ onClose }) {
         }
 
         const { nodeType, nodeConfig } = resolvePauseConfig(res, storeNodes, pausedOriginalNodeId);
-        const enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
+        let enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
+        const isToolPause = nodeType === 'tool_node' || pausedOriginalNodeId === 'human_gate' || res.next_node === 'human_gate' || res.next_node?.includes('human_gate');
+        if (isToolPause) {
+          enabledActions = enabledActions.filter(a => a !== 'rework');
+        }
 
         setPausedInfo({
           isPaused: true,
@@ -465,7 +469,11 @@ export default function RunPanel({ onClose }) {
         }
 
         const { nodeType, nodeConfig } = resolvePauseConfig(res, storeNodes, resumeOriginalNodeId);
-        const enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
+        let enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
+        const isToolPause = nodeType === 'tool_node' || resumeOriginalNodeId === 'human_gate' || res.next_node === 'human_gate' || res.next_node?.includes('human_gate');
+        if (isToolPause) {
+          enabledActions = enabledActions.filter(a => a !== 'rework');
+        }
         
         setPausedInfo({
           isPaused: true,
@@ -599,7 +607,11 @@ export default function RunPanel({ onClose }) {
         const storeNodes = useWorkflowStore.getState().nodes;
         const { nodeType, nodeConfig } = resolvePauseConfig(res, storeNodes, originalNodeId);
         
-        const enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
+        let enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
+        const isToolPause = nodeType === 'tool_node' || originalNodeId === 'human_gate' || res.next_node === 'human_gate' || res.next_node?.includes('human_gate');
+        if (isToolPause) {
+          enabledActions = enabledActions.filter(a => a !== 'rework');
+        }
 
         const lastAiMsg = [...messages].reverse().find(m => m.type === 'AIMessage');
 

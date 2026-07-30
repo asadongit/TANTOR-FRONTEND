@@ -389,7 +389,7 @@ export default function FormRenderer({ config, context, onSubmit, isLoading }) {
                   e.currentTarget.style.borderColor = isDanger ? 'rgba(239, 68, 68, 0.2)' : 'rgba(99, 102, 241, 0.2)';
                 }}
               >
-                {isLoading && clickedDecision === decId ? 'PROCESSING...' : decLabel.toUpperCase()}
+                {decLabel.toUpperCase()}
               </button>
             );
           })
@@ -418,10 +418,47 @@ export default function FormRenderer({ config, context, onSubmit, isLoading }) {
               e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.2)';
             }}
           >
-            {isLoading ? 'PROCESSING...' : (finalConfig.form_submit_label || 'SUBMIT').toUpperCase()}
+            {(finalConfig.form_submit_label || 'SUBMIT').toUpperCase()}
           </button>
         )}
       </div>
+
+      {isLoading && (
+        <div style={{
+          position: 'absolute',
+          top: -24,
+          left: -24,
+          right: -24,
+          bottom: -24,
+          background: 'rgba(255, 255, 255, 0.85)',
+          backdropFilter: 'blur(4px)',
+          borderRadius: 24,
+          zIndex: 50,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 12
+        }}>
+          <div style={{
+            width: 38,
+            height: 38,
+            border: '3px solid rgba(99, 102, 241, 0.2)',
+            borderTopColor: '#6366F1',
+            borderRadius: '50%',
+            animation: 'formModalSpin 0.8s linear infinite'
+          }} />
+          <style>{`
+            @keyframes formModalSpin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#334155', letterSpacing: '0.02em' }}>
+            Processing Submission...
+          </div>
+        </div>
+      )}
     </form>
   );
 }
