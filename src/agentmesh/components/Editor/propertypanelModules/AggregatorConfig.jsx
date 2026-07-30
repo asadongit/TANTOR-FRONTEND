@@ -7,14 +7,34 @@ export default function AggregatorConfig({ data, update }) {
       <Field label="Action Strategy" hint="How to group the incoming items.">
         <Select
           value={data.action || "append"}
-          onChange={(v) => update({ action: v })}
+          onChange={(v) => {
+            const patch = { action: v };
+            if (v === "group_by" && !data.group_by) {
+              patch.group_by = "class";
+            }
+            update(patch);
+          }}
           options={[
             { value: "append", label: "Append to List (Array)" },
+            { value: "group_by", label: "Group by Category (Dict of Lists)" },
             { value: "merge", label: "Merge into Object (Dict)" },
             { value: "concatenate", label: "Concatenate (String)" },
           ]}
         />
       </Field>
+      {data.action === "group_by" && (
+        <Field
+          label="Group By Key"
+          hint="Key field to group by (defaults to 'class')."
+        >
+          <Input
+            stripBraces
+            value={data.group_by || ""}
+            onChange={(v) => update({ group_by: v })}
+            placeholder="class"
+          />
+        </Field>
+      )}
       <Field
         label="Field to Aggregate"
         hint="The path to the data you want to collect (e.g. 'item')."
