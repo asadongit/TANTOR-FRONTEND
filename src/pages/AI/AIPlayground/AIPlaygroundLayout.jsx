@@ -1069,7 +1069,7 @@ if (
                                 ))}
                             </div>
 
-                            {!readonly && (
+                            {!readonly && !isSeriesEnsemble && (
                                 <button
                                     onClick={openAddWorkflowModal}
                                     disabled={isAddingWorkflow || Object.keys(workflowsState || {}).length >= 8}

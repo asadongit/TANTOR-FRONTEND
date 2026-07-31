@@ -9,8 +9,6 @@ import {
   Code,
   Plus,
   Search,
-  ChevronDown,
-  CheckCircle,
   RefreshCcw,
   Globe,
   Copy,
@@ -29,6 +27,7 @@ import Breadcrumb from "../../../../components/Breadcrumb";
 import CardGrid from "../../../../components/CardGrid";
 import DataTable from "../../../../components/DataTable";
 import { useFederationDashboardData, useFederationPolicyIds } from "../../../../hooks/platform/federation";
+import { usePersonaStatuses } from "../../../../hooks/dataGovernance/Users/auth";
 
 const FederationDashBoard = () => {
   const navigate = useNavigate();
@@ -48,8 +47,11 @@ const FederationDashBoard = () => {
   };
 
   const { token, decodedToken, hostnameV1 } = useAuth();
+  const { personaStatuses } = usePersonaStatuses();
   const ExternalAPI = window._env_?.VITE_EXTERNAL_API;
   const KongAPI = window._env_?.VITE_KONG_API;
+
+  const isViewManager = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'persona:view manager') && personaStatuses?.['persona:view manager'] === true;
 
   const [isApiModalOpen, setIsApiModalOpen] = useState(false);
   const [apiModalData, setApiModalData] = useState({
@@ -73,7 +75,7 @@ const FederationDashBoard = () => {
     viewData: null
   });
 
-  const { isFetching: isFetchingPolicies, refetch: fetchPolicyIds } = useFederationPolicyIds();
+  const { isFetching: isFetchingPolicies, isLoading: isLoadingPolicies, refetch: fetchPolicyIds } = useFederationPolicyIds();
   const { data: dashboardDataRaw, isLoading, isFetching, refetch: fetchDashboardData } = useFederationDashboardData();
 
   const dashboardData = dashboardDataRaw || {
@@ -84,49 +86,13 @@ const FederationDashBoard = () => {
     views_details: []
   };
 
-  const isCardsLoading = isLoading || isFetching;
-  const isTableLoading = isLoading || isFetching;
+  const isCardsLoading = isLoading || isFetching || isFetchingPolicies || isLoadingPolicies;
+  const isTableLoading = isLoading || isFetching || isFetchingPolicies || isLoadingPolicies;
   const [resetSortTrigger, setResetSortTrigger] = useState(0);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState("both");
-  const [autoRefreshInterval, setAutoRefreshInterval] = useState(() => {
-    const saved = localStorage.getItem(`autoRefresh_federation_${decodedToken?.preferred_username}`);
-    return saved ? parseInt(saved, 10) : 0;
-  });
 
-  useEffect(() => {
-    if (decodedToken?.preferred_username) {
-      const saved = localStorage.getItem(`autoRefresh_federation_${decodedToken?.preferred_username}`);
-      if (saved) {
-        setAutoRefreshInterval(parseInt(saved, 10));
-      }
-    }
-  }, [decodedToken]);
-
-  const [isAutoRefreshMenuOpen, setIsAutoRefreshMenuOpen] = useState(false);
-  const autoRefreshMenuRef = useRef(null);
-
-  useEffect(() => {
-    if (autoRefreshInterval === 0) return;
-
-    const interval = setInterval(async () => {
-      await fetchPolicyIds();
-      await fetchDashboardData();
-    }, autoRefreshInterval);
-
-    return () => clearInterval(interval);
-  }, [autoRefreshInterval, fetchDashboardData, fetchPolicyIds]);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (autoRefreshMenuRef.current && !autoRefreshMenuRef.current.contains(event.target)) {
-        setIsAutoRefreshMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   const handleRefreshMV = async (viewName) => {
     try {
@@ -222,7 +188,7 @@ const FederationDashBoard = () => {
       try {
         const username = decodedToken?.preferred_username || "sanitycheck";
         const keyResponse = await fetch(
-          `${KongAPI}/consumers/${username}/key-auth`,
+          `${hostnameV1}/kong/key-auth/${username}`,
           { method: "GET" }
         );
         if (keyResponse.ok) {
@@ -258,6 +224,14 @@ const FederationDashBoard = () => {
       return;
     }
 
+    if (row.type === "Custom View") {
+      sessionStorage.setItem("editMode", "true");
+      sessionStorage.setItem("editViewName", row.view_name);
+      sessionStorage.setItem("editOriginalPayload", JSON.stringify(row));
+      navigate("/editor");
+      return;
+    }
+
     const viewName = row.view_name;
     const toastId = toast.loading("Loading view data...");
     try {
@@ -268,22 +242,22 @@ const FederationDashBoard = () => {
           Authorization: `Bearer ${token}`
         }
       });
-      
+
       if (response.ok) {
         const data = await response.json();
-        
+
         sessionStorage.setItem("editMode", "true");
         sessionStorage.setItem("editViewName", viewName);
         sessionStorage.setItem("editOriginalPayload", JSON.stringify(data));
-        
+
         if (data.extra_info?.edit_flow) {
           sessionStorage.setItem("editFlowData", JSON.stringify(data.extra_info.edit_flow));
         }
 
         toast.success("View data loaded", { id: toastId });
-        
+
         const queryType = data?.extra_info?.queryType || (data.complex_query ? "Complex" : "Regular");
-        
+
         if (data.view_type === "Base") {
           navigate("/federation/view/source", { state: { viewType: data.view_type, queryType: queryType } });
         } else {
@@ -296,7 +270,7 @@ const FederationDashBoard = () => {
       console.error("Error loading view details:", error);
       toast.error("An error occurred while fetching view data", { id: toastId });
     }
-  };
+};
 
   useEffect(() => {
     // Initial fetch is handled automatically by useFederationDashboardData hook
@@ -348,10 +322,22 @@ const FederationDashBoard = () => {
       render: (row) => row.status === 'refreshing' ? '-' : (row.expiry_time_left || '-')
     },
     {
+      label: "Created By",
+      key: "created_by",
+      sortable: true,
+      render: (row) => row.created_by || "-"
+    },
+    {
       label: "Created At",
       key: "created_at",
       sortable: true,
       render: (row) => formatDate(row.created_at)
+    },
+    {
+      label: "Updated At",
+      key: "updated_at",
+      sortable: true,
+      render: (row) => formatDate(row.updated_at)
     },
     { label: "Action", sortable: false }
   ];
@@ -365,17 +351,19 @@ const FederationDashBoard = () => {
     {
       label: "Refresh MV",
       icon: <RotateCw size={16} />,
-      show: (row) => row.materalized,
+      show: (row) => row.materalized && isViewManager,
       onClick: (row) => handleRefreshMV(row.view_name)
     },
     {
       label: "Delete",
       icon: <Trash2 size={16} />,
+      show: (row) => row.materalized ? isViewManager : true,
       onClick: (row) => handleDeleteView(row)
     },
     {
       label: "Edit",
       icon: <Pencil size={16} />,
+      show: (row) => row.materalized ? isViewManager : true,
       onClick: (row) => handleEditView(row)
     }
   ];
@@ -384,7 +372,7 @@ const FederationDashBoard = () => {
     { icon: "lucide:layout-dashboard", bgcolor: "bg-[#d8d3e4] bg-opacity-25", iconcolor: "text-purple-700", title: "Total Views", count: dashboardData.total_view || 0 },
     { icon: "lucide:database", bgcolor: "bg-[#96CF7B] bg-opacity-25", iconcolor: "text-green-700", title: "Base Views", count: dashboardData.base_view || 0 },
     { icon: "lucide:briefcase", bgcolor: "bg-[#FFC93F] bg-opacity-25", iconcolor: "text-orange-700", title: "Business Views", count: dashboardData.business_view || 0 },
-    { icon: "lucide:layers", bgcolor: "bg-[#16ABC2] bg-opacity-25", iconcolor: "text-cyan-700", title: "Materialized Views", count: dashboardData.materalized_view || 0 }
+    { icon: "lucide:layers", bgcolor: "bg-[#16ABC2] bg-opacity-25", iconcolor: "text-cyan-700", title: "Custom Views", count: dashboardData.custom_view || 0 }
   ];
 
   const handleCardClick = () => {};
@@ -408,69 +396,26 @@ const FederationDashBoard = () => {
               <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
             </div>
 
-            <div className="relative flex items-center" ref={autoRefreshMenuRef}>
-              <div className="flex rounded-lg border border-gray-400 hover:bg-gray-50 h-10">
-                <button
-                  className="w-10 flex items-center justify-center border-r border-gray-300"
-                  onClick={async () => {
-                    try {
-                      await fetchPolicyIds();
-                      await fetchDashboardData();
-                    } finally {
-                      setSearchTerm("");
-                      setResetSortTrigger(prev => prev + 1);
-                      toast.success("Federation data refreshed successfully");
-                    }
-                  }}
-                  title="Refresh data"
-                  disabled={isCardsLoading || isTableLoading}
-                >
-                  <RefreshCcw
-                    className={`h-5 w-5 text-gray-600 ${(isCardsLoading || isTableLoading) ? "animate-spin" : ""}`}
-                  />
-                </button>
-                <button
-                  className="px-2 flex items-center justify-center"
-                  onClick={() => setIsAutoRefreshMenuOpen(!isAutoRefreshMenuOpen)}
-                  title="Auto Refresh Settings"
-                >
-                  <ChevronDown className="h-4 w-4 text-gray-600" />
-                </button>
-              </div>
-
-              {isAutoRefreshMenuOpen && (
-                <div className="absolute top-full right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
-                  <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
-                    Auto Refresh
-                  </div>
-                  {[
-                    { label: "Off", value: 0 },
-                    { label: "5 seconds", value: 5000 },
-                    { label: "10 seconds", value: 10000 },
-                    { label: "1 minute", value: 60000 },
-                    { label: "2 minutes", value: 120000 },
-                    { label: "5 minutes", value: 300000 },
-                  ].map((option) => (
-                    <button
-                      key={option.value}
-                      className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center justify-between ${autoRefreshInterval === option.value ? "text-[#8d77ba] font-medium bg-purple-50" : "text-gray-700"
-                        }`}
-                      onClick={() => {
-                        setAutoRefreshInterval(option.value);
-                        if (decodedToken?.preferred_username) {
-                          localStorage.setItem(`autoRefresh_federation_${decodedToken?.preferred_username}`, option.value.toString());
-                        }
-                        setIsAutoRefreshMenuOpen(false);
-                      }}
-                    >
-                      {option.label}
-                      {autoRefreshInterval === option.value && (
-                        <CheckCircle className="h-4 w-4" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
+            <div className="relative flex items-center">
+              <button
+                className="w-10 h-10 flex items-center justify-center rounded-lg border border-gray-400 hover:bg-gray-50"
+                onClick={async () => {
+                  try {
+                    await fetchPolicyIds();
+                    await fetchDashboardData();
+                  } finally {
+                    setSearchTerm("");
+                    setResetSortTrigger(prev => prev + 1);
+                    toast.success("Federation data refreshed successfully");
+                  }
+                }}
+                title="Refresh data"
+                disabled={isCardsLoading || isTableLoading}
+              >
+                <RefreshCcw
+                  className={`h-5 w-5 text-gray-600 ${(isCardsLoading || isTableLoading) ? "icon-rotate" : ""}`}
+                />
+              </button>
             </div>
 
             <button
@@ -491,7 +436,12 @@ const FederationDashBoard = () => {
 
             <button
               type="button"
-              onClick={() => navigate('/editor')}
+              onClick={() => {
+                sessionStorage.removeItem('editMode');
+                sessionStorage.removeItem('editViewName');
+                sessionStorage.removeItem('editOriginalPayload');
+                navigate('/editor');
+              }}
               className="h-10 text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-4 flex items-center justify-center dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
             >
               <Code className="h-5 w-5 mr-2" />
@@ -522,15 +472,18 @@ const FederationDashBoard = () => {
 
         <DataTable
           columns={columns}
-          data={
-            searchTerm.trim()
-              ? dashboardData.views_details?.filter(row =>
-                  Object.values(row).some(value =>
-                    String(value).toLowerCase().includes(searchTerm.toLowerCase())
-                  )
-                ) || []
-              : dashboardData.views_details || []
-          }
+          data={(() => {
+            const views = dashboardData.views_details || [];
+            const sortedViews = [...views].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            if (searchTerm.trim()) {
+              return sortedViews.filter(row =>
+                Object.values(row).some(value =>
+                  String(value).toLowerCase().includes(searchTerm.toLowerCase())
+                )
+              );
+            }
+            return sortedViews;
+          })()}
           actions={actions}
           isLoading={isTableLoading}
           refetch={fetchDashboardData}

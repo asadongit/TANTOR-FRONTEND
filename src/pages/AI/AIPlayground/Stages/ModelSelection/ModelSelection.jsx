@@ -5,6 +5,7 @@ import classificationAlgorithmsData from '../../../../../components/classificati
 import regressionAlgorithmsData from '../../../../../components/regression_models_hyperparameters.json';
 import univariateAlgorithmsData from '../../../../../components/univariate_models_hyperparameter.json';
 import multivariateAlgorithmsData from '../../../../../components/multivariate_models_hyperparameter.json';
+import multiseriesAlgorithmsData from '../../../../../components/multiseries_models_hyperparameter.json';
 import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 import AlgorithmCard from './AlgorithmCard';
@@ -133,7 +134,8 @@ function ModelSelection() {
     // In view mode, saved config typically stores `modelling_type`.
     const classificationType = modelGenesisConfig?.modelling_type || modelGenesisConfig?.classification;
     // Multiseries forecasting (multivariate_multiseries / univariate_multiseries) targets a
-    // continuous value, so it reuses the regression algorithm set and metrics throughout this page.
+    // continuous value, so it has its own algorithm/hyperparameter set (multiseriesAlgorithmsData)
+    // but shares the timeseries metrics (isTimeSeries includes isMultiseries below).
     const isMultiseries = String(classificationType || '').trim().toLowerCase() === 'multivariate_multiseries' ||
         String(classificationType || '').trim().toLowerCase() === 'univariate_multiseries';
     const isRegression = String(classificationType || '').trim().toLowerCase() === 'regression' || isMultiseries;
@@ -145,7 +147,8 @@ function ModelSelection() {
     String(predictionType).trim().toLowerCase() === 'time series' ||
     String(predictionType).trim().toLowerCase() === 'timeseries' ||
     String(predictionType).trim().toLowerCase() === 'univariate_timeseries' ||
-    String(predictionType).trim().toLowerCase() === 'multivariate_timeseries';
+    String(predictionType).trim().toLowerCase() === 'multivariate_timeseries' ||
+    isMultiseries;
 
     // Forecast horizon is selected during Genesis; reuse it here rather than re-collecting it.
     const forecastHorizon = modelGenesisConfig?.timeSeriesLookback ?? '';
@@ -163,6 +166,9 @@ function ModelSelection() {
 }
 else if (isMultivariate) {
     algorithmData = multivariateAlgorithmsData;
+}
+else if (isMultiseries) {
+    algorithmData = multiseriesAlgorithmsData;
 }
 else if (isRegression) {
     algorithmData = regressionAlgorithmsData;
@@ -771,7 +777,7 @@ const defaultPerformanceMetrics = isTimeSeries
 
             if (enabledAlgos.length === 0 || !hasEnabledMetrics) return false;
 
-            return enabledAlgos.every(algo => validateAlgorithm(algo));
+            return enabledAlgos.every(algo => validateAlgorithm(algo, { lookback: modelGenesisConfig?.lookback }));
         };
 
     const handleNextClick = async () => {
@@ -783,7 +789,7 @@ const defaultPerformanceMetrics = isTimeSeries
     setShowValidation(true);
 
             const enabledAlgos = Object.values(allAlgorithmsState).filter(algo => algo.enabled);
-            const invalidAlgo = enabledAlgos.find(algo => !validateAlgorithm(algo));
+            const invalidAlgo = enabledAlgos.find(algo => !validateAlgorithm(algo, { lookback: modelGenesisConfig?.lookback }));
 
             if (invalidAlgo) {
                 // Switch to the tab of the first invalid algorithm
@@ -900,7 +906,7 @@ const defaultPerformanceMetrics = isTimeSeries
         return Object.values(allAlgorithmsState).some(algo =>
             algo.category === category &&
             algo.enabled &&
-            !validateAlgorithm(algo)
+            !validateAlgorithm(algo, { lookback: modelGenesisConfig?.lookback })
         );
     };
 
@@ -999,6 +1005,7 @@ const defaultPerformanceMetrics = isTimeSeries
                                     showValidation={showValidation}
                                     onResetValidation={() => setShowValidation(false)}
                                     cardRef={(el) => { cardRefs.current[algo.id] = el; }}
+                                    lookback={modelGenesisConfig?.lookback}
                                 />
                             ))
                         )}
@@ -1014,7 +1021,7 @@ const defaultPerformanceMetrics = isTimeSeries
                     disabled={isInteractionLocked}
                     hasEnabledMetrics={hasEnabledMetrics}
                     showValidation={showValidation}
-                    metricFullFormMap={isRegression ? REGRESSION_METRIC_FULL_FORM : {}}
+                    metricFullFormMap={isTimeSeries ? {} : (isRegression ? REGRESSION_METRIC_FULL_FORM : {})}
                 />
             </div>
         </AIPlaygroundLayout>

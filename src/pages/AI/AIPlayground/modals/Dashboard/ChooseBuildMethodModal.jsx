@@ -3,7 +3,8 @@ import { X, ArrowRight } from 'lucide-react';
 import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 import { tw } from '../../../../../components/themeContext';
 import { toast } from 'react-hot-toast';
-import CustomDropdown from '../../../../../components/CustomDropdown';
+import ColumnSearchableDropdown from '../../Stages/DataPreprocessing/timeseries/components/DataStabilization/ColumnSearchableDropdown';
+import { FieldTooltip } from '../XAI/ConfigurationModal';
 import ModelTrainingIcon from '../../../../../assets/ai/model_training.svg';
 import AccountTreeIcon from '../../../../../assets/ai/account_tree.svg';
 import ArrowRightIcon from '../../../../../assets/ai/arrow_right.svg';
@@ -11,6 +12,11 @@ import ArrowRightIcon from '../../../../../assets/ai/arrow_right.svg';
 const ENSEMBLE_TYPE_OPTIONS = [
     { value: 'parallel', label: 'Parallel' },
     { value: 'series', label: 'Series' },
+];
+
+const ENSEMBLE_TYPE_TOOLTIP = [
+    { bold: 'Parallel: ', rest: 'Each model is trained independently and their outputs are combined. Supports 2-8 models.' },
+    { bold: 'Series: ', rest: "Run workflows where the first models's output is used as the second models's input. (Up to 2 workflows)" },
 ];
 
 const headingCls = "font-['Satoshi'] font-medium text-[18px] leading-none tracking-normal";
@@ -25,6 +31,8 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
     const [workflowNameErrors, setWorkflowNameErrors] = useState({});
     const [ensembleType, setEnsembleType] = useState('');
     const [ensembleTypeError, setEnsembleTypeError] = useState('');
+    const [ensembleTypeSearch, setEnsembleTypeSearch] = useState({});
+    const [ensembleTypeShowDropdown, setEnsembleTypeShowDropdown] = useState({});
     const { setMode, datasetState, workflowsState, createWorkflow, setEnsembleMode } = useAIPlayground();
 
     const validateWorkflowName = (name) => {
@@ -81,8 +89,7 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
         setWorkflowNames(Array.from({ length: workflowCount }, (_, index) => workflowNames[index] || ''));
     };
 
-    const handleEnsembleTypeChange = (e) => {
-        const val = e.target.value;
+    const handleEnsembleTypeChange = (val) => {
         setEnsembleType(val);
         setEnsembleTypeError('');
         if (val === 'series' && ensembleCount > 2) {
@@ -297,42 +304,54 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
                                     Ideal for improving accuracy and robustness.
                                 </p>
 
-                                <p className={`${bodyCls} mt-3 border-t border-[#F1F0F3] pt-3 text-[#332849]`} style={{ lineHeight: '1.5' }}>
-                                    Choose how many models you want to build as part of this ensemble.
-                                </p>
+                            
 
                                 <div className="flex items-end justify-between gap-3 mt-3">
-                                    <div className="inline-flex items-center gap-6 bg-white p-2 rounded-lg">
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); decrementCount(); }}
-                                            disabled={ensembleCount <= 2 || isLoading}
-                                            className="w-10 h-10 rounded-lg bg-[#FAFAFA] flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                        >
-                                            <span className={`${headingCls} text-[#332849]`}>−</span>
-                                        </button>
-                                        <div className="w-10 h-10 flex items-center justify-center">
-                                            <span className={`${headingCls} text-[#8e78b7]`}>{ensembleCount}</span>
-                                        </div>
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); incrementCount(); }}
-                                            disabled={ensembleCount >= maxEnsembleCount || isLoading}
-                                            className="w-10 h-10 rounded-lg bg-[#FAFAFA] flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                        >
-                                            <span className={`${headingCls} text-[#332849]`}>+</span>
-                                        </button>
-                                    </div>
-
-                                    <div className="w-32" onClick={(e) => e.stopPropagation()}>
-                                        <CustomDropdown
+                                    <div className="w-48" onClick={(e) => e.stopPropagation()}>
+                                        <label className="flex items-center text-xs text-[#282F49] mb-1">
+                                            Ensemble Type
+                                            <FieldTooltip lines={ENSEMBLE_TYPE_TOOLTIP} position="right" openUpward />
+                                        </label>
+                                        <ColumnSearchableDropdown
+                                            id="ensembleType"
                                             value={ensembleType}
                                             onChange={handleEnsembleTypeChange}
                                             options={ENSEMBLE_TYPE_OPTIONS}
                                             placeholder="Select"
                                             disabled={isLoading}
-                                            error={ensembleTypeError}
-                                            compact
+                                            hasError={!!ensembleTypeError}
+                                            searchValue={ensembleTypeSearch}
+                                            setSearchValue={setEnsembleTypeSearch}
+                                            showDropdown={ensembleTypeShowDropdown}
+                                            setShowDropdown={setEnsembleTypeShowDropdown}
+                                            openUpward
                                         />
+                                        {ensembleTypeError && (
+                                            <p className="text-xs text-red-500 mt-1">{ensembleTypeError}</p>
+                                        )}
                                     </div>
+
+                                    {ensembleType === 'parallel' && (
+                                        <div className="inline-flex items-center gap-6 bg-white p-2 rounded-lg">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); decrementCount(); }}
+                                                disabled={ensembleCount <= 2 || isLoading}
+                                                className="w-10 h-10 rounded-lg bg-[#FAFAFA] flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                            >
+                                                <span className={`${headingCls} text-[#332849]`}>−</span>
+                                            </button>
+                                            <div className="w-10 h-10 flex items-center justify-center">
+                                                <span className={`${headingCls} text-[#8e78b7]`}>{ensembleCount}</span>
+                                            </div>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); incrementCount(); }}
+                                                disabled={ensembleCount >= maxEnsembleCount || isLoading}
+                                                className="w-10 h-10 rounded-lg bg-[#FAFAFA] flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                            >
+                                                <span className={`${headingCls} text-[#332849]`}>+</span>
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </>

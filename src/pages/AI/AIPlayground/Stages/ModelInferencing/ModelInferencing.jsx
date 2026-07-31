@@ -133,6 +133,7 @@ const ModelInferencing = () => {
       run_name: task.result?.run_name || task.algorithm,
       run_id: task.result?.run_id || task.task_id,
       metrics: task.result?.metrics || {},
+      entity_metrics: task.result?.entity_metrics || {},
       fairness_bar_charts: task.result?.fairness_bar_charts || {},
       profile_radial_charts: task.result?.profile_radial_charts || {},
       fairness_assessment_message: task.result?.fairness_assessment_message || 'N/A',
@@ -365,6 +366,7 @@ const metricDisplayNameMap = isTimeSeriesModel
       name: result.run_name,
       fullName: result.run_name,
       displayName: truncateName(result.run_name, legendTruncateLength),
+      entityMetrics: result.entity_metrics || {},
 
       ...(isTimeSeriesModel
   ? {
@@ -374,6 +376,9 @@ const metricDisplayNameMap = isTimeSeriesModel
       testSMAPE: metrics.test_smape?.toFixed(3) ?? 'N/A',
       testWMAPE: metrics.test_wmape?.toFixed(3) ?? 'N/A',
       testMASE: metrics.test_mase?.toFixed(3) ?? 'N/A',
+      testR2: metrics.test_r2?.toFixed(3) ?? 'N/A',
+      testQuantileLoss: metrics.test_quantile_loss?.toFixed(3) ?? 'N/A',
+      testHuberLoss: metrics.test_huber_loss?.toFixed(3) ?? 'N/A',
 
       trainMAE: metrics.train_mae?.toFixed(3) ?? 'N/A',
       trainRMSE: metrics.train_rmse?.toFixed(3) ?? 'N/A',
@@ -381,6 +386,9 @@ const metricDisplayNameMap = isTimeSeriesModel
       trainSMAPE: metrics.train_smape?.toFixed(3) ?? 'N/A',
       trainWMAPE: metrics.train_wmape?.toFixed(3) ?? 'N/A',
       trainMASE: metrics.train_mase?.toFixed(3) ?? 'N/A',
+      trainR2: metrics.train_r2?.toFixed(3) ?? 'N/A',
+      trainQuantileLoss: metrics.train_quantile_loss?.toFixed(3) ?? 'N/A',
+      trainHuberLoss: metrics.train_huber_loss?.toFixed(3) ?? 'N/A',
     }
   : isRegressionModel
   ? {
@@ -430,6 +438,9 @@ trainHuberLoss: metrics.train_huber_loss?.toFixed(3) ?? 'N/A',
         { name: 'SMAPE', key: 'smape' },
         { name: 'WMAPE', key: 'wmape' },
         { name: 'MASE', key: 'mase' },
+        { name: 'R²', key: 'r2' },
+        { name: 'Huber Loss', key: 'huber_loss' },
+        { name: 'Quantile Loss', key: 'quantile_loss' },
       ].filter(
         m =>
           metrics.hasOwnProperty(`train_${m.key}`) ||
@@ -630,7 +641,13 @@ trainHuberLoss: metrics.train_huber_loss?.toFixed(3) ?? 'N/A',
             legendTruncateLength={legendTruncateLength}
             truncateName={truncateName}
             chartColors={chartColors}
-            metricsDescription={isRegressionModel ? 'MSE, RMSE, MAE, R², MAPE, Huber Loss & Quantile Loss' : 'Accuracy, precision, recall & F1 score'}
+            metricsDescription={
+              isTimeSeriesModel
+                ? 'MAE, RMSE, MAPE, SMAPE, WMAPE, MASE, R², Huber Loss & Quantile Loss'
+                : isRegressionModel
+                  ? 'MSE, RMSE, MAE, R², MAPE, Huber Loss & Quantile Loss'
+                  : 'Accuracy, precision, recall & F1 score'
+            }
           />
 
           {/* Tabs */}

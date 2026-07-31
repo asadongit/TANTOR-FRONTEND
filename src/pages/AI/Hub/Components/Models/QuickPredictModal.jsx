@@ -394,7 +394,8 @@ const QuickPredictModal = ({ isOpen, onClose, modelData }) => {
     setQueryResult(null);
 
     try {
-      const token = localStorage.getItem('token') || '';
+      // Use authentication token from Keycloak context, NOT from localStorage
+      // Token is managed in-memory by Keycloak for security (no XSS exposure)
       const response = await fetch(`${hostnameAI}/quick/predict-quick-action?filename=${selectedView}&run_name=${modelData?.run_name}&user_id=${decodedToken?.sub}`, {
         method: 'POST',
         headers: {

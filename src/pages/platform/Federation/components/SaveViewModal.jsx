@@ -1,16 +1,26 @@
 import React, { useEffect, useState } from "react";
 import { useStateContext } from "../context/contextViewProvider";
 import { Lock } from "lucide-react";
+import CircularProgress from "@mui/material/CircularProgress";
+import { useAuth } from "../../../../context/AuthContext";
+import { usePersonaStatuses } from "../../../../hooks/dataGovernance/Users/auth";
 
 const SaveViewModal = ({ toggleModal, handleSaveView }) => {
   const { finalPayload, handleFinalPayload, isEditMode, editViewName } = useStateContext("");
+  const { decodedToken } = useAuth();
+  const { personaStatuses } = usePersonaStatuses();
+
+  const isViewManager = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'persona:view manager') && personaStatuses?.['persona:view manager'] === true;
 
   const [newViewName, setNewViewName] = useState(
     isEditMode ? editViewName : (finalPayload?.view_name || "")
   );
 
+  const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
   const [isMaterializedView, setIsMaterializedView] = useState(() => {
-    const val = finalPayload?.isMateralizedView;
+    const val = finalPayload?.isMaterializedView;
     if (val === true || val === "true") return true;
     return false;
   });
@@ -25,6 +35,10 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
     finalPayload?.grace_period !== undefined ? String(finalPayload.grace_period) : ""
   );
 
+  const [gracePeriodUnit, setGracePeriodUnit] = useState(
+    finalPayload?.grace_period_unit || "HOUR"
+  );
+
   const [cacheTtl, setCacheTtl] = useState(
     finalPayload?.cache_ttl !== undefined ? String(finalPayload.cache_ttl) : ""
   );
@@ -33,14 +47,16 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
     if (finalPayload) {
       const updatedPayload = {
         ...finalPayload,
-        isMateralizedView: isMaterializedView,
+        isMaterializedView: isMaterializedView,
         isCaching: isCaching,
       };
 
       if (isMaterializedView && refreshPeriod !== "" && refreshPeriod !== null) {
         updatedPayload.grace_period = Number(refreshPeriod);
+        updatedPayload.grace_period_unit = gracePeriodUnit;
       } else {
         delete updatedPayload.grace_period;
+        delete updatedPayload.grace_period_unit;
       }
 
       if (isCaching && cacheTtl !== "" && cacheTtl !== null) {
@@ -51,7 +67,7 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
 
       handleFinalPayload(updatedPayload);
     }
-  }, [isMaterializedView, isCaching, refreshPeriod, cacheTtl]);
+  }, [isMaterializedView, isCaching, refreshPeriod, cacheTtl, gracePeriodUnit]);
 
   const handleViewTypeChange = (event) => {
     setIsMaterializedView(event.target.checked);
@@ -85,7 +101,7 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
           {/* MV / Caching toggles — only for Integrated Views */}
           {finalPayload?.view_type === "Integrated View" && (
             <div className="flex flex-wrap text-black items-center gap-3 pb-2 border-b border-gray-100">
-              {!isCaching && (
+              {(!isCaching && isViewManager) && (
                 <label className="inline-flex items-center space-x-2 cursor-pointer select-none">
                   <input
                     type="checkbox"
@@ -94,24 +110,43 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
                     aria-label="Materialized view"
                     className="form-checkbox accent-[#8E77BB] w-4 h-4"
                   />
-                  <span className="text-sm font-medium">Materialized View</span>
+                  <span className="text-base font-normal">Materialized View</span>
                 </label>
               )}
 
               {isMaterializedView && (
-                <div className="w-full mt-1">
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Grace Period (hr)
+                <div className="w-full mt-2">
+                  <label className="block text-[#282F49] text-sm font-medium text-gray-600 mb-1">
+                    Grace period
                   </label>
-                  <input
-                    id="refresh-period"
-                    type="number"
-                    min="1"
-                    value={refreshPeriod}
-                    onChange={(e) => setRefreshPeriod(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-md text-gray-700 focus:ring-2 focus:ring-[#8E77BB] focus:outline-none"
-                    placeholder="e.g. 60"
-                  />
+                  <div className="flex items-stretch rounded-lg border border-gray-300 overflow-hidden focus-within:ring-2 focus-within:ring-[#8E77BB] focus-within:border-[#8E77BB] transition-all">
+                    <input
+                      id="refresh-period"
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={refreshPeriod}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "") { setRefreshPeriod(""); return; }
+                        setRefreshPeriod(String(Math.max(1, Math.floor(Number(val)))));
+                      }}
+                      className="flex-1 px-3 py-2 text-gray-700 bg-white outline-none text-sm min-w-0"
+                      placeholder="Enter value"
+                    />
+                    <div className="w-px bg-gray-300" />
+                    <select
+                      id="grace-period-unit"
+                      value={gracePeriodUnit}
+                      onChange={(e) => setGracePeriodUnit(e.target.value)}
+                      className="px-2 py-2 text-sm text-gray-700 bg-gray-50 outline-none cursor-pointer border-0"
+                    >
+                      <option value="SECOND">Second</option>
+                      <option value="MINUTE">Minute</option>
+                      <option value="HOUR">Hour</option>
+                      <option value="DAY">Day</option>
+                    </select>
+                  </div>
                 </div>
               )}
 
@@ -124,7 +159,7 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
                     aria-label="Caching"
                     className="form-checkbox accent-[#8E77BB] w-4 h-4"
                   />
-                  <span className="text-sm font-medium">Caching</span>
+                  <span className="text-base font-normal">Caching</span>
                 </label>
               )}
 
@@ -149,7 +184,7 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
 
           {/* View Name field */}
           <div>
-            <label className="block text-[#282F49] text-sm font-semibold mb-1">
+            <label className="block text-[#282F49] text-sm font-medium text-gray-600 mb-1">
               View Name
             </label>
 
@@ -171,7 +206,10 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
               <input
                 type="text"
                 value={newViewName}
-                onChange={(e) => setNewViewName(e.target.value)}
+                onChange={(e) => {
+                  setNewViewName(e.target.value);
+                  setErrorMsg("");
+                }}
                 placeholder="Enter view name"
                 className="w-full mt-1 p-2.5 border rounded-lg text-gray-700 border-gray-300 focus:ring-2 focus:ring-[#8E77BB] focus:outline-none"
               />
@@ -185,16 +223,34 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
             )}
           </div>
 
+          {errorMsg && (
+            <div className="text-red-500 text-sm font-medium">
+              {errorMsg}
+            </div>
+          )}
+
           {/* Save button */}
           <button
-            onClick={(e) => {
+            onClick={async (e) => {
               e.preventDefault();
-              toggleModal();
-              handleSaveView({ newViewName });
+              if (!newViewName.trim()) {
+                setErrorMsg("Please enter a view name.");
+                return;
+              }
+              setErrorMsg("");
+              setSaving(true);
+              const result = await handleSaveView({ newViewName });
+              setSaving(false);
+              if (result && result.success) {
+                toggleModal();
+              } else if (result && result.error) {
+                setErrorMsg(result.error);
+              }
             }}
-            className="w-full bg-[#8E77BB] hover:bg-[#7a63a8] transition-colors text-white py-2.5 rounded-lg font-medium text-sm"
+            disabled={saving}
+            className="flex items-center justify-center w-full bg-[#8E77BB] hover:bg-[#7a63a8] disabled:opacity-70 disabled:cursor-not-allowed transition-colors text-white py-2.5 rounded-lg font-medium text-sm"
           >
-            {isEditMode ? "Update View" : "Save View"}
+            {saving ? <CircularProgress size={20} sx={{ color: "white" }} /> : isEditMode ? "Update View" : "Save View"}
           </button>
         </div>
       </div>

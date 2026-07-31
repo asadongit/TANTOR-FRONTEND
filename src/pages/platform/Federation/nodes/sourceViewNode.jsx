@@ -108,7 +108,7 @@ const SearchableSelect = ({ id, openDropdownId, setOpenDropdownId, options, valu
 
 export function SourceViewNode({ id, data, onSave }) {
   const encodedToken = window._env_?.VITE_FEDERATION_ACCESS_TOKEN;
-  const { viewPayload, handleViewPayload, setColumnSettings, columnSettings, finalPayload, handleFinalPayload, incrementNodeCount, decrementNodeCount, setNodes } = useStateContext("");
+  const { viewPayload, handleViewPayload, setColumnSettings, columnSettings, finalPayload, handleFinalPayload, incrementNodeCount, decrementNodeCount, setNodes, notifyComplexQuerySaved, setHideBusinessPreview } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [selectedView, setSelectedView] = useState(data?.selectedView || "");
@@ -127,10 +127,22 @@ export function SourceViewNode({ id, data, onSave }) {
   const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
   const { showToast } = useToast();
 
-  const modalState = useLocation().state || {
-    queryType: "Regular",
-    viewType: "Business",
-  };
+  const locationState = useLocation().state;
+  const resolvedQueryType = (() => {
+    if (locationState?.queryType) return locationState.queryType;
+    const editPayloadStr = sessionStorage.getItem("editOriginalPayload");
+    if (editPayloadStr) {
+      try {
+        const p = JSON.parse(editPayloadStr);
+        const cq = p?.extra_info?.complex_query ?? p?.complex_query;
+        if (cq) return "Complex";
+      } catch (_) {}
+    }
+    const createQueryType = sessionStorage.getItem("createQueryType");
+    if (createQueryType) return createQueryType;
+    return "Regular";
+  })();
+  const modalState = { ...(locationState || {}), queryType: resolvedQueryType };
 
   useEffect(() => {
     handleFinalPayload((prevData) => ({
@@ -483,6 +495,7 @@ export function SourceViewNode({ id, data, onSave }) {
 
   const toggleEditorModal = (value) => {
     setIsEditorModalOpen(value);
+    setHideBusinessPreview(value);
   };
 
   const updateNodeInternals = useUpdateNodeInternals();
@@ -713,7 +726,12 @@ export function SourceViewNode({ id, data, onSave }) {
         }}
       >
         <div className="absolute top-0 right-0 h-full">
-          <ComplexQueryEditor setShowQueryEditor={toggleEditorModal} />
+        <ComplexQueryEditor
+          setShowQueryEditor={toggleEditorModal}
+          onQuerySave={(savedQuery) => {
+            notifyComplexQuerySaved();
+          }}
+        />
         </div>
       </Modal>
     </>

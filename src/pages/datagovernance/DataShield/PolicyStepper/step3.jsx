@@ -11,6 +11,10 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
   const [tableData, setTableData] = useState([]);
   const [columnData, setColumnData] = useState([]);
   const [viewData, setViewData] = useState([]);
+  const [materializedViews, setMaterializedViews] = useState([]);
+
+  const federationCatalog = window._env_?.VITE_FEDERATION_VIEW_CATALOG || 'iceberg_test'
+  const federationSchema = window._env_?.VITE_FEDERATION_VIEW_SCHEMA || 'data_federation'
 
   const [selectedConnections, setSelectedConnections] = useState(initialData.selectedConnections || []);
   const [selectedSchemas, setSelectedSchemas] = useState(initialData.selectedSchemas || []);
@@ -70,29 +74,48 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
   }, [initialData]);
 
   useEffect(() => {
-    const fetchConnections = async () => {
+    const fetchConnectionsAndViews = async () => {
       if (!token) return;
       setLoadingConnections(true);
       try {
-        const response = await fetch(`${window._env_?.VITE_FAST_API}/datapolicy/connection`, {
-          method: 'GET',
-          headers: {
-            'accept': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          }
-        });
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        const [connectionResponse, materializedViewsResponse] = await Promise.allSettled([
+          fetch(`${window._env_?.VITE_FAST_API}/datapolicy/connection`, {
+            method: 'GET',
+            headers: {
+              'accept': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            }
+          }),
+          fetch(`${window._env_?.VITE_FAST_API}/get-all-materialized-views`, {
+            method: 'GET',
+            headers: {
+              'accept': 'application/json',
+            }
+          })
+        ]);
+
+        if (connectionResponse.status === 'fulfilled' && connectionResponse.value.ok) {
+          const data = await connectionResponse.value.json();
+          setConnectionData(data);
+        } else {
+          console.error('Error fetching connections:', connectionResponse.reason || connectionResponse.value?.statusText);
         }
-        const data = await response.json();
-        setConnectionData(data);
+
+        if (materializedViewsResponse.status === 'fulfilled' && materializedViewsResponse.value.ok) {
+          const viewsData = await materializedViewsResponse.value.json();
+          if (viewsData?.result && Array.isArray(viewsData.result)) {
+            setMaterializedViews(viewsData.result);
+          }
+        } else {
+          console.error('Error fetching materialized views:', materializedViewsResponse.reason || materializedViewsResponse.value?.statusText);
+        }
       } catch (error) {
-        console.error('Error fetching connections:', error);
+        console.error('Error during initial fetch:', error);
       } finally {
         setLoadingConnections(false);
       }
     };
-    fetchConnections();
+    fetchConnectionsAndViews();
   }, [token]);
 
   useEffect(() => {
@@ -224,21 +247,36 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
 
   const getUnique = (arr) => [...new Set(arr)];
 
-  const connectionOptions = getUnique(connectionData);
+  const hasFederationViews = materializedViews.length > 0 && federationCatalog;
+  const connectionOptions = getUnique([
+    ...connectionData,
+    ...(hasFederationViews ? [federationCatalog] : [])
+  ]);
   const filteredConnections = connectionOptions.filter(c =>
     c.toLowerCase().includes(connectionSearch.toLowerCase())
   );
 
-  const schemaOptions = getUnique(
-    schemaData.flatMap(item => item.schemas.map(s => `${item.connection_name}.${s}`))
-  );
+  const isFederationCatalogSelected = federationCatalog && selectedConnections.includes(federationCatalog);
+  const federationSchemaOption = (isFederationCatalogSelected && federationSchema)
+    ? [`${federationCatalog}.${federationSchema}`]
+    : [];
+  const schemaOptions = getUnique([
+    ...schemaData.flatMap(item => item.schemas.map(s => `${item.connection_name}.${s}`)),
+    ...federationSchemaOption
+  ]);
   const filteredSchemas = schemaOptions.filter(s =>
     s.toLowerCase().includes(schemaSearch.toLowerCase())
   );
 
-  const tableOptions = getUnique(
-    tableData.flatMap(item => item.tables.map(t => `${item.connection_schema}.${t}`))
-  );
+  const federationSchemaFull = `${federationCatalog}.${federationSchema}`;
+  const isFederationSchemaSelected = isFederationCatalogSelected && federationSchema && selectedSchemas.includes(federationSchemaFull);
+  const federationTableOptions = isFederationSchemaSelected
+    ? materializedViews.map(viewName => `${federationCatalog}.${federationSchema}.${viewName}`)
+    : [];
+  const tableOptions = getUnique([
+    ...tableData.flatMap(item => item.tables.map(t => `${item.connection_schema}.${t}`)),
+    ...federationTableOptions
+  ]);
   const filteredTables = tableOptions.filter(t =>
     t.toLowerCase().includes(tableSearch.toLowerCase())
   );
