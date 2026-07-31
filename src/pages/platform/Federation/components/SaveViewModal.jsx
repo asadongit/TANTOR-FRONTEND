@@ -35,6 +35,10 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
     finalPayload?.grace_period !== undefined ? String(finalPayload.grace_period) : ""
   );
 
+  const [gracePeriodUnit, setGracePeriodUnit] = useState(
+    finalPayload?.grace_period_unit || "HOUR"
+  );
+
   const [cacheTtl, setCacheTtl] = useState(
     finalPayload?.cache_ttl !== undefined ? String(finalPayload.cache_ttl) : ""
   );
@@ -49,8 +53,10 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
 
       if (isMaterializedView && refreshPeriod !== "" && refreshPeriod !== null) {
         updatedPayload.grace_period = Number(refreshPeriod);
+        updatedPayload.grace_period_unit = gracePeriodUnit;
       } else {
         delete updatedPayload.grace_period;
+        delete updatedPayload.grace_period_unit;
       }
 
       if (isCaching && cacheTtl !== "" && cacheTtl !== null) {
@@ -61,7 +67,7 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
 
       handleFinalPayload(updatedPayload);
     }
-  }, [isMaterializedView, isCaching, refreshPeriod, cacheTtl]);
+  }, [isMaterializedView, isCaching, refreshPeriod, cacheTtl, gracePeriodUnit]);
 
   const handleViewTypeChange = (event) => {
     setIsMaterializedView(event.target.checked);
@@ -109,19 +115,38 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
               )}
 
               {isMaterializedView && (
-                <div className="w-full mt-1">
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Grace Period (hr)
+                <div className="w-full mt-2">
+                  <label className="block text-[#282F49] text-sm font-medium text-gray-600 mb-1">
+                    Grace period
                   </label>
-                  <input
-                    id="refresh-period"
-                    type="number"
-                    min="1"
-                    value={refreshPeriod}
-                    onChange={(e) => setRefreshPeriod(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-md text-gray-700 focus:ring-2 focus:ring-[#8E77BB] focus:outline-none"
-                    placeholder="e.g. 60"
-                  />
+                  <div className="flex items-stretch rounded-lg border border-gray-300 overflow-hidden focus-within:ring-2 focus-within:ring-[#8E77BB] focus-within:border-[#8E77BB] transition-all">
+                    <input
+                      id="refresh-period"
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={refreshPeriod}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "") { setRefreshPeriod(""); return; }
+                        setRefreshPeriod(String(Math.max(1, Math.floor(Number(val)))));
+                      }}
+                      className="flex-1 px-3 py-2 text-gray-700 bg-white outline-none text-sm min-w-0"
+                      placeholder="Enter value"
+                    />
+                    <div className="w-px bg-gray-300" />
+                    <select
+                      id="grace-period-unit"
+                      value={gracePeriodUnit}
+                      onChange={(e) => setGracePeriodUnit(e.target.value)}
+                      className="px-2 py-2 text-sm text-gray-700 bg-gray-50 outline-none cursor-pointer border-0"
+                    >
+                      <option value="SECOND">Second</option>
+                      <option value="MINUTE">Minute</option>
+                      <option value="HOUR">Hour</option>
+                      <option value="DAY">Day</option>
+                    </select>
+                  </div>
                 </div>
               )}
 

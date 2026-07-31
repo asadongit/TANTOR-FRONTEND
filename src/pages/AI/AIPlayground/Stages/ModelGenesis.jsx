@@ -534,7 +534,7 @@ const ModeSelection = ({ config, setConfig, readonly, onNotebookModeSelect }) =>
   );
 };
 
-const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, columnNames, tsColumnNames, entityColumnNames, hasError, errorMessage, sectionRef, activeWorkflowId, isValidating, setIsValidating, isTimeSeriesValidated, setIsTimeSeriesValidated, validationError, supervisedTargetFeatureError, timeSeriesTargetFeatureError, timeSeriesTimeColumnError, setValidationErrors }) => {
+const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, columnNames, tsColumnNames, entityColumnNames, hasError, errorMessage, sectionRef, activeWorkflowId, isValidating, setIsValidating, isTimeSeriesValidated, setIsTimeSeriesValidated, validationError, supervisedTargetFeatureError, timeSeriesTargetFeatureError, timeSeriesTimeColumnError, timeSeriesFrequencyError, setValidationErrors }) => {
   const hostnameAI = window._env_?.VITE_AI_API;
   const { datasetState } = useAIPlayground();
   // frequency modal state for validation in timeseries
@@ -596,6 +596,8 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
   if (result?.frequency_match === false) {
     setFrequencyValidationData(result);
     setShowFrequencyModal(true);
+  } else if (result?.status === 'error' && result?.message) {
+    setValidationErrors(prev => ({ ...prev, timeSeriesFrequency: result.message }));
   }
 };
 
@@ -830,13 +832,6 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
                     name="timeseries-type"
                     readonly={readonly}
                   />
-                  <RadioButton
-                    label="Univariate Multiseries"
-                    checked={config.timeSeriesType === 'Univariate Multiseries'}
-                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Univariate Multiseries', multivariate_columns: [], entity_cols: [], frequency: '' })}
-                    name="timeseries-type"
-                    readonly={readonly}
-                  />
                 </div>
               </div>
 
@@ -926,12 +921,18 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
                       ...config,
                       frequency: newFrequency
                     });
+                    if (newFrequency) {
+                      setValidationErrors(prev => ({ ...prev, timeSeriesFrequency: undefined }));
+                    }
                   }}
                   options={['daily', 'weekly', 'monthly']}
                   placeholder="Select frequency..."
                   disabled={readonly}
                   readonly={readonly}
                 />
+                {timeSeriesFrequencyError && (
+                  <p className="mt-1 text-sm text-[#EF4D5F]">Data frequency mismatch. Please select the correct period.</p>
+                )}
               </div>
               )}
 
@@ -1031,7 +1032,8 @@ const SelectColumnsMultivariate = ({
 
   const getAvailableColumns = () => {
     const dropColumns = config.drop_columns || [];
-    const excludeColumns = [config.targetFeature, config.timeColumn, ...dropColumns];
+    const entityColumns = config.entity_cols || [];
+    const excludeColumns = [config.targetFeature, config.timeColumn, ...dropColumns, ...entityColumns];
     return columnNames.filter(name => !excludeColumns.includes(name));
   };
 
@@ -1255,7 +1257,7 @@ const SplitSetting = ({ config, setConfig, readonly, hasError = false, errorMess
     if (readonly) return;
     if (
       config.predictionType === 'Time Series' &&
-      ['Univariate', 'Multivariate'].includes(config.timeSeriesType) &&
+      ['Univariate', 'Multivariate', 'Multivariate Multiseries', 'Univariate Multiseries'].includes(config.timeSeriesType) &&
       seriesLookbackMax === 2 &&
       config.lookback !== 2
     ) {
@@ -1317,7 +1319,7 @@ const SplitSetting = ({ config, setConfig, readonly, hasError = false, errorMess
           </div>
         </Section>
 
-        {['Univariate', 'Multivariate'].includes(config.timeSeriesType) && (
+        {['Univariate', 'Multivariate', 'Multivariate Multiseries', 'Univariate Multiseries'].includes(config.timeSeriesType) && (
           <Section title="Lookback" className="!bg-[#FAFAFA] p-4 rounded-lg">
             <div
               ref={sectionRef}
@@ -1977,7 +1979,7 @@ function ModelGenesis() {
 
     if (
     config.predictionType === 'Time Series' &&
-    ['Univariate', 'Multivariate'].includes(config.timeSeriesType) &&
+    ['Univariate', 'Multivariate', 'Multivariate Multiseries', 'Univariate Multiseries'].includes(config.timeSeriesType) &&
     isTimeSeriesValidated &&
     (config.lookback === undefined || config.lookback === null)
   ) {
@@ -2053,7 +2055,7 @@ function ModelGenesis() {
         time_column: config.predictionType === 'Time Series' ? config.timeColumn : null,
         frequency: config.predictionType === 'Time Series' ? config.frequency || null : null,
         timeseries_split: config.predictionType === 'Time Series' ? config.timeSeriesLookback : null,
-        lookback: config.predictionType === 'Time Series' && ['Univariate', 'Multivariate'].includes(config.timeSeriesType) ? config.lookback : null,
+        lookback: config.predictionType === 'Time Series' && ['Univariate', 'Multivariate', 'Multivariate Multiseries', 'Univariate Multiseries'].includes(config.timeSeriesType) ? config.lookback : null,
         selected_columns: config.predictionType === 'Time Series' && ['Multivariate', 'Multivariate Multiseries'].includes(config.timeSeriesType) ? (config.multivariate_columns || []) : [],
         entity_cols: config.predictionType === 'Time Series' && ['Multivariate Multiseries', 'Univariate Multiseries'].includes(config.timeSeriesType) ? (config.entity_cols || []) : [],
         fairness_columns: config.fairness_columns,
@@ -2211,6 +2213,7 @@ if (
             supervisedTargetFeatureError={validationErrors.supervisedTargetFeature}
             timeSeriesTargetFeatureError={validationErrors.timeSeriesTargetFeature}
             timeSeriesTimeColumnError={validationErrors.timeSeriesTimeColumn}
+            timeSeriesFrequencyError={validationErrors.timeSeriesFrequency}
             sectionRef={predictionTypeRef}
             activeWorkflowId={activeWorkflowId}
             isValidating={isValidating}

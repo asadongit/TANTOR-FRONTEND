@@ -135,7 +135,7 @@ function ModelSelection() {
     const classificationType = modelGenesisConfig?.modelling_type || modelGenesisConfig?.classification;
     // Multiseries forecasting (multivariate_multiseries / univariate_multiseries) targets a
     // continuous value, so it has its own algorithm/hyperparameter set (multiseriesAlgorithmsData)
-    // but still reuses the regression metrics throughout this page (isRegression stays true below).
+    // but shares the timeseries metrics (isTimeSeries includes isMultiseries below).
     const isMultiseries = String(classificationType || '').trim().toLowerCase() === 'multivariate_multiseries' ||
         String(classificationType || '').trim().toLowerCase() === 'univariate_multiseries';
     const isRegression = String(classificationType || '').trim().toLowerCase() === 'regression' || isMultiseries;
@@ -147,7 +147,8 @@ function ModelSelection() {
     String(predictionType).trim().toLowerCase() === 'time series' ||
     String(predictionType).trim().toLowerCase() === 'timeseries' ||
     String(predictionType).trim().toLowerCase() === 'univariate_timeseries' ||
-    String(predictionType).trim().toLowerCase() === 'multivariate_timeseries';
+    String(predictionType).trim().toLowerCase() === 'multivariate_timeseries' ||
+    isMultiseries;
 
     // Forecast horizon is selected during Genesis; reuse it here rather than re-collecting it.
     const forecastHorizon = modelGenesisConfig?.timeSeriesLookback ?? '';
@@ -776,7 +777,7 @@ const defaultPerformanceMetrics = isTimeSeries
 
             if (enabledAlgos.length === 0 || !hasEnabledMetrics) return false;
 
-            return enabledAlgos.every(algo => validateAlgorithm(algo));
+            return enabledAlgos.every(algo => validateAlgorithm(algo, { lookback: modelGenesisConfig?.lookback }));
         };
 
     const handleNextClick = async () => {
@@ -788,7 +789,7 @@ const defaultPerformanceMetrics = isTimeSeries
     setShowValidation(true);
 
             const enabledAlgos = Object.values(allAlgorithmsState).filter(algo => algo.enabled);
-            const invalidAlgo = enabledAlgos.find(algo => !validateAlgorithm(algo));
+            const invalidAlgo = enabledAlgos.find(algo => !validateAlgorithm(algo, { lookback: modelGenesisConfig?.lookback }));
 
             if (invalidAlgo) {
                 // Switch to the tab of the first invalid algorithm
@@ -905,7 +906,7 @@ const defaultPerformanceMetrics = isTimeSeries
         return Object.values(allAlgorithmsState).some(algo =>
             algo.category === category &&
             algo.enabled &&
-            !validateAlgorithm(algo)
+            !validateAlgorithm(algo, { lookback: modelGenesisConfig?.lookback })
         );
     };
 
@@ -1004,6 +1005,7 @@ const defaultPerformanceMetrics = isTimeSeries
                                     showValidation={showValidation}
                                     onResetValidation={() => setShowValidation(false)}
                                     cardRef={(el) => { cardRefs.current[algo.id] = el; }}
+                                    lookback={modelGenesisConfig?.lookback}
                                 />
                             ))
                         )}
@@ -1019,7 +1021,7 @@ const defaultPerformanceMetrics = isTimeSeries
                     disabled={isInteractionLocked}
                     hasEnabledMetrics={hasEnabledMetrics}
                     showValidation={showValidation}
-                    metricFullFormMap={isRegression ? REGRESSION_METRIC_FULL_FORM : {}}
+                    metricFullFormMap={isTimeSeries ? {} : (isRegression ? REGRESSION_METRIC_FULL_FORM : {})}
                 />
             </div>
         </AIPlaygroundLayout>

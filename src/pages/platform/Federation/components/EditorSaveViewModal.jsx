@@ -3,42 +3,61 @@ import { useAuth } from "../../../../context/AuthContext";
 import CircularProgress from "@mui/material/CircularProgress";
 import { useNavigate } from "react-router-dom";
 import { usePersonaStatuses } from "../../../../hooks/dataGovernance/Users/auth";
+import { Lock, ChevronDown, Code2 } from "lucide-react";
 
-import { Lock } from "lucide-react";
-
-const EditorSaveViewModal = ({ isOpen, onClose, query, securedQuery, project, policyIds, onSaveSuccess, isEditMode, editViewName, editOriginalPayload }) => {
+const EditorSaveViewModal = ({
+  isOpen,
+  onClose,
+  query,
+  securedQuery,
+  project,
+  policyIds,
+  onSaveSuccess,
+  isEditMode,
+  editViewName,
+  editOriginalPayload,
+}) => {
   const { hostnameV2, token, decodedToken } = useAuth();
   const navigate = useNavigate();
   const { personaStatuses } = usePersonaStatuses();
 
-  const isViewManager = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'persona:view manager') && personaStatuses?.['persona:view manager'] === true;
+  const isViewManager =
+    decodedToken?.resource_access?.darch?.roles?.some(
+      (role) => role.toLowerCase() === "persona:view manager"
+    ) && personaStatuses?.["persona:view manager"] === true;
 
   const [viewName, setViewName] = useState("");
   const [isMaterializedView, setIsMaterializedView] = useState(false);
   const [isCaching, setIsCaching] = useState(false);
   const [gracePeriod, setGracePeriod] = useState("");
+  const [gracePeriodUnit, setGracePeriodUnit] = useState("HOUR");
   const [cacheTtl, setCacheTtl] = useState("");
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  // SQL preview panel — expanded by default so the user immediately sees it
+  const [showQueryPreview, setShowQueryPreview] = useState(true);
 
   useEffect(() => {
     if (!isOpen) return;
 
     if (isEditMode && editOriginalPayload) {
-      console.log("editoriginalpayload is @@@@ ", editOriginalPayload)
+      console.log("editoriginalpayload is @@@@ ", editOriginalPayload);
       setViewName(editViewName || "");
       setIsMaterializedView(editOriginalPayload.materalized === true);
       setIsCaching(editOriginalPayload.cached === true);
       setGracePeriod(editOriginalPayload?.grace_period || "");
+      setGracePeriodUnit(editOriginalPayload?.grace_period_unit || "HOUR");
       setCacheTtl(editOriginalPayload?.cache_ttl || "");
     } else {
       setViewName("");
       setIsMaterializedView(false);
       setIsCaching(false);
       setGracePeriod("");
+      setGracePeriodUnit("HOUR");
       setCacheTtl("");
     }
     setErrorMsg("");
+    setShowQueryPreview(true);
   }, [isOpen, isEditMode, editViewName, editOriginalPayload]);
 
   if (!isOpen) return null;
@@ -65,10 +84,16 @@ const EditorSaveViewModal = ({ isOpen, onClose, query, securedQuery, project, po
     try {
       // 1. Check if view exists (only if not in edit mode)
       if (!isEditMode) {
-        const viewExistsResponse = await fetch(`${hostnameV2}/view-exists/${viewName.trim().toLowerCase()}`, {
-          method: "GET",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        });
+        const viewExistsResponse = await fetch(
+          `${hostnameV2}/view-exists/${viewName.trim().toLowerCase()}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
         if (viewExistsResponse.status !== 200) {
           setErrorMsg("Error checking if view exists.");
@@ -89,23 +114,33 @@ const EditorSaveViewModal = ({ isOpen, onClose, query, securedQuery, project, po
         secure_query: securedQuery,
         view_name: viewName.trim().toLowerCase(),
         isMaterializedView: isMaterializedView,
-        grace_period: isMaterializedView && gracePeriod ? Number(gracePeriod) : null,
+        grace_period:
+          isMaterializedView && gracePeriod ? Number(gracePeriod) : null,
+        grace_period_unit:
+          isMaterializedView && gracePeriod ? gracePeriodUnit : null,
         isCaching: isCaching,
         cache_ttl: isCaching && cacheTtl ? Number(cacheTtl) : null,
         created_by: decodedToken?.preferred_username,
-        project: project === "default" || project === "none" ? "default" : project,
-        policy_id: policyIds || []
+        project:
+          project === "default" || project === "none" ? "default" : project,
+        policy_id: policyIds || [],
       };
 
       // Clean up nulls
       if (payload.grace_period === null) delete payload.grace_period;
+      if (payload.grace_period_unit === null) delete payload.grace_period_unit;
       if (payload.cache_ttl === null) delete payload.cache_ttl;
 
-      const endpoint = isEditMode ? `${hostnameV2}/edit-editor-view` : `${hostnameV2}/save-editor-view`;
+      const endpoint = isEditMode
+        ? `${hostnameV2}/edit-editor-view`
+        : `${hostnameV2}/save-editor-view`;
 
       const saveRes = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(payload),
       });
 
@@ -116,19 +151,20 @@ const EditorSaveViewModal = ({ isOpen, onClose, query, securedQuery, project, po
           const parsed = JSON.parse(errText);
           const detail = parsed.detail;
           if (Array.isArray(detail)) {
-            // FastAPI validation error — extract first human-readable message
-            errMsg = detail.map(d => d.msg || JSON.stringify(d)).join("; ");
+            errMsg = detail.map((d) => d.msg || JSON.stringify(d)).join("; ");
           } else if (typeof detail === "string") {
             errMsg = detail;
           } else if (detail) {
             errMsg = JSON.stringify(detail);
           }
-        } catch { errMsg = errText || errMsg; }
+        } catch {
+          errMsg = errText || errMsg;
+        }
         setErrorMsg(errMsg);
         setSaving(false);
         return;
       }
-      
+
       if (isEditMode) {
         sessionStorage.removeItem("editMode");
         sessionStorage.removeItem("editViewName");
@@ -148,17 +184,60 @@ const EditorSaveViewModal = ({ isOpen, onClose, query, securedQuery, project, po
 
   return (
     <div className="fixed z-[60] inset-0 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl border border-gray-100">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl border border-gray-100">
+        {/* Header */}
         <div className="flex justify-between items-center mb-5">
-          <h2 className="text-[#8E77BB] text-2xl font-bold">{isEditMode ? "Update View" : "Save View"}</h2>
-          <button onClick={onClose} disabled={saving} className="text-gray-400 hover:text-gray-600 text-2xl leading-none transition-colors">
+          <h2 className="text-[#8E77BB] text-2xl font-bold">
+            {isEditMode ? "Update View" : "Save View"}
+          </h2>
+          <button
+            onClick={onClose}
+            disabled={saving}
+            className="text-gray-400 hover:text-gray-600 text-2xl leading-none transition-colors"
+          >
             &times;
           </button>
         </div>
 
         <div className="space-y-4">
+          {/* ── SQL Query Preview ───────────────────────────────────────────── */}
+          {query && (
+            <div className="rounded-xl border border-[#e5dff7] overflow-hidden bg-[#faf8ff]">
+              {/* Collapsible header */}
+              <button
+                type="button"
+                onClick={() => setShowQueryPreview((p) => !p)}
+                className="w-full flex items-center justify-between px-3.5 py-2.5 bg-[#f3f0fb] border-b border-[#e5dff7] hover:bg-[#ede9f6] transition-colors text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <Code2 size={13} className="text-[#8e78b7] flex-shrink-0" />
+                  <span className="text-[12px] font-semibold text-[#6b559a] tracking-wide">
+                    SQL Query
+                  </span>
+                </div>
+                <ChevronDown
+                  size={14}
+                  className={`text-[#8e78b7] transition-transform duration-200 ${
+                    showQueryPreview ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+
+              {/* Query body */}
+              {showQueryPreview && (
+                <pre
+                  className="px-4 py-3 text-[12px] font-mono text-[#4a3770] leading-relaxed whitespace-pre-wrap break-words overflow-y-auto"
+                  style={{ maxHeight: 140, background: "transparent" }}
+                >
+                  {query}
+                </pre>
+              )}
+            </div>
+          )}
+
+          {/* ── View type options ───────────────────────────────────────────── */}
           <div className="flex flex-wrap text-black items-center gap-3 pb-2 border-b border-gray-100">
-            {(!isCaching && isViewManager) && (
+            {!isCaching && isViewManager && (
               <label className="inline-flex items-center space-x-2 cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -171,19 +250,39 @@ const EditorSaveViewModal = ({ isOpen, onClose, query, securedQuery, project, po
               </label>
             )}
             {isMaterializedView && (
-              <div className="w-full mt-1">
-                <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Grace Period (hr)
+              <div className="w-full mt-2">
+                <label className="block text-[#282F49] text-sm font-medium text-gray-600 mb-1">
+                  Grace period
                 </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={gracePeriod}
-                  onChange={(e) => setGracePeriod(e.target.value)}
-                  disabled={saving}
-                  className="w-full p-2 border border-gray-300 rounded-md text-gray-700 focus:ring-2 focus:ring-[#8E77BB] focus:outline-none"
-                  placeholder="e.g. 60"
-                />
+                <div className="flex items-stretch rounded-lg border border-gray-300 overflow-hidden focus-within:ring-2 focus-within:ring-[#8E77BB] focus-within:border-[#8E77BB] transition-all">
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={gracePeriod}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "") { setGracePeriod(""); return; }
+                      setGracePeriod(String(Math.max(1, Math.floor(Number(val)))));
+                    }}
+                    disabled={saving}
+                    className="flex-1 px-3 py-2 text-gray-700 bg-white outline-none text-sm min-w-0"
+                    placeholder="Enter value"
+                  />
+                  <div className="w-px bg-gray-300" />
+                  <select
+                    id="grace-period-unit"
+                    value={gracePeriodUnit}
+                    onChange={(e) => setGracePeriodUnit(e.target.value)}
+                    disabled={saving}
+                    className="px-2 py-2 text-sm text-gray-700 bg-gray-50 outline-none cursor-pointer border-0"
+                  >
+                    <option value="SECOND">Second</option>
+                    <option value="MINUTE">Minute</option>
+                    <option value="HOUR">Hour</option>
+                    <option value="DAY">Day</option>
+                  </select>
+                </div>
               </div>
             )}
 
@@ -217,6 +316,7 @@ const EditorSaveViewModal = ({ isOpen, onClose, query, securedQuery, project, po
             )}
           </div>
 
+          {/* ── View Name ───────────────────────────────────────────────────── */}
           <div>
             <label className="block text-[#282F49] text-sm font-medium text-gray-600 mb-1">
               View Name
@@ -255,18 +355,24 @@ const EditorSaveViewModal = ({ isOpen, onClose, query, securedQuery, project, po
             )}
           </div>
 
+          {/* Error */}
           {errorMsg && (
-            <div className="text-red-500 text-sm font-normal">
-              {errorMsg}
-            </div>
+            <div className="text-red-500 text-sm font-normal">{errorMsg}</div>
           )}
 
+          {/* Save button */}
           <button
             onClick={handleSave}
             disabled={saving}
             className="flex items-center justify-center w-full bg-[#8E77BB] hover:bg-[#7a63a8] disabled:opacity-70 disabled:cursor-not-allowed transition-colors text-white py-2.5 rounded-lg font-medium text-sm"
           >
-            {saving ? <CircularProgress size={20} sx={{ color: "white" }} /> : isEditMode ? "Update View" : "Save View"}
+            {saving ? (
+              <CircularProgress size={20} sx={{ color: "white" }} />
+            ) : isEditMode ? (
+              "Update View"
+            ) : (
+              "Save View"
+            )}
           </button>
         </div>
       </div>

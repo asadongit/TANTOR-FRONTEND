@@ -244,7 +244,7 @@ const ColumnSettings = ({ columnSetting, queryType }) => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm text-gray-600 mb-1">Alias</label>
+                <label className="block text-sm text-gray-600 mb-1">Alias <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   name="alias"
@@ -320,7 +320,7 @@ const ColumnSettings = ({ columnSetting, queryType }) => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm text-gray-600 mb-1">Alias</label>
+                <label className="block text-sm text-gray-600 mb-1">Alias <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   name="alias"
@@ -482,12 +482,12 @@ const ColumnSettings = ({ columnSetting, queryType }) => {
 
             {(() => {
               const validSettings = settings.filter((c, i) => i > 0 || c.aggregate || c.alias || c.order || c.sort || c.aggregateDistinct === "Yes" || c.showOutputConfig);
-              const hasEmptyAggregate = validSettings.some((config) => !config.aggregate);
+              const hasEmptyAggregate = validSettings.some((config) => !config.aggregate || !config.alias?.trim());
               const isMaxConfigs = validSettings.length >= 5;
               const isAddDisabled = isMaxConfigs || hasEmptyAggregate;
               let buttonText = "Add Configuration";
               if (isMaxConfigs) buttonText = "All Aggregates Used";
-              else if (hasEmptyAggregate) buttonText = "Select Aggregate First";
+              else if (hasEmptyAggregate) buttonText = "Complete Config First";
 
               return (
                 <button
@@ -514,7 +514,7 @@ const ColumnSettings = ({ columnSetting, queryType }) => {
             </button>
             {(() => {
               const validSettings = settings.filter((c, i) => i > 0 || c.aggregate || c.alias || c.order || c.sort || c.aggregateDistinct === "Yes" || c.showOutputConfig);
-              const isSaveDisabled = validSettings.some((c) => !c.aggregate);
+              const isSaveDisabled = validSettings.some((c) => !c.aggregate || !c.alias?.trim());
               return (
                 <button
                   className={`flex-1 px-4 py-2 rounded-lg transition-colors ${isSaveDisabled
@@ -523,7 +523,7 @@ const ColumnSettings = ({ columnSetting, queryType }) => {
                     }`}
                   onClick={handleExecute}
                   disabled={isSaveDisabled}
-                  title={isSaveDisabled ? "Please select an aggregate for all configurations" : ""}
+                  title={isSaveDisabled ? "Please provide an aggregate and alias for all configurations" : ""}
                 >
                   {queryType === "Complex" ? "Save" : "Execute"}
                 </button>

@@ -86,29 +86,51 @@ export const validateMinPeriodsAgainstWindow = (hyperparameters, hyperparameterV
     return minPeriods > window ? minPeriodsConfig.warning : true;
 };
 
-export const validateDModelAgainstHeads = (hyperparameters, hyperparameterValues) => {
-    const dModelConfig = hyperparameters?.d_model;
-    if (!isRangeParameter(dModelConfig) || !dModelConfig.warning) {
+const validateDivisibleBySibling = (hyperparameters, hyperparameterValues, sizeParam, headsCandidates) => {
+    const sizeConfig = hyperparameters?.[sizeParam];
+    if (!isRangeParameter(sizeConfig) || !sizeConfig.warning) {
         return true;
     }
 
-    const headsParam = hyperparameters?.nhead
-        ? 'nhead'
-        : hyperparameters?.n_heads
-            ? 'n_heads'
-            : null;
+    const headsParam = headsCandidates.find(candidate => hyperparameters?.[candidate]);
     if (!headsParam) {
         return true;
     }
 
-    const dModel = Number(hyperparameterValues?.d_model);
+    const sizeValue = Number(hyperparameterValues?.[sizeParam]);
     const heads = Number(hyperparameterValues?.[headsParam]);
 
-    if (!Number.isFinite(dModel) || !Number.isFinite(heads) || heads === 0) {
+    if (!Number.isFinite(sizeValue) || !Number.isFinite(heads) || heads === 0) {
         return true;
     }
 
-    return dModel % heads !== 0 ? dModelConfig.warning : true;
+    return sizeValue % heads !== 0 ? sizeConfig.warning : true;
+};
+
+export const validateDModelAgainstHeads = (hyperparameters, hyperparameterValues) => (
+    validateDivisibleBySibling(hyperparameters, hyperparameterValues, 'd_model', ['nhead', 'n_heads'])
+);
+
+export const validateHiddenSizeAgainstHeads = (hyperparameters, hyperparameterValues) => (
+    validateDivisibleBySibling(hyperparameters, hyperparameterValues, 'hidden_size', ['num_attention_heads'])
+);
+
+// patch_len's upper bound tightens to one less than the configured lookback window
+// (when known), instead of relying on a separate cross-field error message.
+export const getEffectiveParamConfig = (paramName, paramValue, lookback) => {
+    if (paramName !== 'patch_len' || !isRangeParameter(paramValue)) {
+        return paramValue;
+    }
+
+    const lookbackValue = Number(lookback);
+    if (!Number.isFinite(lookbackValue)) {
+        return paramValue;
+    }
+
+    const low = Number(paramValue.low);
+    const dynamicHigh = Math.max(low, lookbackValue - 1);
+
+    return { ...paramValue, high: String(dynamicHigh) };
 };
 
 const isFilled = (value) => (
@@ -117,7 +139,7 @@ const isFilled = (value) => (
     String(value).trim() !== ''
 );
 
-export const validateAlgorithm = (algo) => {
+export const validateAlgorithm = (algo, context = {}) => {
     if (algo.configMode === 'Base') {
         return true;
     }
@@ -134,7 +156,8 @@ export const validateAlgorithm = (algo) => {
                 if (!isFilled(value)) return false;
             } else if (isRangeParameter(paramValue)) {
                 if (!isFilled(value)) return false;
-                if (validateHyperparameterValue(paramName, paramValue, value, true) !== true) {
+                const effectiveParamValue = getEffectiveParamConfig(paramName, paramValue, context.lookback);
+                if (validateHyperparameterValue(paramName, effectiveParamValue, value, true) !== true) {
                     return false;
                 }
             } else if (isNestedParameter(paramValue)) {
@@ -155,6 +178,10 @@ export const validateAlgorithm = (algo) => {
         }
 
         if (validateDModelAgainstHeads(algo.hyperparameters, algo.hyperparameterValues) !== true) {
+            return false;
+        }
+
+        if (validateHiddenSizeAgainstHeads(algo.hyperparameters, algo.hyperparameterValues) !== true) {
             return false;
         }
 

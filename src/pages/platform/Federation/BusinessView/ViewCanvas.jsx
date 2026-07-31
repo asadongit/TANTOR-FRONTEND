@@ -1,9 +1,10 @@
 /*eslint-disable*/
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ReactFlow, {
   addEdge,
   Background,
   Controls,
+  MiniMap,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { SourceViewNode } from '../nodes/sourceViewNode';
@@ -24,7 +25,7 @@ const getId = () => `node_${id++}`;
 
 export function ViewCanvas() {
 
-  const { handleConsolidationPayload, removeConsolidationPayloadByNode, nodes, setNodes, onNodesChange, edges, setEdges, onEdgesChange, isEditMode } = useStateContext("");
+  const { handleConsolidationPayload, removeConsolidationPayloadByNode, nodes, setNodes, onNodesChange, edges, setEdges, onEdgesChange, isEditMode, reactFlowInstance, setReactFlowInstance } = useStateContext("");
 
   const hasRestoredRef = useRef(false);
 
@@ -56,7 +57,7 @@ export function ViewCanvas() {
         console.error("Failed to parse edit flow data", err);
       }
     }
-  }, [setNodes, setEdges, handleConsolidationPayload]);
+  }, [setNodes, setEdges, handleConsolidationPayload, isEditMode]);
 
 
   // const onConnect = useCallback(
@@ -81,12 +82,12 @@ export function ViewCanvas() {
       event.preventDefault();
 
       const type = event.dataTransfer.getData('application/reactflow');
-      if (!type) return;
+      if (!type || !reactFlowInstance) return;
 
-      const position = {
-        x: event.clientX - 320,
-        y: event.clientY - 40,
-      };
+      const position = reactFlowInstance.screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
 
       const newNode = {
         id: getId(),
@@ -101,7 +102,7 @@ export function ViewCanvas() {
 
       setNodes((nds) => nds.concat(newNode));
     },
-    [setNodes]
+    [setNodes, reactFlowInstance]
   );
 
   const onNodeDelete = useCallback((nodeId) => {
@@ -136,10 +137,25 @@ export function ViewCanvas() {
           onDragOver={onDragOver}
           onDrop={onDrop}
           nodeTypes={nodeTypes}
-          fitView
-          zoom={0.25}
+          onInit={(instance) => {
+            setReactFlowInstance(instance);
+            if (isEditMode) {
+              const dataStr = sessionStorage.getItem("editFlowData");
+              if (dataStr) {
+                try {
+                  const data = JSON.parse(dataStr);
+                  if (data.viewport) {
+                    instance.setViewport(data.viewport);
+                  } else {
+                    window.requestAnimationFrame(() => instance.fitView({ maxZoom: 1 }));
+                  }
+                } catch(e) {}
+              }
+            }
+          }}
           className="bg-gray-50"
         >
+          <MiniMap />
         </ReactFlow>
       </ToastProvider>
       <DrawerContainer />

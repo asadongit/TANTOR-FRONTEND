@@ -133,6 +133,7 @@ const ModelInferencing = () => {
       run_name: task.result?.run_name || task.algorithm,
       run_id: task.result?.run_id || task.task_id,
       metrics: task.result?.metrics || {},
+      entity_metrics: task.result?.entity_metrics || {},
       fairness_bar_charts: task.result?.fairness_bar_charts || {},
       profile_radial_charts: task.result?.profile_radial_charts || {},
       fairness_assessment_message: task.result?.fairness_assessment_message || 'N/A',
@@ -365,6 +366,7 @@ const metricDisplayNameMap = isTimeSeriesModel
       name: result.run_name,
       fullName: result.run_name,
       displayName: truncateName(result.run_name, legendTruncateLength),
+      entityMetrics: result.entity_metrics || {},
 
       ...(isTimeSeriesModel
   ? {
