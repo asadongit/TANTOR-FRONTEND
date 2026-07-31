@@ -1065,24 +1065,28 @@ export default function Navbar() {
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                       <div>
-                        <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'block' }}>Group</label>
+                        <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'block' }}>
+                          Group <span style={{ color: '#ef4d5f' }}>*</span>
+                        </label>
                         <input
                           value={workflowGroup}
                           onChange={(e) => {
                             const validatedVal = e.target.value.toLowerCase().replace(/ /g, '_').replace(/[^a-z_]/g, '');
                             setWorkflowMeta(workflowId, workflowName, workflowDescription, validatedVal, workflowCategory, globalErrorNode, dynamicResumption, warmup, autoNewSession);
                           }}
-                          placeholder="Default"
+                          placeholder="default"
                           style={{
                             width: '100%', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', fontSize: 13, color: 'var(--text-primary)', outline: 'none', fontFamily: 'inherit', background: '#F8FAFC'
                           }}
                         />
                       </div>
                       <div>
-                        <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'block' }}>Category</label>
+                        <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'block' }}>
+                          Category <span style={{ color: '#ef4d5f' }}>*</span>
+                        </label>
                         <select
-                          value={workflowCategory}
-                          onChange={(e) => setWorkflowMeta(workflowId, workflowName, workflowDescription, workflowGroup, e.target.value, globalErrorNode, dynamicResumption, warmup, autoNewSession)}
+                          value={workflowCategory || 'General'}
+                          onChange={(e) => setWorkflowMeta(workflowId, workflowName, workflowDescription, workflowGroup, e.target.value || 'General', globalErrorNode, dynamicResumption, warmup, autoNewSession)}
                           style={{
                             width: '100%', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', fontSize: 13, color: 'var(--text-primary)', outline: 'none', fontFamily: 'inherit', cursor: 'pointer', background: '#F8FAFC'
                           }}
@@ -1816,7 +1820,7 @@ export default function Navbar() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
-                    Group
+                    Group <span style={{ color: '#ef4d5f' }}>*</span>
                   </label>
                   <input
                     style={{
@@ -1829,12 +1833,15 @@ export default function Navbar() {
                       const validatedVal = e.target.value.toLowerCase().replace(/ /g, '_').replace(/[^a-z_]/g, '');
                       setPromptGroup(validatedVal);
                     }}
-                    placeholder="Default"
+                    onBlur={(e) => {
+                      if (!e.target.value.trim()) setPromptGroup('default');
+                    }}
+                    placeholder="default"
                   />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
-                    Category
+                    Category <span style={{ color: '#ef4d5f' }}>*</span>
                   </label>
                   <select
                     style={{
@@ -1842,8 +1849,8 @@ export default function Navbar() {
                       border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)',
                       fontSize: 13, outline: 'none', boxSizing: 'border-box', cursor: 'pointer'
                     }}
-                    value={promptCategory}
-                    onChange={(e) => setPromptCategory(e.target.value)}
+                    value={promptCategory || 'General'}
+                    onChange={(e) => setPromptCategory(e.target.value || 'General')}
                   >
                     <option value="General">General</option>
                     {categories.map(c => <option key={c} value={c}>{c}</option>)}

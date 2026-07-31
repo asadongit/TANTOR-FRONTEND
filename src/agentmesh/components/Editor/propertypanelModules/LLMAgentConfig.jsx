@@ -148,6 +148,51 @@ const LLMAgentConfig = memo(function LLMAgentConfig({
             />
           </Field>
         )}
+        {(data.memory?.type_name || "buffer_memory") === "vector_memory" && (
+          <>
+            <Field
+              label="Vector DB Provider"
+              hint="Select vector store engine (ChromaDB for local, Qdrant for production)."
+            >
+              <Select
+                value={data.memory?.vector_db || "chroma"}
+                onChange={(v) => update({ memory: { ...data.memory, vector_db: v } })}
+                options={[
+                  { value: "chroma", label: "ChromaDB (Local)" },
+                  { value: "qdrant", label: "Qdrant (Production)" },
+                ]}
+              />
+            </Field>
+            <Field
+              label="Retrieval Search Type"
+              hint="Cosine similarity vector search or Hybrid BM25+Vector search."
+            >
+              <Select
+                value={data.memory?.search_type || "similarity"}
+                onChange={(v) => update({ memory: { ...data.memory, search_type: v } })}
+                options={[
+                  { value: "similarity", label: "Similarity (Cosine Vector)" },
+                  { value: "hybrid", label: "Hybrid (BM25 + Cosine)" },
+                ]}
+              />
+            </Field>
+            <Field
+              label="Top K Memories"
+              hint="Number of semantically relevant past turns to retrieve."
+            >
+              <Input
+                type="number"
+                value={data.memory?.top_k ?? 3}
+                onChange={(v) =>
+                  update({
+                    memory: { ...data.memory, top_k: parseInt(v) || 3 },
+                  })
+                }
+                placeholder="3"
+              />
+            </Field>
+          </>
+        )}
         {(data.memory?.type_name || "buffer_memory") !== "vector_memory" &&
           (data.memory?.type_name || "buffer_memory") !== "none" && (
             <Field
@@ -167,6 +212,7 @@ const LLMAgentConfig = memo(function LLMAgentConfig({
             </Field>
           )}
       </div>
+
 
       <AdvancedSection
         hitlSection={hitlSection}

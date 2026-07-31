@@ -17,7 +17,8 @@ export default function MultiFileUploadRenderer({ config, context, isLoading, on
   const allowedExts = rawAllowed.map(e => e.toLowerCase().replace('.', '')).filter(Boolean);
   const maxMb = config?.max_file_size_mb || 25.0;
   const maxFiles = config?.max_files_count || 10;
-  const pdfMode = config?.pdf_processing_mode || 'whole_file';
+  const pdfRule = (config?.strategy_rules || []).find(r => r.file_type === 'pdf');
+  const pdfMode = pdfRule?.strategy || 'page_by_page';
 
   const formatBytes = (bytes) => {
     if (!bytes) return '0 Bytes';
@@ -142,7 +143,11 @@ export default function MultiFileUploadRenderer({ config, context, isLoading, on
           </div>
         </div>
 
-        {pdfMode === 'page_by_page' && (
+        {pdfMode === 'whole_file' ? (
+          <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-[11px] font-medium border border-blue-200/60 flex items-center gap-1">
+            <FiLayers size={12} /> Whole PDF
+          </span>
+        ) : (
           <span className="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-lg text-[11px] font-medium border border-amber-200/60 flex items-center gap-1">
             <FiLayers size={12} /> Page-by-Page
           </span>

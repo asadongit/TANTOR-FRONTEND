@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Field, Select, Slider, HitlConfigSection, InfoBanner, AdvancedSection } from './SharedComponents';
-import { FiChevronDown, FiCheck, FiPlus, FiTrash2 } from 'react-icons/fi';
+import { Field, Select, Slider } from './SharedComponents';
+import { FiChevronDown, FiCheck } from 'react-icons/fi';
 
 const AVAILABLE_EXTENSIONS = [
   { id: 'pdf', label: 'PDF Documents (.pdf)' },
@@ -16,30 +16,34 @@ const AVAILABLE_EXTENSIONS = [
 const STRATEGY_CATALOG = {
   pdf: {
     label: 'PDF Document',
+    defaultStrategy: 'page_by_page',
     options: [
+      { label: 'Page-by-Page Split (Default)', value: 'page_by_page' },
       { label: 'Whole PDF Document', value: 'whole_file' },
-      { label: 'Page-by-Page Split', value: 'page_by_page' },
     ]
   },
   images: {
     label: 'Image (PNG / JPG / WEBP)',
+    defaultStrategy: 'original',
     options: [
-      { label: 'Original Color Image', value: 'original' },
+      { label: 'Original Color Image (Default)', value: 'original' },
       { label: 'Black & White (Grayscale/Threshold)', value: 'black_white' },
     ]
   },
   json: {
     label: 'JSON Data',
+    defaultStrategy: 'raw_json',
     options: [
+      { label: 'Raw Object (Default)', value: 'raw_json' },
       { label: 'Flatten Keys', value: 'flatten' },
-      { label: 'Raw Object', value: 'raw_json' },
     ]
   },
   webpage: {
     label: 'Web Page / HTML',
+    defaultStrategy: 'html_raw',
     options: [
+      { label: 'Extract HTML (Default)', value: 'html_raw' },
       { label: 'Scrape Text', value: 'scrape_text' },
-      { label: 'Extract HTML', value: 'html_raw' },
     ]
   }
 };
@@ -118,6 +122,7 @@ export default function MultiFileIngestionConfig({ data, update, nodes, selected
   const allowedExts = Array.isArray(data.allowed_extensions) ? data.allowed_extensions : ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
   const maxMb = data.max_file_size_mb ?? 25.0;
   const maxFiles = data.max_files_count ?? 10;
+  const [isStrategiesOpen, setIsStrategiesOpen] = useState(false);
 
   // Dynamic Strategy Group Rules Array (Supports 0 rules up to N rules)
   const strategyRules = data.strategy_rules || [];
@@ -138,53 +143,8 @@ export default function MultiFileIngestionConfig({ data, update, nodes, selected
     update({ allowed_extensions: nextExts });
   };
 
-  const addStrategyRule = () => {
-    // Find unassigned file type or default to 'pdf'
-    const assignedTypes = strategyRules.map(r => r.file_type);
-    const availableTypes = ['pdf', 'images', 'json', 'webpage'].filter(t => !assignedTypes.includes(t));
-    const nextType = availableTypes[0] || 'pdf';
-
-    const newRule = {
-      id: `rule_${Date.now()}`,
-      file_type: nextType,
-      strategy: STRATEGY_CATALOG[nextType]?.options[0]?.value || 'whole_file'
-    };
-    update({ strategy_rules: [...strategyRules, newRule] });
-  };
-
-  const removeStrategyRule = (ruleId) => {
-    const updated = strategyRules.filter(r => r.id !== ruleId);
-    update({ strategy_rules: updated });
-  };
-
-  const updateStrategyRule = (ruleId, key, val) => {
-    const updated = strategyRules.map(r => {
-      if (r.id === ruleId) {
-        const next = { ...r, [key]: val };
-        if (key === 'file_type') {
-          // Reset child strategy to single valid option when parent file type changes
-          next.strategy = STRATEGY_CATALOG[val]?.options[0]?.value || 'whole_file';
-        }
-        return next;
-      }
-      return r;
-    });
-
-    // Enforcement: Deduplicate rules so each parent file_type appears at most ONCE
-    const uniqueMap = new Map();
-    for (const rule of updated) {
-      uniqueMap.set(rule.file_type, rule); // Keeps single strategy per parent file_type
-    }
-
-    update({ strategy_rules: Array.from(uniqueMap.values()) });
-  };
-
   return (
     <div className="flex flex-col gap-4">
-      <InfoBanner type="info">
-        Set limits, choose allowed formats, and configure optional strategy rules. Each file format accepts exactly 1 single strategy (or 0 rules for default).
-      </InfoBanner>
-
       {/* Allowed File Formats - Multi-Checkbox Dropdown */}
       <Field label="Allowed File Formats" hint="Click dropdown to check permitted file formats">
         <MultiSelectDropdown allowedExts={allowedExts} onToggle={toggleExtension} />
@@ -214,86 +174,68 @@ export default function MultiFileIngestionConfig({ data, update, nodes, selected
         />
       </Field>
 
-      {/* Dynamic Parent ➔ Child Strategy Rules Group matching AgentMesh Design System */}
-      <Field label="Strategy Group Rules (0 or 1 Strategy per File Type)" hint="You can set 0 strategy rules (defaults apply) or add 1 single strategy per file type (e.g. PDF ➔ Whole or Page-by-Page)">
-        <div className="flex flex-col gap-3 mt-1">
-          {strategyRules.length === 0 ? (
-            <div className="p-3 bg-[var(--bg-card-neutral,#F8FAFC)] rounded-xl border border-dashed border-[var(--border)] text-center text-xs text-[var(--text-muted)] font-medium">
-              No strategy rules added (0 strategies set). System defaults will be used for all files.
-            </div>
-          ) : (
-            strategyRules.map((rule, index) => {
-              const currentCatalog = STRATEGY_CATALOG[rule.file_type] || STRATEGY_CATALOG.pdf;
+      {/* Collapsible Accordion: File Processing Strategies */}
+      <div className="border border-[var(--border)] rounded-xl bg-[var(--bg-card-neutral,#FFFFFF)] overflow-hidden shadow-sm">
+        <button
+          type="button"
+          onClick={() => setIsStrategiesOpen(!isStrategiesOpen)}
+          className="w-full px-3.5 py-2.5 flex items-center justify-between bg-slate-50/70 hover:bg-slate-100/80 transition-colors text-left border-none cursor-pointer"
+        >
+          <div className="flex flex-col">
+            <span className="text-xs font-bold text-[var(--text-primary,#1E293B)]">File Processing Strategies</span>
+            <span className="text-[10px] text-[var(--text-muted,#94A3B8)] font-medium">Configure format specific parsing rules</span>
+          </div>
+          <FiChevronDown size={16} className={`text-[var(--text-muted,#94A3B8)] transition-transform duration-200 ${isStrategiesOpen ? 'rotate-180' : ''}`} />
+        </button>
+
+        {isStrategiesOpen && (
+          <div className="p-3 border-t border-[var(--border)] flex flex-col gap-3">
+            {Object.entries(STRATEGY_CATALOG).map(([fileType, catalog]) => {
+              // Find existing rule or use standard defaults
+              const existingRule = strategyRules.find(r => r.file_type === fileType);
+              const currentStrategy = existingRule?.strategy || catalog.defaultStrategy;
+
+              const handleStrategyChange = (newVal) => {
+                let updatedRules = [...strategyRules];
+                const existingIdx = updatedRules.findIndex(r => r.file_type === fileType);
+
+                if (existingIdx >= 0) {
+                  updatedRules[existingIdx] = { ...updatedRules[existingIdx], strategy: newVal };
+                } else {
+                  updatedRules.push({
+                    id: `rule_${fileType}_${Date.now()}`,
+                    file_type: fileType,
+                    strategy: newVal
+                  });
+                }
+                update({ strategy_rules: updatedRules });
+              };
 
               return (
                 <div
-                  key={rule.id || index}
-                  className="p-3.5 bg-[var(--bg-card-neutral,#F8FAFC)] rounded-xl border border-[var(--border)] flex flex-col gap-2.5 relative shadow-sm"
+                  key={fileType}
+                  className="p-3 bg-white rounded-xl border border-[var(--border)] flex flex-col gap-2 shadow-xs"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--theme-primary,#6366F1)]">
-                      Rule #{index + 1}: {currentCatalog.label}
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-primary,#1E293B)]">
+                      {catalog.label}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => removeStrategyRule(rule.id)}
-                      className="text-[var(--text-muted)] hover:text-red-500 transition-colors p-1 border-none bg-transparent cursor-pointer"
-                      title="Remove Rule"
-                    >
-                      <FiTrash2 size={13} />
-                    </button>
+                    <span className="text-[10px] text-slate-400 font-semibold">
+                      {existingRule ? 'Custom' : 'Default'}
+                    </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2.5">
-                    {/* Parent Dropdown: File Type */}
-                    <div>
-                      <label className="text-[10px] font-semibold text-[var(--text-muted)] block mb-1">Parent File Type</label>
-                      <Select
-                        value={rule.file_type}
-                        onChange={(val) => updateStrategyRule(rule.id, 'file_type', val)}
-                        options={[
-                          { label: 'PDF Document', value: 'pdf' },
-                          { label: 'Image (PNG/JPG/WEBP)', value: 'images' },
-                          { label: 'JSON Data', value: 'json' },
-                          { label: 'Web Page / HTML', value: 'webpage' },
-                        ]}
-                      />
-                    </div>
-
-                    {/* Child Dropdown: Single Strategy Option */}
-                    <div>
-                      <label className="text-[10px] font-semibold text-[var(--text-muted)] block mb-1">Single Strategy Choice</label>
-                      <Select
-                        value={rule.strategy}
-                        onChange={(val) => updateStrategyRule(rule.id, 'strategy', val)}
-                        options={currentCatalog.options}
-                      />
-                    </div>
-                  </div>
+                  <Select
+                    value={currentStrategy}
+                    onChange={handleStrategyChange}
+                    options={catalog.options}
+                  />
                 </div>
               );
-            })
-          )}
-
-          {strategyRules.length < 4 && (
-            <button
-              type="button"
-              onClick={addStrategyRule}
-              className="flex items-center justify-center gap-1.5 py-2 px-3 bg-[var(--accent-light,#EEF2FF)] hover:bg-indigo-100 text-[var(--theme-primary,#4F46E5)] rounded-xl text-xs font-semibold border border-indigo-200/80 transition-colors cursor-pointer w-full mt-1"
-            >
-              <FiPlus size={14} /> Add Strategy Rule
-            </button>
-          )}
-        </div>
-      </Field>
-
-      <AdvancedSection
-        hitlSection={<HitlConfigSection data={data} update={update} />}
-        nodes={nodes}
-        selectedNodeId={selectedNodeId}
-        onErrorValue={data.on_error}
-        onErrorChange={(v) => update({ on_error: v })}
-      />
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
