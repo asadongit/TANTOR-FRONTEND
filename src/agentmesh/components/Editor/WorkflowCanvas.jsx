@@ -920,6 +920,13 @@ export default function WorkflowCanvas() {
         uiState.setSearchOpen(true);
       }
 
+      if ((e.key === "f" || e.key === "F") && !currentSelectedNodeId && !currentSearchOpen) {
+        e.preventDefault();
+        if (reactFlowInstance) {
+          reactFlowInstance.fitView({ padding: 0.4, duration: 300 });
+        }
+      }
+
       if ((e.key === "n" || e.key === "N") && !currentSelectedNodeId) {
         e.preventDefault();
         // Calculate center of canvas viewport
