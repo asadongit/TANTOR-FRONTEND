@@ -1103,7 +1103,6 @@ export const useWorkflowStore = create((set, get) => ({
     vision_intelligence: ['vision_mode', 'vision_enable_llm', 'vision_face_match_threshold', 'vision_quality_min_score', 'vision_quality_blur_threshold', 'vision_quality_min_contrast', 'vision_quality_max_contrast', 'vision_id_image_key', 'vision_selfie_image_key', 'vision_output_key', 'llm', 'interrupt_before', 'interrupt_after'],
     group: ['name', 'description', 'internal_nodes', 'internal_edges', 'original_edges'],
     ingestion_adapter: ['source_format', 'target_serialization', 'validation_mode', 'flatten_depth', 'flatten_separator', 'field_aliases', 'default_values', 'source_key', 'external_integrations', 'internal_integrations', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
-    subscription: ['subscription_filters', 'subscription_input_key', 'subscription_output_key'],
     payload_builder: ['payload_template', 'payload_destination_key'],
     webhook_response: ['response_status', 'response_headers', 'response_body_key'],
     report_generator: ['template_content', 'template_output_key', 'template_data_key', 'template_file_path', 'template_id', 'input_data_key', 'output_file_name', 'report_format', 'template_category', 'interrupt_before', 'interrupt_after'],
@@ -1144,19 +1143,7 @@ export const useWorkflowStore = create((set, get) => ({
         const nodeConfig = {};
         validFields.forEach(field => {
           if (d[field] !== undefined) {
-            if (field === 'subscription_filters') {
-              if (typeof d[field] === 'string') {
-                if (d[field].trim() === '') {
-                  nodeConfig[field] = null;
-                } else {
-                  try { nodeConfig[field] = JSON.parse(d[field]); } catch (e) { nodeConfig[field] = null; }
-                }
-              } else {
-                nodeConfig[field] = Object.keys(d[field] || {}).length > 0 ? d[field] : null;
-              }
-            } else {
-              nodeConfig[field] = d[field];
-            }
+            nodeConfig[field] = d[field];
           }
         });
 

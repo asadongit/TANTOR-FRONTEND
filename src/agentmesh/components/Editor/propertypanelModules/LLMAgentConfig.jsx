@@ -176,70 +176,6 @@ const LLMAgentConfig = memo(function LLMAgentConfig({
         onErrorChange={(v) => update({ on_error: v })}
       >
         <div style={{ marginBottom: 20 }}>
-          <div
-            style={{
-              fontSize: 10,
-              fontWeight: 800,
-              color: "var(--text-muted)",
-              marginBottom: 12,
-              textTransform: "uppercase",
-            }}
-          >
-            Data Subscriptions (Pub/Sub)
-          </div>
-          <Field
-            label="Subscription Filters (JSON Array/Object)"
-            hint="If provided, the agent will filter the input array and ONLY execute if matches are found."
-          >
-            <Textarea
-              value={
-                typeof data.subscription_filters === "string"
-                  ? data.subscription_filters
-                  : data.subscription_filters
-                    ? JSON.stringify(data.subscription_filters, null, 2)
-                    : ""
-              }
-              onChange={(v) => update({ subscription_filters: v })}
-              placeholder='{\n  "class": ["BALANCE_SHEET"]\n}'
-              rows={4}
-              debounceMs={300}
-            />
-          </Field>
-          <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ flex: 1 }}>
-              <Field
-                label="Input Array Key"
-                hint="The context key containing the array to filter."
-              >
-                <Input
-                  stripBraces
-                  value={
-                    data.subscription_input_key !== undefined
-                      ? data.subscription_input_key
-                      : "aggregated_results"
-                  }
-                  onChange={(v) => update({ subscription_input_key: v })}
-                  placeholder="aggregated_results"
-                />
-              </Field>
-            </div>
-            <div style={{ flex: 1 }}>
-              <Field
-                label="Output Data Key"
-                hint="Where the matched data is stored for the prompt."
-              >
-                <Input
-                  stripBraces
-                  value={data.subscription_output_key || ""}
-                  onChange={(v) => update({ subscription_output_key: v })}
-                  placeholder="latest_ocr_output"
-                />
-              </Field>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ marginBottom: 20 }}>
           <IterationConfigSection
             policy={data.iteration_policy}
             onChange={(policy) => update({ iteration_policy: policy })}
@@ -277,11 +213,6 @@ const LLMAgentConfig = memo(function LLMAgentConfig({
               placeholder="e.g. intent"
             />
           </Field>
-          <Toggle
-            checked={data.return_direct}
-            onChange={(v) => syncToggle("return_direct", v)}
-            label="Return result direct to user"
-          />
         </div>
 
         <div
