@@ -6,7 +6,6 @@ import {
   Textarea,
   ToolTagInput,
   LLMConfigSection,
-  Toggle,
   WizardButton,
   NodeIdList,
   AdvancedSection,
@@ -224,36 +223,6 @@ const DeepAgentConfig = memo(function DeepAgentConfig({
               placeholder="300"
             />
           </Field>
-        </div>
-
-        <div style={{ marginBottom: 20 }}>
-          <div
-            style={{
-              fontSize: 10,
-              fontWeight: 800,
-              color: "var(--text-muted)",
-              marginBottom: 12,
-              textTransform: "uppercase",
-            }}
-          >
-            Routing & Execution
-          </div>
-          <Field
-            label="Routing Key"
-            hint="Optional key for conditional branching."
-          >
-            <Input
-              stripBraces
-              value={data.routing_key || ""}
-              onChange={(v) => update({ routing_key: v })}
-              placeholder="e.g. intent"
-            />
-          </Field>
-          <Toggle
-            checked={data.return_direct}
-            onChange={(v) => syncToggle("return_direct", v)}
-            label="Return result direct to user"
-          />
         </div>
       </AdvancedSection>
     </>
