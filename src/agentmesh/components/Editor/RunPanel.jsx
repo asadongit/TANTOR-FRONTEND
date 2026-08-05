@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { useWorkflowStore, useRunStore, useUIStore } from '../../store';
+import { useShallow } from 'zustand/react/shallow';
 import { executeWorkflow, streamWorkflow, compileWorkflow, listThreads, getThreadHistory, deleteThread, listVfsFiles } from '../../api/agentmesh';
 import {
   FiSend, FiRotateCcw, FiPaperclip, FiMic, FiChevronDown, FiChevronUp, FiArrowUp,
@@ -36,13 +37,48 @@ export default function RunPanel({ onClose }) {
     workflowId, workflowName, isDirty, isCompiled, nodes, edges,
     autoNewSession, setWorkflowMeta, workflowDescription, workflowGroup,
     workflowCategory, globalErrorNode, dynamicResumption, warmup
-  } = useWorkflowStore();
+  } = useWorkflowStore(useShallow((s) => ({
+    workflowId: s.workflowId,
+    workflowName: s.workflowName,
+    isDirty: s.isDirty,
+    isCompiled: s.isCompiled,
+    nodes: s.nodes,
+    edges: s.edges,
+    autoNewSession: s.autoNewSession,
+    setWorkflowMeta: s.setWorkflowMeta,
+    workflowDescription: s.workflowDescription,
+    workflowGroup: s.workflowGroup,
+    workflowCategory: s.workflowCategory,
+    globalErrorNode: s.globalErrorNode,
+    dynamicResumption: s.dynamicResumption,
+    warmup: s.warmup,
+  })));
   const {
     running, streamEvents, runOutput, runError, threadId, history,
     startRun, addEvent, finishRun, setError, reset, removeEventsFromIndex,
     pausedInfo, setPausedInfo, setHistory, addToHistory, removeFromHistory, setEvents,
     latestContext
-  } = useRunStore();
+  } = useRunStore(useShallow((s) => ({
+    running: s.running,
+    streamEvents: s.streamEvents,
+    runOutput: s.runOutput,
+    runError: s.runError,
+    threadId: s.threadId,
+    history: s.history,
+    startRun: s.startRun,
+    addEvent: s.addEvent,
+    finishRun: s.finishRun,
+    setError: s.setError,
+    reset: s.reset,
+    removeEventsFromIndex: s.removeEventsFromIndex,
+    pausedInfo: s.pausedInfo,
+    setPausedInfo: s.setPausedInfo,
+    setHistory: s.setHistory,
+    addToHistory: s.addToHistory,
+    removeFromHistory: s.removeFromHistory,
+    setEvents: s.setEvents,
+    latestContext: s.latestContext,
+  })));
 
   const [reworkFeedback, setReworkFeedback] = useState('');
   const [showHistory, setShowHistory] = useState(false);
@@ -464,8 +500,9 @@ export default function RunPanel({ onClose }) {
         }
       }
 
-      if (clearFromIdx >= 0 && removeEventsFromIndex) {
-        removeEventsFromIndex(clearFromIdx);
+      const clearFromSeq = clearFromIdx >= 0 ? streamEvents[clearFromIdx]?._seq : null;
+      if (clearFromSeq != null && removeEventsFromIndex) {
+        removeEventsFromIndex(clearFromSeq);
       }
     }
 

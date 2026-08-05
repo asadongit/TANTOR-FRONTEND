@@ -2,6 +2,14 @@ import { create } from 'zustand';
 // ─── Constants & Utils ──────────────────────────────────────────────────────────
 const genId = () => Math.random().toString(36).substring(2, 7);
 
+// Native deep-clone for history snapshots — 3-5x faster than the legacy
+// JSON.parse(JSON.stringify(...)) double-encode path in modern engines (F5).
+// Falls back to the JSON technique where structuredClone is unavailable.
+const deepClone = (value) => {
+  if (typeof structuredClone === 'function') return structuredClone(value);
+  return JSON.parse(JSON.stringify(value));
+};
+
 const NODE_DEFAULTS = {
   start: { label: 'START' },
   end: { label: 'END' },
@@ -301,8 +309,8 @@ export const useWorkflowStore = create((set, get) => ({
   takeHistorySnapshot: () => {
     const s = get();
     const current = {
-      nodes: JSON.parse(JSON.stringify(s.nodes)),
-      edges: JSON.parse(JSON.stringify(s.edges)),
+      nodes: deepClone(s.nodes),
+      edges: deepClone(s.edges),
     };
     const lastPast = s.history.past[s.history.past.length - 1];
     if (lastPast && JSON.stringify(lastPast) === JSON.stringify(current)) {
@@ -327,8 +335,8 @@ export const useWorkflowStore = create((set, get) => ({
     const previous = past[past.length - 1];
     const newPast = past.slice(0, past.length - 1);
     const current = {
-      nodes: JSON.parse(JSON.stringify(get().nodes)),
-      edges: JSON.parse(JSON.stringify(get().edges)),
+      nodes: deepClone(get().nodes),
+      edges: deepClone(get().edges),
     };
     const newFuture = [current, ...future];
 
@@ -350,8 +358,8 @@ export const useWorkflowStore = create((set, get) => ({
     const next = future[0];
     const newFuture = future.slice(1);
     const current = {
-      nodes: JSON.parse(JSON.stringify(get().nodes)),
-      edges: JSON.parse(JSON.stringify(get().edges)),
+      nodes: deepClone(get().nodes),
+      edges: deepClone(get().edges),
     };
     const newPast = [...past, current];
 
@@ -1475,9 +1483,13 @@ export const useUIStore = create((set) => ({
 }));
 
 // ─── Run Store ────────────────────────────────────────────────────────────────
+const MAX_STREAM_EVENTS = 2000;
+
 export const useRunStore = create((set) => ({
   running: false,
   streamEvents: [],
+  eventVersion: 0,
+  nextEventSeq: 1,
   runOutput: null,
   runError: null,
   threadId: null,
@@ -1505,12 +1517,36 @@ export const useRunStore = create((set) => ({
     runOutput: null,
     threadId: threadId || s.threadId
   })),
-  addEvent: (evt) => set((s) => ({ streamEvents: [...s.streamEvents, evt] })),
-  setEvents: (evts) => set({ streamEvents: evts }),
+  addEvent: (evt) => set((s) => {
+    const withSeq = { ...evt, _seq: s.nextEventSeq };
+    let streamEvents = [...s.streamEvents, withSeq];
+    if (streamEvents.length > MAX_STREAM_EVENTS) {
+      streamEvents = streamEvents.slice(streamEvents.length - MAX_STREAM_EVENTS);
+    }
+    return {
+      streamEvents,
+      eventVersion: s.eventVersion + 1,
+      nextEventSeq: s.nextEventSeq + 1,
+    };
+  }),
+  setEvents: (evts) => set((s) => {
+    const withSeq = (evts || []).map((e, i) => ({ ...e, _seq: s.nextEventSeq + i }));
+    return {
+      streamEvents: withSeq,
+      eventVersion: s.eventVersion + 1,
+      nextEventSeq: s.nextEventSeq + withSeq.length,
+    };
+  }),
   finishRun: (output) => set({ running: false, runOutput: output }),
   setError: (err) => set({ running: false, runError: err }),
   setPausedInfo: (info) => set((s) => ({ pausedInfo: { ...s.pausedInfo, ...info } })),
-  removeEventsFromIndex: (index) => set((s) => ({ streamEvents: s.streamEvents.slice(0, index) })),
+  removeEventsFromIndex: (seq) => set((s) => {
+    const pos = s.streamEvents.findIndex((e) => e._seq === seq);
+    return {
+      streamEvents: pos < 0 ? s.streamEvents : s.streamEvents.slice(0, pos),
+      eventVersion: s.eventVersion + 1,
+    };
+  }),
 
   setHistory: (history) => set({ history }),
   addToHistory: (item) => set((s) => ({
@@ -1522,6 +1558,8 @@ export const useRunStore = create((set) => ({
   reset: () => set({
     running: false,
     streamEvents: [],
+    eventVersion: 0,
+    nextEventSeq: 1,
     runOutput: null,
     runError: null,
     threadId: null,

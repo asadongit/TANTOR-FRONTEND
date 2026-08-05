@@ -1,6 +1,7 @@
 import React from 'react';
 import toast from 'react-hot-toast';
 import { useWorkflowStore, useUIStore, useRunStore } from '../../store';
+import { useShallow } from 'zustand/react/shallow';
 import { compileWorkflow, saveWorkflow, listWorkflowCategories, deleteWorkflow, explainWorkflow, getWorkflow, cloneWorkflow, fixGrammar, publishWorkflow, getMarketplaceUsecase } from '../../api/agentmesh';
 import { FiUpload, FiDownload, FiPlus, FiX, FiCheck, FiAlertTriangle, FiCopy, FiChevronDown, FiChevronUp, FiBookOpen, FiZap, FiLoader, FiTrash2, FiInfo, FiMaximize2, FiMinimize2, FiShare2, FiSave, FiCode, FiDatabase, FiSend, FiRotateCcw, FiCpu, FiCompass, FiGitCommit } from 'react-icons/fi';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -65,7 +66,32 @@ export default function Navbar() {
     workflowName, workflowDescription, workflowGroup, workflowCategory, globalErrorNode, dynamicResumption, warmup, autoNewSession, setWorkflowMeta, workflowId,
     buildConfig, newWorkflow, isDirty, isCompiled, importWorkflow, markClean, markCompiled, loadWorkflowIntoEditor,
     nodes, edges, listSearch, setListSearch, createdAt, updatedAt
-  } = useWorkflowStore();
+  } = useWorkflowStore(useShallow((s) => ({
+    workflowName: s.workflowName,
+    workflowDescription: s.workflowDescription,
+    workflowGroup: s.workflowGroup,
+    workflowCategory: s.workflowCategory,
+    globalErrorNode: s.globalErrorNode,
+    dynamicResumption: s.dynamicResumption,
+    warmup: s.warmup,
+    autoNewSession: s.autoNewSession,
+    setWorkflowMeta: s.setWorkflowMeta,
+    workflowId: s.workflowId,
+    buildConfig: s.buildConfig,
+    newWorkflow: s.newWorkflow,
+    isDirty: s.isDirty,
+    isCompiled: s.isCompiled,
+    importWorkflow: s.importWorkflow,
+    markClean: s.markClean,
+    markCompiled: s.markCompiled,
+    loadWorkflowIntoEditor: s.loadWorkflowIntoEditor,
+    nodes: s.nodes,
+    edges: s.edges,
+    listSearch: s.listSearch,
+    setListSearch: s.setListSearch,
+    createdAt: s.createdAt,
+    updatedAt: s.updatedAt,
+  })));
   const {
     activePage, setActivePage,
     managementSearch, setManagementSearch,
@@ -77,7 +103,27 @@ export default function Navbar() {
     showFlowchart, toggleFlowchart,
     showNotifications, setShowNotifications, unreadCount,
     canvasNodeTheme
-  } = useUIStore();
+  } = useUIStore(useShallow((s) => ({
+    activePage: s.activePage,
+    setActivePage: s.setActivePage,
+    managementSearch: s.managementSearch,
+    setManagementSearch: s.setManagementSearch,
+    managementWfFilter: s.managementWfFilter,
+    setManagementWfFilter: s.setManagementWfFilter,
+    triggerRefresh: s.triggerRefresh,
+    showManagementModal: s.showManagementModal,
+    setShowManagementModal: s.setShowManagementModal,
+    isSyncing: s.isSyncing,
+    setIsSyncing: s.setIsSyncing,
+    showNotes: s.showNotes,
+    toggleNotes: s.toggleNotes,
+    showFlowchart: s.showFlowchart,
+    toggleFlowchart: s.toggleFlowchart,
+    showNotifications: s.showNotifications,
+    setShowNotifications: s.setShowNotifications,
+    unreadCount: s.unreadCount,
+    canvasNodeTheme: s.canvasNodeTheme,
+  })));
   const workflows = useWorkflowStore(s => s.workflows);
   const [saving, setSaving] = React.useState(false);
   const [compiling, setCompiling] = React.useState(false);

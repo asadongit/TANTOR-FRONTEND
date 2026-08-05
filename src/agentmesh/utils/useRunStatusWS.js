@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { getBackendUrl } from '../api/agentmesh';
+import { useRunStatusStore } from '../store/runStatusStore';
 
 /**
  * useRunStatusWS — real-time workflow run-status via WebSocket push.
@@ -12,7 +13,8 @@ import { getBackendUrl } from '../api/agentmesh';
  * Returns `runningNodes` — a Set of node ids currently executing for `workflowId`.
  */
 export const useRunStatusWS = ({ workflowId, clientId = 'agent_mesh_ui' }) => {
-    const [runningNodes, setRunningNodes] = useState(() => new Set());
+    const runningNodes = useRunStatusStore((s) => s.runningNodes);
+    const setRunningNodes = useRunStatusStore((s) => s.setRunningNodes);
     const socketRef = useRef(null);
     const reconnectRef = useRef(null);
     const heartbeatRef = useRef(null);
@@ -31,7 +33,7 @@ export const useRunStatusWS = ({ workflowId, clientId = 'agent_mesh_ui' }) => {
                 prev.size !== next.size || [...prev].some((id) => !next.has(id));
             return changed ? next : prev;
         });
-    }, [workflowId]);
+    }, [workflowId, setRunningNodes]);
 
     const fetchSnapshot = useCallback(async () => {
         try {
@@ -146,7 +148,7 @@ export const useRunStatusWS = ({ workflowId, clientId = 'agent_mesh_ui' }) => {
             }
             socketRef.current = null;
         };
-    }, [workflowId, clientId, fetchSnapshot]);
+    }, [workflowId, clientId, fetchSnapshot, setRunningNodes]);
 
     return { runningNodes };
 };

@@ -1,6 +1,8 @@
 import React, { memo, useState } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { useUIStore, useWorkflowStore } from '../../../store';
+import { useRunStatusStore } from '../../../store/runStatusStore';
+import { useShallow } from 'zustand/react/shallow';
 import { AUTO_INJECT_TYPES } from '../RunPanelModules/pauseRegistry';
 import {
   FiPlay, FiSquare, FiCpu, FiBox, FiGitMerge,
@@ -174,40 +176,42 @@ function AgentNode({ id, data, selected }) {
   const setSearchOpen = useUIStore((s) => s.setSearchOpen);
   const canvasHandleSize = useUIStore((s) => s.canvasHandleSize || 10);
   const canvasNodeTheme = useUIStore((s) => s.canvasNodeTheme || 'modern');
-  const { nodes, edges } = useWorkflowStore();
+  const { isSwarmMember, isParallel } = useWorkflowStore(
+    useShallow((s) => {
+      const nodes = s.nodes;
+      const edges = s.edges;
+      const isAgentClass = ['llm_agent', 'deep_agent', 'swarm', 'supervisor'].includes(actualType);
+      const swarmMember = nodes.some(
+        (n) => n.data?.type === 'swarm' && (n.data?.member_ids || []).includes(id),
+      );
+      const incomingEdges = edges.filter((e) => e.target === id);
+      const parallel =
+        isAgentClass &&
+        incomingEdges.some((edge) => {
+          const sourceNode = nodes.find((n) => n.id === edge.source);
+          if (!sourceNode) return false;
+          if (sourceNode.data?.type === 'router' || sourceNode.data?.type === 'swarm') return false;
+          const siblings = edges.filter(
+            (oe) =>
+              oe.source === edge.source &&
+              !nodes.find((n) => n.id === oe.target)?.data?.type?.includes('tool') &&
+              !nodes.find((n) => n.id === oe.target)?.data?.type?.includes('error'),
+          );
+          return siblings.length > 1;
+        });
+      return { isSwarmMember: swarmMember, isParallel: parallel };
+    }),
+  );
   const { updateNodeData } = useReactFlow();
   const [hovered, setHovered] = useState(false);
+  // Subscribe to the lightweight run-status store (F4): returns an immutable
+  // boolean, so this node only re-renders when ITS running state changes.
+  const isRunning = useRunStatusStore((s) => s.runningNodes.has(id));
 
   const Icon = config.icon || FiCpu;
 
   const isStart = actualType === 'start';
   const isEnd = actualType === 'end';
-
-  // State Logic Memberships
-  const isSwarmMember = nodes.some(n =>
-    n.data?.type === 'swarm' &&
-    (n.data?.member_ids || []).includes(id)
-  );
-
-  // Detect Parallel Execution: Only for Agents/Swarms/Deep Agents
-  const isAgentClass = ['llm_agent', 'deep_agent', 'swarm', 'supervisor'].includes(actualType);
-  const incomingEdges = edges.filter(e => e.target === id);
-  const isParallel = isAgentClass && incomingEdges.some(edge => {
-    const sourceNode = nodes.find(n => n.id === edge.source);
-    if (!sourceNode) return false;
-
-    // Routers generally don't run branches in parallel, they select one.
-    // Swarm nodes also hand off sequentially.
-    if (sourceNode.data?.type === 'router' || sourceNode.data?.type === 'swarm') return false;
-
-    // Find all outgoing edges from the same source that are NOT tool edges or error edges
-    const siblings = edges.filter(oe =>
-      oe.source === edge.source &&
-      !nodes.find(n => n.id === oe.target)?.data?.type?.includes('tool') &&
-      !nodes.find(n => n.id === oe.target)?.data?.type?.includes('error')
-    );
-    return siblings.length > 1;
-  });
 
   const isLogicNode = ['condition', 'switch', 'splitter', 'error_router', 'beneficiary_risk'].includes(actualType);
 
@@ -235,7 +239,7 @@ function AgentNode({ id, data, selected }) {
       onClick={(e) => { e.stopPropagation(); setSelectedNode(id); updateNodeData(id, { active_branch_selection: null }); }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      className={data.isRunning ? "node-active-running" : ""}
+      className={isRunning ? "node-active-running" : ""}
       style={{
         minWidth: isLogicNode ? 220 : config.small ? 100 : 180,
         background: canvasNodeTheme === 'liquid-glass'

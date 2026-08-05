@@ -11,6 +11,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useWorkflowStore, useUIStore, useVariablesStore } from "../../store";
+import { useShallow } from "zustand/react/shallow";
 import { useRunStatusWS } from "../../utils/useRunStatusWS";
 import AgentNode from "./Nodes/AgentNode";
 import CardboardNode from "./Nodes/CardboardNode";
@@ -186,7 +187,26 @@ export default function WorkflowCanvas() {
     groupNodes,
     ungroupNode,
     isLoadingWorkflow,
-  } = useWorkflowStore();
+  } = useWorkflowStore(useShallow((s) => ({
+    nodes: s.nodes,
+    edges: s.edges,
+    setNodes: s.setNodes,
+    setEdges: s.setEdges,
+    setNodesDirty: s.setNodesDirty,
+    setEdgesDirty: s.setEdgesDirty,
+    addNode: s.addNode,
+    setNodeData: s.setNodeData,
+    workflowName: s.workflowName,
+    workflowId: s.workflowId,
+    undo: s.undo,
+    redo: s.redo,
+    previewingGroupId: s.previewingGroupId,
+    exitGroupPreview: s.exitGroupPreview,
+    previewGroupOriginalNode: s.previewGroupOriginalNode,
+    groupNodes: s.groupNodes,
+    ungroupNode: s.ungroupNode,
+    isLoadingWorkflow: s.isLoadingWorkflow,
+  })));
   const {
     selectedNodeId,
     selectedEdgeId,
@@ -204,11 +224,28 @@ export default function WorkflowCanvas() {
     canvasConnectionRadius,
     canvasSnapGrid,
     showVariableExplorer,
-  } = useUIStore();
+  } = useUIStore(useShallow((s) => ({
+    selectedNodeId: s.selectedNodeId,
+    selectedEdgeId: s.selectedEdgeId,
+    setSelectedNode: s.setSelectedNode,
+    setSelectedEdge: s.setSelectedEdge,
+    canvasWireStyle: s.canvasWireStyle,
+    canvasBackgroundStyle: s.canvasBackgroundStyle,
+    isDarkCanvas: s.isDarkCanvas,
+    searchOpen: s.searchOpen,
+    setSearchOpen: s.setSearchOpen,
+    suggestionSource: s.suggestionSource,
+    setSuggestionSource: s.setSuggestionSource,
+    canvasDotSize: s.canvasDotSize,
+    canvasEdgeWidth: s.canvasEdgeWidth,
+    canvasConnectionRadius: s.canvasConnectionRadius,
+    canvasSnapGrid: s.canvasSnapGrid,
+    showVariableExplorer: s.showVariableExplorer,
+  })));
 
   const reactFlowWrapper = useRef(null);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
-  const { setRunOpen } = useUIStore();
+  const setRunOpen = useUIStore((s) => s.setRunOpen);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [menu, setMenu] = useState(null);
   const [showPilotPanel, setShowPilotPanel] = useState(false);
@@ -216,19 +253,10 @@ export default function WorkflowCanvas() {
   // Live run status via WebSocket push (no polling). The backend pushes
   // run_progress events as nodes start/finish; the hook reconciles on
   // (re)connect and tab-visibility regain via a rev-gated /active-runs snapshot.
-  const { runningNodes } = useRunStatusWS({ workflowId });
-  React.useEffect(() => {
-    const changed = nodes.some(
-      (n) => !!n.data.isRunning !== runningNodes.has(n.id),
-    );
-    if (!changed) return;
-    setNodes(
-      nodes.map((n) => ({
-        ...n,
-        data: { ...n.data, isRunning: runningNodes.has(n.id) },
-      })),
-    );
-  }, [nodes, runningNodes, setNodes]);
+  // The hook writes the running node ids into the lightweight useRunStatusStore;
+  // AgentNode subscribes to that Set per-id, so a WS event only re-renders the
+  // affected node — never the whole canvas (F4).
+  useRunStatusWS({ workflowId });
   // Variable/Data Explorer resizing state and mouse drag handlers
   const [explorerWidth, setExplorerWidth] = useState(320);
   const [isResizingExplorer, setIsResizingExplorer] = useState(false);
@@ -295,8 +323,6 @@ export default function WorkflowCanvas() {
 
   const onConnect = useCallback(
     (params) => {
-      // Take snapshot before connection modifications
-      useWorkflowStore.getState().takeHistorySnapshot();
       // Take snapshot before connection modifications
       useWorkflowStore.getState().takeHistorySnapshot();
       const { source, target } = params;
@@ -445,9 +471,6 @@ export default function WorkflowCanvas() {
       // Take snapshot before dragging moves the node
       useWorkflowStore.getState().takeHistorySnapshot();
 
-      // Take snapshot before dragging moves the node
-      useWorkflowStore.getState().takeHistorySnapshot();
-
       const hasIncoming = edges.some((e) => e.target === node.id);
       const hasOutgoing = edges.some((e) => e.source === node.id);
       const isSolo = !hasIncoming && !hasOutgoing;
@@ -482,8 +505,6 @@ export default function WorkflowCanvas() {
       if (isDraggingSoloNode && hoveredEdgeId) {
         const edgeToSplit = edges.find((e) => e.id === hoveredEdgeId);
         if (edgeToSplit) {
-          // Take snapshot before edge split modification
-          useWorkflowStore.getState().takeHistorySnapshot();
           // Take snapshot before edge split modification
           useWorkflowStore.getState().takeHistorySnapshot();
           const { source, target, sourceHandle, targetHandle } = edgeToSplit;
@@ -553,8 +574,6 @@ export default function WorkflowCanvas() {
       if (hoveredEdgeId && id) {
         const edgeToSplit = edges.find((e) => e.id === hoveredEdgeId);
         if (edgeToSplit) {
-          // Take snapshot before edge split drop modification
-          useWorkflowStore.getState().takeHistorySnapshot();
           // Take snapshot before edge split drop modification
           useWorkflowStore.getState().takeHistorySnapshot();
           const { source, target, sourceHandle, targetHandle } = edgeToSplit;
