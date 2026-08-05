@@ -47,11 +47,11 @@ export function findStartingTriggers(nodes, edges, triggerType) {
  * Resolve pause type and configuration logic, looking up store nodes fallback if needed.
  */
 export function resolvePauseConfig(res, storeNodes, pausedOriginalNodeId) {
-  let nodeType = res.pause_type;
   let nodeConfig = res.pause_config;
+  let nodeType = res.pause_config?.type || res.pause_type;
 
   if (res.context?.paused_subgraph_node_id) {
-    nodeType = res.context.paused_subgraph_node_type;
+    nodeType = res.context.paused_subgraph_node_type || res.context.paused_subgraph_node_config?.type;
     nodeConfig = res.context.paused_subgraph_node_config || {};
   } else if (!nodeType) {
     const pausedNode = storeNodes.find(n => n.id === pausedOriginalNodeId);

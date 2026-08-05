@@ -246,6 +246,7 @@ export default function RunPanel({ onClose }) {
           result = {
             status: 'paused', is_paused: true,
             is_breakpoint: evt.is_breakpoint, pause_type: evt.pause_type,
+            pause_config: evt.pause_config,
             next_node: evt.node, output: evt.output,
             messages: evt.messages || [], context: evt.context || {},
             active_agent: evt.active_agent, streamedTokens,
