@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { useWorkflowStore, useRunStore, useUIStore } from '../../store';
-import { executeWorkflow, compileWorkflow, listThreads, getThreadHistory, deleteThread, listVfsFiles } from '../../api/agentmesh';
+import { executeWorkflow, streamWorkflow, compileWorkflow, listThreads, getThreadHistory, deleteThread, listVfsFiles } from '../../api/agentmesh';
 import {
   FiSend, FiRotateCcw, FiPaperclip, FiMic, FiChevronDown, FiChevronUp, FiArrowUp,
   FiAlertCircle, FiCpu, FiBox, FiActivity,
@@ -190,6 +190,45 @@ export default function RunPanel({ onClose }) {
   // Can the user run? 
   const canRun = true; // We auto-compile now
 
+  // 🚀 Streaming run → result promise. The SSE final/interrupt events carry the same
+  // payload shape as the run-mode response, so the post-processing below is shared.
+  const streamToResult = useCallback((workflowId, payload) =>
+    new Promise((resolve, reject) => {
+      let result = {};
+      let streamedTokens = 0;
+      streamWorkflow(workflowId, payload, (evt) => {
+        if (evt.type === 'token') {
+          streamedTokens += 1;
+          addEvent({ type: 'token', content: evt.content, node: evt.node, agent_name: evt.agent_name });
+        } else if (evt.type === 'node_start') {
+          addEvent({ type: 'node_start', node: evt.node, agent_name: evt.agent_name });
+        } else if (evt.type === 'tool_call') {
+          addEvent({ type: 'tool_call', tool: evt.tool, input: evt.input });
+        } else if (evt.type === 'tool_result') {
+          addEvent({ type: 'tool_result', tool: evt.tool, output: evt.output });
+        } else if (evt.type === 'interrupt') {
+          result = {
+            status: 'paused', is_paused: true,
+            is_breakpoint: evt.is_breakpoint, pause_type: evt.pause_type,
+            next_node: evt.node, output: evt.output,
+            messages: evt.messages || [], context: evt.context || {},
+            active_agent: evt.active_agent, streamedTokens,
+          };
+        } else if (evt.type === 'final') {
+          result = {
+            status: 'success', is_paused: false,
+            output: evt.output ?? evt.content,
+            messages: evt.messages || [], context: evt.context || {},
+            active_agent: evt.active_agent, streamedTokens,
+          };
+        } else if (evt.type === 'error') {
+          reject(new Error(evt.message || evt.content || 'Stream failed'));
+        } else if (evt.type === 'done') {
+          resolve(result);
+        }
+      });
+    }), [addEvent]);
+
   const onSend = useCallback(async (overrideInput, overrideContext, overrideTargetId, isAutoTrigger) => {
     const textToSubmit = typeof overrideInput === 'string' ? overrideInput : '';
     if (!textToSubmit.trim() || useRunStore.getState().running) return;
@@ -224,7 +263,7 @@ export default function RunPanel({ onClose }) {
         addEvent({ type: 'user_message', content: currentInput });
       }
 
-      const res = await executeWorkflow(workflowId, {
+      const res = await streamToResult(workflowId, {
         input: currentInput,
         thread_id: tid,
         context: { source: 'canvas', ...(overrideContext || {}) },
@@ -289,7 +328,7 @@ export default function RunPanel({ onClose }) {
       }
       const newMessages = userMsgIdx >= 0 ? messages.slice(userMsgIdx + 1) : messages;
 
-      const { chartCount, lastActiveAgent: processedAgent, lastActiveAgentName: processedAgentName } = processWorkflowMessages(newMessages, addEvent, null);
+      const { chartCount, lastActiveAgent: processedAgent, lastActiveAgentName: processedAgentName } = processWorkflowMessages(newMessages, addEvent, null, { skipLiveStructure: (res.streamedTokens || 0) > 0 });
       let lastActiveAgent = processedAgent;
       let lastActiveAgentName = processedAgentName;
 
@@ -304,9 +343,13 @@ export default function RunPanel({ onClose }) {
       }
 
       const isPlaceholder = /imgur|<img|placeholder/i.test(output);
-      if (output.trim() && !isPlaceholder) {
+      // Only synthesize a token event when the stream produced no live tokens
+      // (non-LLM outputs like OCR/aggregator summaries). Real token streaming
+      // already rendered the final message live.
+      const streamedLive = (res.streamedTokens || 0) > 0;
+      if (!streamedLive && output.trim() && !isPlaceholder) {
         addEvent({ type: 'token', content: output, node: lastActiveAgent, agent_name: lastActiveAgentName });
-      } else if (chartCount === 0 && output.trim()) {
+      } else if (!streamedLive && chartCount === 0 && output.trim()) {
         addEvent({ type: 'token', content: output, node: lastActiveAgent, agent_name: lastActiveAgentName });
       }
 
@@ -347,7 +390,7 @@ export default function RunPanel({ onClose }) {
   }, [
     isDirty, isCompiled, threadId, autoNewSession, workflowId,
     history, startRun, addEvent, finishRun, setError, reset, setPausedInfo, addToHistory,
-    playAudio
+    playAudio, streamToResult
   ]);
 
   useEffect(() => {

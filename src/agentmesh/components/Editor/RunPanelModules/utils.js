@@ -68,10 +68,14 @@ export function resolvePauseConfig(res, storeNodes, pausedOriginalNodeId) {
 
 /**
  * Parses AIMessages, user_messages, and charts/artifacts from workflow stream events.
+ * When opts.skipLiveStructure is true, node_start/token events are skipped because
+ * they were already streamed live (real SSE streaming) — only chart artifacts are added.
  */
-export function processWorkflowMessages(messages, addEvent, initialActiveAgent = null) {
+export function processWorkflowMessages(messages, addEvent, initialActiveAgent = null, opts = {}) {
   const hasArtifact = (str) =>
     typeof str === 'string' && (str.includes('```chart') || str.includes('```mermaid'));
+
+  const skipLiveStructure = !!opts.skipLiveStructure;
 
   let chartCount = 0;
   let lastActiveAgent = initialActiveAgent;
@@ -82,7 +86,9 @@ export function processWorkflowMessages(messages, addEvent, initialActiveAgent =
     const agentName = msg.metadata?.agent_name;
 
     if (nodeId && nodeId !== lastActiveAgent) {
-      addEvent({ type: 'node_start', node: nodeId, agent_name: agentName });
+      if (!skipLiveStructure) {
+        addEvent({ type: 'node_start', node: nodeId, agent_name: agentName });
+      }
       lastActiveAgent = nodeId;
       lastActiveAgentName = agentName;
     }
@@ -94,7 +100,7 @@ export function processWorkflowMessages(messages, addEvent, initialActiveAgent =
       }
 
       const isNotLast = msg !== messages[messages.length - 1];
-      if (isNotLast && msg.content && typeof msg.content === 'string' && msg.content.trim()) {
+      if (!skipLiveStructure && isNotLast && msg.content && typeof msg.content === 'string' && msg.content.trim()) {
         addEvent({ type: 'token', content: msg.content, node: nodeId, agent_name: agentName });
       }
     }

@@ -376,7 +376,15 @@ const TurnRenderer = React.forwardRef(
         currentTurn = { user: { ...evt, index: i }, agents: [], logs: [] };
       } else if (evt.type === "token") {
         if (!isMuted(evt.node)) {
-          currentTurn.agents.push({ ...evt, index: i });
+          const lastAgent = currentTurn.agents[currentTurn.agents.length - 1];
+          if (lastAgent && lastAgent.node === evt.node) {
+            // Streaming fragments from the same agent accumulate into one message
+            // so the final answer grows live instead of showing only the last chunk.
+            lastAgent.content += evt.content;
+            lastAgent.index = i;
+          } else {
+            currentTurn.agents.push({ ...evt, index: i });
+          }
         }
       } else {
         if (evt.type === "node_start" && isMuted(evt.node)) {
