@@ -103,6 +103,8 @@ export const ToolConfigModal = memo(function ToolConfigModal({ toolName, config 
             <Toggle checked={config.return_direct || false} onChange={(v) => set('return_direct', v)} label="Return result direct to user" />
             <div className="h-px bg-[var(--border)] my-3" />
             <Toggle checked={config.interrupt_before || false} onChange={(v) => set('interrupt_before', v)} label="Pause before execution (Human approval)" />
+            <div className="h-px bg-[var(--border)] my-3" />
+            <Toggle checked={config.exclude_from_subagent || false} onChange={(v) => set('exclude_from_subagent', v)} label="Exclude from sub-agents" />
           </CollapsibleSection>
 
           {toolName === 'chart_generator' && (
