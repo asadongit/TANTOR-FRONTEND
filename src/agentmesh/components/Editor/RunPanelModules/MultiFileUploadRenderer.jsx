@@ -93,16 +93,18 @@ export default function MultiFileUploadRenderer({ config, context, isLoading, on
 
     try {
       const uploadedFiles = [];
-      const { ingestData } = await import('../../../api/agentmesh');
+      const { uploadTempFile } = await import('../../../api/agentmesh');
+      const safeThreadId = context?.thread_id || 'default_thread';
 
       let currentCount = 0;
       for (const file of selectedFiles) {
         const formData = new FormData();
         formData.append('file', file);
-        const res = await ingestData(formData);
+        formData.append('thread_id', safeThreadId);
+        const res = await uploadTempFile(formData);
         if (res.status === 'success') {
           uploadedFiles.push({
-            path: res.file_path,
+            path: res.vfs_path,
             filename: file.name,
             size: file.size,
             type: file.type

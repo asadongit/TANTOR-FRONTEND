@@ -11,6 +11,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useWorkflowStore, useUIStore, useVariablesStore } from "../../store";
+import { useRunStatusWS } from "../../utils/useRunStatusWS";
 import AgentNode from "./Nodes/AgentNode";
 import CardboardNode from "./Nodes/CardboardNode";
 import NodePalette from "./NodePalette";
@@ -176,6 +177,7 @@ export default function WorkflowCanvas() {
     addNode,
     setNodeData,
     workflowName,
+    workflowId,
     undo,
     redo,
     previewingGroupId,
@@ -211,44 +213,22 @@ export default function WorkflowCanvas() {
   const [menu, setMenu] = useState(null);
   const [showPilotPanel, setShowPilotPanel] = useState(false);
 
-  // Poll for active background runs (e.g. Cron/Webhook) to show live status
+  // Live run status via WebSocket push (no polling). The backend pushes
+  // run_progress events as nodes start/finish; the hook reconciles on
+  // (re)connect and tab-visibility regain via a rev-gated /active-runs snapshot.
+  const { runningNodes } = useRunStatusWS({ workflowId });
   React.useEffect(() => {
-    const poll = async () => {
-      try {
-        const res = await fetch(
-          "http://localhost:8000/api/v1/agentmesh/active-runs",
-        );
-        const data = await res.json();
-        if (data.status === "success") {
-          const currentWfId = useWorkflowStore.getState().workflowId;
-          const activeNodeIds = new Set();
-
-          Object.values(data.active_runs).forEach((run) => {
-            if (run.workflow_id === currentWfId) {
-              run.active_nodes.forEach((id) => activeNodeIds.add(id));
-            }
-          });
-
-          // Check if anything actually changed to avoid unnecessary re-renders
-          const anyChange = nodes.some(
-            (n) => !!n.data.isRunning !== activeNodeIds.has(n.id),
-          );
-          if (anyChange) {
-            setNodes(
-              nodes.map((n) => ({
-                ...n,
-                data: { ...n.data, isRunning: activeNodeIds.has(n.id) },
-              })),
-            );
-          }
-        }
-      } catch {
-        // Silently fail polling
-      }
-    };
-    const interval = setInterval(poll, 2500);
-    return () => clearInterval(interval);
-  }, [nodes, setNodes]);
+    const changed = nodes.some(
+      (n) => !!n.data.isRunning !== runningNodes.has(n.id),
+    );
+    if (!changed) return;
+    setNodes(
+      nodes.map((n) => ({
+        ...n,
+        data: { ...n.data, isRunning: runningNodes.has(n.id) },
+      })),
+    );
+  }, [nodes, runningNodes, setNodes]);
   // Variable/Data Explorer resizing state and mouse drag handlers
   const [explorerWidth, setExplorerWidth] = useState(320);
   const [isResizingExplorer, setIsResizingExplorer] = useState(false);

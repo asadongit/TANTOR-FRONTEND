@@ -227,7 +227,7 @@ export default function RunPanel({ onClose }) {
       const res = await executeWorkflow(workflowId, {
         input: currentInput,
         thread_id: tid,
-        context: overrideContext || {},
+        context: { source: 'canvas', ...(overrideContext || {}) },
         target_node_id: (typeof overrideTargetId === 'string' ? overrideTargetId : null) || useUIStore.getState().targetNodeId
       });
 
