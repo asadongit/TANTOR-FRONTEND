@@ -58,9 +58,31 @@ export const getButtonCategoryStyles = (category) => {
       bgHover: 'rgba(16, 185, 129, 0.15)',
       borderHover: 'rgba(16, 185, 129, 0.45)',
       dotColor: '#10b981'
+    },
+    risk: {
+      bg: 'rgba(239, 68, 68, 0.08)',
+      color: '#ef4444',
+      border: 'rgba(239, 68, 68, 0.25)',
+      bgHover: 'rgba(239, 68, 68, 0.15)',
+      borderHover: 'rgba(239, 68, 68, 0.45)',
+      dotColor: '#ef4444'
     }
   };
   return styles[category] || styles.action;
+};
+
+/**
+ * Resolves the display label for a button trigger node.
+ * Prefers an explicitly-set `button_label` (non-empty and not the store default),
+ * otherwise falls back to the node's `label` so a renamed node (e.g. "testing")
+ * isn't masked by the default "Start Workflow" button_label.
+ */
+export const BUTTON_LABEL_DEFAULT = 'Start Workflow';
+
+export const getButtonDisplayLabel = (node) => {
+  const bl = node?.data?.button_label;
+  const lbl = node?.data?.label;
+  return (bl && bl !== BUTTON_LABEL_DEFAULT) ? bl : (lbl || 'Run');
 };
 
 export function genThreadId() {

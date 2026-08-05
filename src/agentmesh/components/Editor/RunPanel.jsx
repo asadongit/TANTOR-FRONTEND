@@ -14,7 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 // Import RunPanelModules submodules
 import {
   THEME_BG, THEME_GRAY, THEME_BORDER, THEME_TEXT, THEME_ACCENT, THEME_SECONDARY, THEME_USER_BUBBLE, FONT,
-  getButtonCategoryStyles, genThreadId, findProfileReportHtml, PAUSE_UI
+  getButtonCategoryStyles, getButtonDisplayLabel, genThreadId, findProfileReportHtml, PAUSE_UI
 } from './RunPanelModules/constants';
 import useAudioPlayer from './RunPanelModules/useAudioPlayer';
 import { MinimalButton, ActionButton, ActionButtonGroup, ReworkFormPanel } from './RunPanelModules/HitlControls';
@@ -131,6 +131,19 @@ export default function RunPanel({ onClose }) {
 
   const hasAnyStartingNode = STARTING_TRIGGER_TYPES.some(t => (startingNodes[t] || []).length > 0);
   const hideInput = !isChatStarted && (hasButtonTriggers || hasAutoTriggers || hasOcrNodes || hasAnyStartingNode);
+
+  const pausedButtonFanout = useMemo(() => {
+    if (!pausedInfo.isPaused || !pausedInfo.nextNode) return false;
+    const allButtonNodes = nodes.filter(n => n.type === 'button_trigger' || n.data?.type === 'button_trigger');
+    if (allButtonNodes.length === 0) return false;
+    const pausedNode = nodes.find(n => n.id === pausedInfo.nextNode);
+    if (!pausedNode) return pausedInfo.nodeType === 'button_trigger';
+    const isPausedNodeButton = pausedNode.type === 'button_trigger' || pausedNode.data?.type === 'button_trigger';
+    if (isPausedNodeButton) return true;
+    return edges
+      .filter(e => e.source === pausedNode.id)
+      .some(e => allButtonNodes.some(b => b.id === e.target));
+  }, [pausedInfo, nodes, edges]);
 
   const hasBlackboardTool = useMemo(() => {
     return nodes.some(n => {
@@ -1151,7 +1164,7 @@ export default function RunPanel({ onClose }) {
         display: shouldHideInput ? 'none' : 'block'
       }}>
         <div style={{ margin: '0 auto', position: 'relative', pointerEvents: 'auto', maxWidth: 680, width: '100%' }}>
-          {pausedInfo.isPaused && !(PAUSE_UI[pausedInfo.nodeType]?.showsHitl === false) ? (
+          {pausedInfo.isPaused && !(PAUSE_UI[pausedInfo.nodeType]?.showsHitl === false) && !pausedButtonFanout ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%' }}>
               <AnimatePresence>
                 {pausedInfo.showReworkForm && (
@@ -1205,7 +1218,7 @@ export default function RunPanel({ onClose }) {
                   </motion.div>
                 )}
               </AnimatePresence>
-              {pausedInfo.nodeType !== 'followup_selection' && (
+              {pausedInfo.nodeType !== 'followup_selection' && pausedInfo.nodeType !== 'button_trigger' && (
                 (pausedInfo.isBreakpoint || pausedInfo.nodeType === 'breakpoint' || pausedInfo.gateNodeId?.startsWith('bp_gate_')) ? (
 
                   <div style={{
@@ -1358,59 +1371,107 @@ export default function RunPanel({ onClose }) {
                   })()}
                 </div>
               )}
-              {canRun && !running && !isChatStarted && (hasButtonTriggers || hasOcrNodes) && (
+              {canRun && !running && (!isChatStarted || pausedButtonFanout) && (
                 <div style={{
                   display: 'flex',
                   flexWrap: 'wrap',
                   gap: 12,
-                  marginBottom: hideInput ? 10 : 4,
+                  marginBottom: (hideInput || pausedInfo.isPaused) ? 10 : 4,
                   padding: '0 4px',
-                  justifyContent: hideInput ? 'center' : 'flex-start'
+                  justifyContent: (hideInput || pausedInfo.isPaused) ? 'center' : 'flex-start'
                 }}>
-                  {startingButtonTriggers.map(btnNode => {
-                    const catStyles = getButtonCategoryStyles(btnNode.data?.button_category || btnNode.button_category || btnNode.data?.category || btnNode.category);
-                    return (
-                      <motion.button
-                        key={btnNode.id}
-                        whileHover={{ scale: 1.01, translateY: -1 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => onSend(btnNode.data?.button_input || 'Start')}
-                        style={{
-                          padding: hideInput ? '10px 20px' : '6px 14px',
-                          borderRadius: hideInput ? 10 : 8,
-                          background: hideInput ? (btnNode.data?.button_category ? catStyles.color : 'var(--theme-primary, #6366F1)') : catStyles.bg,
-                          border: hideInput ? 'none' : `1px solid ${catStyles.border}`,
-                          color: hideInput ? '#FFFFFF' : catStyles.color,
-                          fontSize: hideInput ? 12.5 : 11,
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!hideInput) {
-                            e.currentTarget.style.background = catStyles.bgHover;
-                            e.currentTarget.style.borderColor = catStyles.borderHover;
+                  {(() => {
+                    let buttonsToRender = startingButtonTriggers;
+                    if (pausedInfo.isPaused) {
+                      const allButtonNodes = nodes.filter(n => n.type === 'button_trigger' || n.data?.type === 'button_trigger');
+                      const matchedPausedNode = nodes.find(n => n.id === pausedInfo.nextNode);
+                      const isButtonPause = pausedInfo.nodeType === 'button_trigger' || pausedInfo.nextNode?.includes('button') || pausedInfo.gateNodeId?.includes('button');
+                      if (matchedPausedNode) {
+                        const isPausedNodeButton = matchedPausedNode.type === 'button_trigger' || matchedPausedNode.data?.type === 'button_trigger';
+                        if (isPausedNodeButton) {
+                          // Case A: Paused node itself is a button → show it + sibling buttons from the same parent
+                          const parentEdges = edges.filter(e => e.target === matchedPausedNode.id);
+                          if (parentEdges.length > 0) {
+                            const parentIds = new Set(parentEdges.map(e => e.source));
+                            const siblingTargets = edges.filter(e => parentIds.has(e.source)).map(e => e.target);
+                            buttonsToRender = allButtonNodes.filter(n => siblingTargets.includes(n.id) || n.id === matchedPausedNode.id);
                           } else {
-                            e.currentTarget.style.opacity = '0.9';
+                            buttonsToRender = [matchedPausedNode];
                           }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!hideInput) {
-                            e.currentTarget.style.background = catStyles.bg;
-                            e.currentTarget.style.borderColor = catStyles.border;
-                          } else {
-                            e.currentTarget.style.opacity = '1';
+                        } else {
+                          // Case B: Paused node fans out to parallel buttons (post_gate multi-choice pause)
+                          const outgoingButtonTargets = edges
+                            .filter(e => e.source === matchedPausedNode.id)
+                            .map(e => e.target)
+                            .filter(t => allButtonNodes.some(b => b.id === t));
+                          if (outgoingButtonTargets.length > 0) {
+                            buttonsToRender = allButtonNodes.filter(n => outgoingButtonTargets.includes(n.id));
+                          } else if (isButtonPause && allButtonNodes.length > 0) {
+                            buttonsToRender = allButtonNodes;
                           }
-                        }}
-                      >
-                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: hideInput ? '#FFFFFF' : catStyles.dotColor, opacity: 0.8 }} />
-                        {btnNode.data?.button_label || btnNode.data?.label || 'Run'}
-                      </motion.button>
-                    );
-                  })}
+                        }
+                      } else if (isButtonPause && allButtonNodes.length > 0) {
+                        buttonsToRender = allButtonNodes;
+                      }
+                    }
+                    const isSolid = !pausedInfo.isPaused && !!hideInput;
+                    return buttonsToRender.map(btnNode => {
+                      const cat = getButtonCategoryStyles(btnNode.data?.button_category);
+                      return (
+                        <motion.button
+                          key={btnNode.id}
+                          whileHover={{ scale: 1.01, y: -1 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => {
+                            const buttonInput = btnNode.data?.button_input || btnNode.data?.label || 'Start';
+                            if (pausedInfo.isPaused) {
+                              onResume('approve', { clicked_button_id: btnNode.id, button_input: buttonInput });
+                            } else {
+                              onSend(buttonInput);
+                            }
+                          }}
+                          style={{
+                            padding: isSolid ? '10px 20px' : '9px 18px',
+                            borderRadius: isSolid ? 10 : 12,
+                            background: isSolid ? cat.color : cat.bg,
+                            border: isSolid ? 'none' : `1px solid ${cat.border}`,
+                            color: isSolid ? '#FFFFFF' : cat.color,
+                            fontSize: isSolid ? 12.5 : 13,
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            boxShadow: isSolid ? 'none' : `0 2px 8px ${cat.border}`,
+                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                          }}
+                          onMouseEnter={(e) => {
+                            if (isSolid) {
+                              e.currentTarget.style.background = cat.color;
+                              e.currentTarget.style.opacity = '0.9';
+                            } else {
+                              e.currentTarget.style.background = cat.bgHover;
+                              e.currentTarget.style.borderColor = cat.borderHover;
+                              e.currentTarget.style.boxShadow = `0 4px 12px ${cat.borderHover}`;
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (isSolid) {
+                              e.currentTarget.style.background = cat.color;
+                              e.currentTarget.style.opacity = '1';
+                            } else {
+                              e.currentTarget.style.background = cat.bg;
+                              e.currentTarget.style.borderColor = cat.border;
+                              e.currentTarget.style.boxShadow = `0 2px 8px ${cat.border}`;
+                            }
+                          }}
+                        >
+                          <span style={{ width: isSolid ? 6 : 7, height: isSolid ? 6 : 7, borderRadius: '50%', background: isSolid ? '#FFFFFF' : cat.dotColor, opacity: isSolid ? 0.8 : 1 }} />
+                          {getButtonDisplayLabel(btnNode)}
+                        </motion.button>
+                      );
+                    });
+                  })()}
 
                   {hasOcrNodes && (
                     <motion.label
@@ -1480,7 +1541,7 @@ export default function RunPanel({ onClose }) {
                 </motion.button>
               )}
 
-              {!hideInput && !hasStartingSttNode && !hasStartingCameraNode && !(pausedInfo.isPaused && pausedInfo.nodeType === 'stt_trigger') && !(pausedInfo.isPaused && pausedInfo.nodeType === 'camera') && !(pausedInfo.isPaused && pausedInfo.nodeType === 'followup_selection') && (
+              {!hideInput && !hasStartingSttNode && !hasStartingCameraNode && !pausedButtonFanout && !(pausedInfo.isPaused && (pausedInfo.nodeType === 'stt_trigger' || pausedInfo.nodeType === 'camera' || pausedInfo.nodeType === 'followup_selection' || pausedInfo.nodeType === 'button_trigger')) && (
                 <ChatInput
                   onSend={onSend}
                   running={running}

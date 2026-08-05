@@ -242,38 +242,48 @@ export default function MultiFileUploadRenderer({ config, context, isLoading, on
         </button>
       </div>
 
-      {/* Progress Modal Overlay */}
+      {/* Minimalist Loading Overlay matching FormRenderer */}
       {isSubmitting && (
-        <div className="absolute inset-0 bg-white/95 backdrop-blur-md z-50 rounded-2xl p-6 flex flex-col items-center justify-center text-center gap-4">
-          <div className="relative w-16 h-16 flex items-center justify-center">
-            <div className="absolute inset-0 rounded-full border-4 border-indigo-100 animate-ping opacity-75" />
-            <div className="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30">
-              <FiUploadCloud size={28} className="animate-bounce" />
-            </div>
+        <div style={{
+          position: 'absolute',
+          top: -24,
+          left: -24,
+          right: -24,
+          bottom: -24,
+          background: 'rgba(255, 255, 255, 0.85)',
+          backdropFilter: 'blur(4px)',
+          borderRadius: 24,
+          zIndex: 50,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 12
+        }}>
+          <div style={{
+            width: 38,
+            height: 38,
+            border: '3px solid rgba(99, 102, 241, 0.2)',
+            borderTopColor: '#6366F1',
+            borderRadius: '50%',
+            animation: 'multiFileModalSpin 0.8s linear infinite'
+          }} />
+          <style>{`
+            @keyframes multiFileModalSpin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#334155', letterSpacing: '0.02em' }}>
+            Uploading & Ingesting {selectedFiles.length} File(s)...
           </div>
-
-          <div>
-            <h4 className="text-base font-bold text-gray-900 m-0">Uploading & Ingesting Documents</h4>
-            <p className="text-xs text-gray-500 mt-1 m-0">
-              Processing {selectedFiles.length} file(s) for automated workflow classification
-            </p>
-          </div>
-
-          {/* Progress Bar Container */}
-          <div className="w-full max-w-xs flex flex-col gap-1.5 mt-2">
-            <div className="flex justify-between items-center text-xs font-semibold">
-              <span className="text-indigo-600">Batch Upload Progress</span>
-              <span className="text-gray-500">{Math.round((uploadProgress / selectedFiles.length) * 100)}%</span>
-            </div>
-            <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden p-0.5 border border-gray-200/60">
-              <div
-                className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-full transition-all duration-300 ease-out"
-                style={{ width: `${(uploadProgress / selectedFiles.length) * 100}%` }}
-              />
-            </div>
-            <span className="text-[11px] text-gray-400 mt-1">
-              Uploading {uploadProgress} of {selectedFiles.length} documents...
-            </span>
+          <div style={{ width: '180px', height: '4px', background: 'rgba(99, 102, 241, 0.15)', borderRadius: '9999px', overflow: 'hidden' }}>
+            <div style={{
+              height: '100%',
+              background: '#6366F1',
+              width: `${(uploadProgress / selectedFiles.length) * 100}%`,
+              transition: 'width 0.3s ease'
+            }} />
           </div>
         </div>
       )}
