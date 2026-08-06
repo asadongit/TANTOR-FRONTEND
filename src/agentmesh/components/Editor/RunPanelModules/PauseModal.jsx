@@ -7,7 +7,21 @@ export default function PauseModal({ isOpen, title, icon: Icon, maxWidth = 600, 
   if (!isOpen) return null;
 
   return (
-    <>
+    <div
+      style={{
+        position: 'absolute',
+        top: '52px',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 8000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px',
+        pointerEvents: 'auto'
+      }}
+    >
       {/* Modal Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -21,24 +35,21 @@ export default function PauseModal({ isOpen, title, icon: Icon, maxWidth = 600, 
           bottom: 0,
           background: 'rgba(0, 0, 0, 0.4)',
           backdropFilter: 'blur(2px)',
-          zIndex: 8000,
         }}
       />
 
       {/* Modal Container */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.9, x: '-50%', y: '-45%' }}
-        animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
-        exit={{ opacity: 0, scale: 0.8, x: '-50%', y: '-45%' }}
+        initial={{ opacity: 0, scale: 0.95, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 15 }}
         transition={{ type: 'spring', damping: 28, stiffness: 350 }}
         style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
+          position: 'relative',
           zIndex: 8001,
-          width: '90%',
+          width: '100%',
           maxWidth,
-          maxHeight: '85%',
+          maxHeight: 'calc(100% - 48px)',
           display: 'flex',
           flexDirection: 'column',
           background: '#FFFFFF',
@@ -80,7 +91,7 @@ export default function PauseModal({ isOpen, title, icon: Icon, maxWidth = 600, 
           {children}
         </div>
       </motion.div>
-    </>
+    </div>
   );
 }
 
