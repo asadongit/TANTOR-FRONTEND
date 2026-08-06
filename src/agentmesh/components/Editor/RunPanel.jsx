@@ -694,7 +694,22 @@ export default function RunPanel({ onClose }) {
       startRun(tid);
 
       // 🕵️ NEW: Restore HITL Pause state from history
-      if (res.is_paused) {
+      // Always clear any stale pausedInfo from a previous session first, otherwise
+      // opening a completed (non-paused) thread keeps the old HITL buttons visible.
+      if (!res.is_paused) {
+        setPausedInfo({
+          isPaused: false,
+          nextNode: null,
+          gateNodeId: null,
+          pausedNodeOutput: null,
+          threadId: null,
+          showReworkForm: false,
+          enabledActions: ['approve', 'rework', 'reject'],
+          nodeType: null,
+          nodeConfig: null,
+          context: {}
+        });
+      } else if (res.is_paused) {
         const nextNode = res.next_node;
         const originalNodeId = nextNode?.replace(/^(gate_|pre_gate_|post_gate_)/, '') || nextNode;
 
