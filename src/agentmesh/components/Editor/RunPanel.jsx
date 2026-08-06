@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { useWorkflowStore, useRunStore, useUIStore } from '../../store';
+import { useAuth } from '../../../context/AuthContext';
 import { useShallow } from 'zustand/react/shallow';
 import { executeWorkflow, streamWorkflow, compileWorkflow, listThreads, getThreadHistory, deleteThread, listVfsFiles } from '../../api/agentmesh';
 import {
@@ -33,6 +34,8 @@ import HistorySidebar from './RunPanelModules/HistorySidebar';
 import PauseModal from './RunPanelModules/PauseModal';
 
 export default function RunPanel({ onClose }) {
+  const { decodedToken } = useAuth();
+  const langfuseUserId = decodedToken?.preferred_username || 'anonymous';
   const {
     workflowId, workflowName, isDirty, isCompiled, nodes, edges,
     autoNewSession, setWorkflowMeta, workflowDescription, workflowGroup,
@@ -316,7 +319,7 @@ export default function RunPanel({ onClose }) {
       const res = await streamToResult(workflowId, {
         input: currentInput,
         thread_id: tid,
-        context: { source: 'canvas', ...(overrideContext || {}) },
+        context: { source: 'canvas', user_id: langfuseUserId, ...(overrideContext || {}) },
         target_node_id: (typeof overrideTargetId === 'string' ? overrideTargetId : null) || useUIStore.getState().targetNodeId
       });
 
@@ -525,6 +528,7 @@ export default function RunPanel({ onClose }) {
       const payload = {
         ...(isForm ? actionArg : {}),  // Spread individual form field values
         ...(choicePayload || {}),      // Spread choice selection payload
+        user_id: langfuseUserId,
         feedback: reworkFeedback || null,
         decision: isForm ? (actionArg.decision || action) : action,
         include_original_output: pausedInfo.includeOriginalOutput ?? true,
