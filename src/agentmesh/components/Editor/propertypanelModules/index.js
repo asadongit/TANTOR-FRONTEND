@@ -36,7 +36,6 @@ import SensitivityClassifierConfig from './SensitivityClassifierConfig';
 import IngestionNodeConfig from './IngestionNodeConfig';
 import RagNodeConfig from './RagNodeConfig';
 import OcrNodeConfig from './OcrNodeConfig';
-import JsonTransformVaConfig from './JsonTransformVaConfig';
 import PatternExtractConfig from './PatternExtractConfig';
 import DbNodeConfig from './DbNodeConfig';
 import PiiGateNodeConfig from './PiiGateNodeConfig';
@@ -96,7 +95,6 @@ export {
   IngestionNodeConfig,
   RagNodeConfig,
   OcrNodeConfig,
-  JsonTransformVaConfig,
   PatternExtractConfig,
   DbNodeConfig,
   PiiGateNodeConfig,

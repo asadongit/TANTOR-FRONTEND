@@ -54,7 +54,6 @@ const NODE_DEFAULTS = {
   cardboard: { label: 'Sticky Note', color: 'slate' },
   json_transform: {
     label: 'JSON Transform',
-    transform_operation: 'flatten', transform_separator: '_', transform_pick_fields: [], transform_rename_map: {}, transform_omit_keys: [], transform_input_key: 'api_response', transform_output_key: 'flattened_json',
     jt_input_key: '',
     jt_output_key: 'transformed_data',
     jt_mode: 'jmespath',
@@ -62,10 +61,6 @@ const NODE_DEFAULTS = {
     jt_operations: [],
     jt_expression: '',
     jt_pass_through: false
-  },
-  json_transform_va: {
-    label: 'Flatten JSON (VA)',
-    transform_operation: 'flatten', transform_separator: '/', transform_pick_fields: [], transform_rename_map: {}, transform_omit_keys: [], transform_input_key: 'payload', transform_output_key: 'transformed_json'
   },
   code_execution: {
     label: 'Code',
@@ -1099,8 +1094,7 @@ export const useWorkflowStore = create((set, get) => ({
     pii_gate_node: ['input_key', 'interrupt_after'],
     ingestion_router: ['scan_mode', 'file_filters', 'concurrency_limit', 'parent_folder_key', 'folder_identifier_key', 'curl_command_key', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
     event_emitter: ['webhook_url', 'emit_status', 'interrupt_before', 'interrupt_after'],
-    json_transform: ['transform_operation', 'transform_separator', 'transform_pick_fields', 'transform_rename_map', 'transform_omit_keys', 'transform_input_key', 'transform_output_key', 'jt_input_key', 'jt_output_key', 'jt_mode', 'jt_query', 'jt_operations', 'jt_expression', 'jt_pass_through'],
-    json_transform_va: ['transform_operation', 'transform_separator', 'transform_pick_fields', 'transform_rename_map', 'transform_omit_keys', 'transform_input_key', 'transform_output_key'],
+    json_transform: ['jt_input_key', 'jt_output_key', 'jt_mode', 'jt_query', 'jt_operations', 'jt_expression', 'jt_pass_through'],
     code_execution: ['ce_language', 'ce_code', 'ce_input_key', 'ce_output_key', 'ce_mode'],
     email_node: ['email_provider', 'email_to', 'email_cc', 'email_bcc', 'email_subject', 'email_body', 'email_html', 'email_smtp_server', 'email_smtp_port', 'email_user', 'email_password', 'email_attachments', 'email_headers', 'email_smtp_timeout', 'email_auth_method', 'email_tenant_id', 'email_client_id', 'email_client_secret', 'email_google_service_account_json', 'email_google_delegated_user'],
     stt_trigger: ['auto_start', 'auto_stop', 'silence_delay', 'stt_lang'],

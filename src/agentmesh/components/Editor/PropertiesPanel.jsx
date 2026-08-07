@@ -118,9 +118,6 @@ const LAZY_CONFIGS = {
   vision_intelligence: lazy(
     () => import("./propertypanelModules/VisionIntelligenceConfig")
   ),
-  json_transform_va: lazy(
-    () => import("./propertypanelModules/JsonTransformVaConfig"),
-  ),
   pattern_extract: lazy(
     () => import("./propertypanelModules/PatternExtractConfig"),
   ),
@@ -587,7 +584,6 @@ export default function PropertiesPanel() {
     pattern_extract: FiSearch,
     db_node: FiBox,
     json_transform: FiCode,
-    json_transform_va: FiCode,
     condition: FiHelpCircle,
     group: FiLayers,
     signature_stamp_extractor: FiEdit,
