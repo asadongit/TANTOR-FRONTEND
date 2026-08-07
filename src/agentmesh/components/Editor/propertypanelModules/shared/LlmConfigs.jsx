@@ -132,7 +132,7 @@ export const IterationConfigSection = memo(function IterationConfigSection({ pol
   );
 });
 
-export const WizardButton = memo(function WizardButton({ onClick, loading, disabled }) {
+export const ArchitectButton = memo(function ArchitectButton({ onClick, loading, disabled }) {
   return (
     <button
       onClick={onClick}
@@ -140,7 +140,7 @@ export const WizardButton = memo(function WizardButton({ onClick, loading, disab
       className={`border-none bg-transparent cursor-pointer flex items-center gap-1 text-[11px] text-[#8B5CF6] font-semibold transition-all duration-200 px-1.5 py-0.5 rounded hover:bg-[#F5F3FF] disabled:opacity-50`}
     >
       {loading ? <FiLoader className="animate-spin" size={12} /> : <FiZap size={12} />}
-      {loading ? 'Generating...' : 'Wizard'}
+      {loading ? 'Generating...' : 'Architect'}
     </button>
   );
 });

@@ -6,7 +6,7 @@ import {
   Textarea,
   ToolTagInput,
   LLMConfigSection,
-  WizardButton,
+  ArchitectButton,
   NodeIdList,
   AdvancedSection,
 } from "./SharedComponents";
@@ -32,7 +32,7 @@ const DeepAgentConfig = memo(function DeepAgentConfig({
         label="System Instructions"
         hint="The high-level objective and behavioral rules. The Deep Agent will use this to generate its own sub-tasks and to-do list."
         action={
-          <WizardButton
+          <ArchitectButton
             onClick={() => handleFixGrammar("task")}
             loading={fixingGrammar}
             disabled={!data.task}

@@ -177,16 +177,16 @@ export const deleteWorkflowNote = (workflowId, noteId) =>
   request(`/workflow/${workflowId}/notes/action`, { method: 'POST', body: JSON.stringify({ action: 'delete', note_id: noteId }) });
 export const updateWorkflowNote = (workflowId, noteId, content, category) => 
   request(`/workflow/${workflowId}/notes/action`, { method: 'POST', body: JSON.stringify({ action: 'update', note_id: noteId, content, category }) });
-export const fixGrammar = (text) => 
-  request('/utils/action', { method: 'POST', body: JSON.stringify({ action: 'fix_grammar', payload: { text } }) });
+export const fixGrammar = (text, llm) => 
+  request('/utils/action', { method: 'POST', body: JSON.stringify({ action: 'fix_grammar', payload: { text, llm } }) });
 export const explainWorkflow = (workflow, llm) =>
   request('/utils/action', { method: 'POST', body: JSON.stringify({ action: 'explain_workflow', payload: { workflow, llm } }) });
 export const chatArchitect = (workflow, context, messages, llm) =>
   request('/utils/action', { method: 'POST', body: JSON.stringify({ action: 'chat_architect', payload: { workflow, context, messages, llm } }) });
 export const generateSkillSop = (payload) =>
   request('/utils/action', { method: 'POST', body: JSON.stringify({ action: 'generate_skill_sop', payload }) });
-export const generatePythonRule = (prompt) =>
-  request('/utils/action', { method: 'POST', body: JSON.stringify({ action: 'generate_python_rule', payload: { prompt, existing_code: "" } }) });
+export const generatePythonRule = (prompt, llm) =>
+  request('/utils/action', { method: 'POST', body: JSON.stringify({ action: 'generate_python_rule', payload: { prompt, existing_code: "", llm } }) });
 
 // ─── Notifications ────────────────────────────────────────────────────────────
 export const listNotifications = (params = {}) => {

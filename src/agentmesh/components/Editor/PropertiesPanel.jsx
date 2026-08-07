@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { useWorkflowStore, useUIStore } from "../../store";
 import { listTools, fixGrammar } from "../../api/agentmesh";
+import { getArchitectConfig } from "../../utils/architectConfig";
 import SkillGallery from "./SkillGallery";
 import { NODE_TYPES } from "./NodePalette";
 import SaveTemplateModal from "./SaveTemplateModal";
@@ -219,7 +220,7 @@ export default function PropertiesPanel() {
       if (!data || !data[targetKey]) return;
       try {
         setFixingGrammar(true);
-        const res = await fixGrammar(data[targetKey]);
+        const res = await fixGrammar(data[targetKey], getArchitectConfig());
         if (res.status === "success" && res.fixed !== res.original) {
           update({ [targetKey]: res.fixed });
         }

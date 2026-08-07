@@ -6,7 +6,7 @@ import {
   NodeIdList,
   ToolTagInput,
   IterationConfigSection,
-  WizardButton,
+  ArchitectButton,
   AdvancedSection,
 } from "./SharedComponents";
 
@@ -27,7 +27,7 @@ const SupervisorConfig = memo(function SupervisorConfig({
         label="System Instructions"
         hint="Define the supervisor's orchestration behavior and team goal."
         action={
-          <WizardButton
+          <ArchitectButton
             onClick={() => handleFixGrammar("task")}
             loading={fixingGrammar}
             disabled={!data.task}

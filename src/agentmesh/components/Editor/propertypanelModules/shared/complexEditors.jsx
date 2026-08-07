@@ -3,6 +3,7 @@ import { FiPlus, FiX, FiTrash2, FiChevronDown, FiEdit, FiTarget, FiZap, FiLoader
 import toast from 'react-hot-toast';
 import { useRunStore, useWorkflowStore } from '../../../../store';
 import { chatArchitect } from '../../../../api/agentmesh';
+import { getArchitectConfig } from '../../../../utils/architectConfig';
 import { Field, Input, Textarea, Select, Toggle, MiniatureToggle, CommaArrayEditor } from './primitives';
 import { VariableLinker, VariableDropdown } from './VariableLinker';
 import { ListAccordionItem } from './ListAccordionItem';
@@ -491,7 +492,7 @@ Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
         currentWorkflow,
         latestContext,
         [{ role: 'user', content: systemPrompt }],
-        { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0.1 }
+        getArchitectConfig()
       );
 
       if (response && response.status === 'success' && response.reply) {
@@ -580,7 +581,7 @@ Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
           className="flex justify-between items-center cursor-pointer"
         >
           <span className="text-[11px] font-bold text-[#7C3AED] flex items-center gap-1.5">
-            <FiZap size={12} /> ASK ARCHITECT BOT (AI WIZARD)
+            <FiZap size={12} /> ASK ARCHITECT
           </span>
           <span className="text-[10px] text-[var(--text-muted)]">{aiOpen ? 'Collapse' : 'Expand'}</span>
         </div>

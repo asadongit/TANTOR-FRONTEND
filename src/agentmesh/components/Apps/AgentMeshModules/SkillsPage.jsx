@@ -770,7 +770,7 @@ export default function SkillsPage() {
                         </>
                       ) : (
                         <>
-                          <FiCpu size={12} /> Architect Wizard
+                          <FiCpu size={12} /> Architect
                         </>
                       )}
                     </button>

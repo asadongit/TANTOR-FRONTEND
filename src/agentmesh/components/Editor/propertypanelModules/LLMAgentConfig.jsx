@@ -8,7 +8,7 @@ import {
   Select,
   LLMConfigSection,
   IterationConfigSection,
-  WizardButton,
+  ArchitectButton,
   NodeIdList,
   AdvancedSection,
   InfoBanner
@@ -34,7 +34,7 @@ const LLMAgentConfig = memo(function LLMAgentConfig({
         label="System Instructions"
         hint="Define the agent's core role, persona, and behavior rules. This is the 'soul' of the agent."
         action={
-          <WizardButton
+          <ArchitectButton
             onClick={() => handleFixGrammar("task")}
             loading={fixingGrammar}
             disabled={!data.task}

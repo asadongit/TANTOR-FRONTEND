@@ -6,7 +6,7 @@ import {
   NodeIdList,
   ToolTagInput,
   IterationConfigSection,
-  WizardButton,
+  ArchitectButton,
   AdvancedSection,
 } from "./SharedComponents";
 
@@ -27,7 +27,7 @@ const SwarmConfig = memo(function SwarmConfig({
         label="System Instructions"
         hint="General persona and rules shared across the swarm behavior."
         action={
-          <WizardButton
+          <ArchitectButton
             onClick={() => handleFixGrammar("task")}
             loading={fixingGrammar}
             disabled={!data.task}
