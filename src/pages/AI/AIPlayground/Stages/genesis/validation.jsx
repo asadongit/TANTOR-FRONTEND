@@ -112,15 +112,18 @@ export const validateTimeSeriesLearning = async (config, datasetState, activeWor
 
   return null;
 } else {
+  const errorData = await response.json().catch(() => ({}));
+  const message = errorData.detail || 'Failed to validate.';
+
   toast.error(
-    'Failed to validate.',
+    'Validation failed.',
     {
       duration: 4000,
       position: 'top-right'
     }
   );
 
-  return null;
+  return { status: 'error', message };
 }
 
 } catch (error) {

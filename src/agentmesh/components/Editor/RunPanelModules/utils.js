@@ -47,26 +47,35 @@ export function findStartingTriggers(nodes, edges, triggerType) {
  * Resolve pause type and configuration logic, looking up store nodes fallback if needed.
  */
 export function resolvePauseConfig(res, storeNodes, pausedOriginalNodeId) {
-  let nodeType = res.pause_type;
   let nodeConfig = res.pause_config;
+  let nodeType = res.pause_config?.type || res.pause_type;
 
   if (res.context?.paused_subgraph_node_id) {
-    nodeType = res.context.paused_subgraph_node_type;
+    nodeType = res.context.paused_subgraph_node_type || res.context.paused_subgraph_node_config?.type;
     nodeConfig = res.context.paused_subgraph_node_config || {};
   } else if (!nodeType) {
     const pausedNode = storeNodes.find(n => n.id === pausedOriginalNodeId);
-    nodeType = pausedNode?.type === 'customNode' ? pausedNode.data?.type : (pausedNode?.data?.type || pausedNode?.type);
-    nodeConfig = pausedNode?.data || {};
+    nodeType = nodeType || (pausedNode?.type === 'customNode' ? pausedNode.data?.type : (pausedNode?.data?.type || pausedNode?.type));
+    nodeConfig = { ...(pausedNode?.data || {}), ...(nodeConfig || {}) };
+  } else if (pausedOriginalNodeId) {
+    const pausedNode = storeNodes.find(n => n.id === pausedOriginalNodeId);
+    if (pausedNode?.data) {
+      nodeConfig = { ...pausedNode.data, ...nodeConfig };
+    }
   }
   return { nodeType, nodeConfig };
 }
 
 /**
  * Parses AIMessages, user_messages, and charts/artifacts from workflow stream events.
+ * When opts.skipLiveStructure is true, node_start/token events are skipped because
+ * they were already streamed live (real SSE streaming) — only chart artifacts are added.
  */
-export function processWorkflowMessages(messages, addEvent, initialActiveAgent = null) {
+export function processWorkflowMessages(messages, addEvent, initialActiveAgent = null, opts = {}) {
   const hasArtifact = (str) =>
     typeof str === 'string' && (str.includes('```chart') || str.includes('```mermaid'));
+
+  const skipLiveStructure = !!opts.skipLiveStructure;
 
   let chartCount = 0;
   let lastActiveAgent = initialActiveAgent;
@@ -77,7 +86,9 @@ export function processWorkflowMessages(messages, addEvent, initialActiveAgent =
     const agentName = msg.metadata?.agent_name;
 
     if (nodeId && nodeId !== lastActiveAgent) {
-      addEvent({ type: 'node_start', node: nodeId, agent_name: agentName });
+      if (!skipLiveStructure) {
+        addEvent({ type: 'node_start', node: nodeId, agent_name: agentName });
+      }
       lastActiveAgent = nodeId;
       lastActiveAgentName = agentName;
     }
@@ -89,7 +100,7 @@ export function processWorkflowMessages(messages, addEvent, initialActiveAgent =
       }
 
       const isNotLast = msg !== messages[messages.length - 1];
-      if (isNotLast && msg.content && typeof msg.content === 'string' && msg.content.trim()) {
+      if (!skipLiveStructure && isNotLast && msg.content && typeof msg.content === 'string' && msg.content.trim()) {
         addEvent({ type: 'token', content: msg.content, node: nodeId, agent_name: agentName });
       }
     }

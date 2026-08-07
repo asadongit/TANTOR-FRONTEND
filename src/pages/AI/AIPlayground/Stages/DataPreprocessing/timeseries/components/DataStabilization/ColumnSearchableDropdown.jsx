@@ -18,7 +18,8 @@ const ColumnSearchableDropdown = ({
   showDropdown,
   setShowDropdown,
   id,
-  hasError
+  hasError,
+  openUpward = false
 }) => {
   const dropdownRef = React.useRef(null);
 
@@ -66,7 +67,7 @@ const displayValue =
       </button>
 
       {showDropdown[id] && !disabled && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-hidden">
+        <div className={`absolute z-50 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-hidden ${openUpward ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
           <div className="p-2 border-b border-gray-200">
             <input
               type="text"

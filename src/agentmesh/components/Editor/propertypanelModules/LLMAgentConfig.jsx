@@ -7,7 +7,6 @@ import {
   ToolTagInput,
   Select,
   LLMConfigSection,
-  Toggle,
   IterationConfigSection,
   WizardButton,
   NodeIdList,
@@ -148,6 +147,51 @@ const LLMAgentConfig = memo(function LLMAgentConfig({
             />
           </Field>
         )}
+        {(data.memory?.type_name || "buffer_memory") === "vector_memory" && (
+          <>
+            <Field
+              label="Vector DB Provider"
+              hint="Select vector store engine (ChromaDB for local, Qdrant for production)."
+            >
+              <Select
+                value={data.memory?.vector_db || "chroma"}
+                onChange={(v) => update({ memory: { ...data.memory, vector_db: v } })}
+                options={[
+                  { value: "chroma", label: "ChromaDB (Local)" },
+                  { value: "qdrant", label: "Qdrant (Production)" },
+                ]}
+              />
+            </Field>
+            <Field
+              label="Retrieval Search Type"
+              hint="Cosine similarity vector search or Hybrid BM25+Vector search."
+            >
+              <Select
+                value={data.memory?.search_type || "similarity"}
+                onChange={(v) => update({ memory: { ...data.memory, search_type: v } })}
+                options={[
+                  { value: "similarity", label: "Similarity (Cosine Vector)" },
+                  { value: "hybrid", label: "Hybrid (BM25 + Cosine)" },
+                ]}
+              />
+            </Field>
+            <Field
+              label="Top K Memories"
+              hint="Number of semantically relevant past turns to retrieve."
+            >
+              <Input
+                type="number"
+                value={data.memory?.top_k ?? 3}
+                onChange={(v) =>
+                  update({
+                    memory: { ...data.memory, top_k: parseInt(v) || 3 },
+                  })
+                }
+                placeholder="3"
+              />
+            </Field>
+          </>
+        )}
         {(data.memory?.type_name || "buffer_memory") !== "vector_memory" &&
           (data.memory?.type_name || "buffer_memory") !== "none" && (
             <Field
@@ -168,6 +212,7 @@ const LLMAgentConfig = memo(function LLMAgentConfig({
           )}
       </div>
 
+
       <AdvancedSection
         hitlSection={hitlSection}
         nodes={nodes}
@@ -175,70 +220,6 @@ const LLMAgentConfig = memo(function LLMAgentConfig({
         onErrorValue={data.on_error}
         onErrorChange={(v) => update({ on_error: v })}
       >
-        <div style={{ marginBottom: 20 }}>
-          <div
-            style={{
-              fontSize: 10,
-              fontWeight: 800,
-              color: "var(--text-muted)",
-              marginBottom: 12,
-              textTransform: "uppercase",
-            }}
-          >
-            Data Subscriptions (Pub/Sub)
-          </div>
-          <Field
-            label="Subscription Filters (JSON Array/Object)"
-            hint="If provided, the agent will filter the input array and ONLY execute if matches are found."
-          >
-            <Textarea
-              value={
-                typeof data.subscription_filters === "string"
-                  ? data.subscription_filters
-                  : data.subscription_filters
-                    ? JSON.stringify(data.subscription_filters, null, 2)
-                    : ""
-              }
-              onChange={(v) => update({ subscription_filters: v })}
-              placeholder='{\n  "class": ["BALANCE_SHEET"]\n}'
-              rows={4}
-              debounceMs={300}
-            />
-          </Field>
-          <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ flex: 1 }}>
-              <Field
-                label="Input Array Key"
-                hint="The context key containing the array to filter."
-              >
-                <Input
-                  stripBraces
-                  value={
-                    data.subscription_input_key !== undefined
-                      ? data.subscription_input_key
-                      : "aggregated_results"
-                  }
-                  onChange={(v) => update({ subscription_input_key: v })}
-                  placeholder="aggregated_results"
-                />
-              </Field>
-            </div>
-            <div style={{ flex: 1 }}>
-              <Field
-                label="Output Data Key"
-                hint="Where the matched data is stored for the prompt."
-              >
-                <Input
-                  stripBraces
-                  value={data.subscription_output_key || ""}
-                  onChange={(v) => update({ subscription_output_key: v })}
-                  placeholder="latest_ocr_output"
-                />
-              </Field>
-            </div>
-          </div>
-        </div>
-
         <div style={{ marginBottom: 20 }}>
           <IterationConfigSection
             policy={data.iteration_policy}
@@ -254,85 +235,7 @@ const LLMAgentConfig = memo(function LLMAgentConfig({
           }}
         />
 
-        <div style={{ marginBottom: 20 }}>
-          <div
-            style={{
-              fontSize: 10,
-              fontWeight: 800,
-              color: "var(--text-muted)",
-              marginBottom: 12,
-              textTransform: "uppercase",
-            }}
-          >
-            Routing & Execution
-          </div>
-          <Field
-            label="Routing Key"
-            hint="Optional: Save the agent's output into this state key (e.g. 'intent') to determine the next path in conditional edges."
-          >
-            <Input
-              stripBraces
-              value={data.routing_key || ""}
-              onChange={(v) => update({ routing_key: v })}
-              placeholder="e.g. intent"
-            />
-          </Field>
-          <Toggle
-            checked={data.return_direct}
-            onChange={(v) => syncToggle("return_direct", v)}
-            label="Return result direct to user"
-          />
-        </div>
 
-        <div
-          style={{
-            height: "1px",
-            background: "var(--border)",
-            margin: "16px 0",
-          }}
-        />
-
-        <div style={{ marginBottom: 20 }}>
-          <div
-            style={{
-              fontSize: 10,
-              fontWeight: 800,
-              color: "var(--text-muted)",
-              marginBottom: 12,
-              textTransform: "uppercase",
-            }}
-          >
-            Data Serialization Options
-          </div>
-          <Field
-            label="Agent Input Prefix"
-            hint="Prefix for context keys to inject into the agent prompt (default: 'agent_input_')."
-          >
-            <Input
-              value={
-                data.agent_input_prefix !== undefined
-                  ? data.agent_input_prefix
-                  : "agent_input_"
-              }
-              onChange={(v) => update({ agent_input_prefix: v })}
-              placeholder="agent_input_"
-            />
-          </Field>
-          <Field
-            label="Output Key Prefix"
-            hint="Prefix used when saving the agent's output back to context (default: 'cd_output_')."
-          >
-            <Input
-              value={
-                data.output_key_prefix !== undefined
-                  ? data.output_key_prefix
-                  : "cd_output_"
-              }
-              onChange={(v) => update({ output_key_prefix: v })}
-              placeholder="cd_output_"
-            />
-          </Field>
-        </div>
 
         <div
           style={{

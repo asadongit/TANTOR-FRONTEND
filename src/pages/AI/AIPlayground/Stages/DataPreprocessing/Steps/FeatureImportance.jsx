@@ -420,6 +420,7 @@ function FeatureImportance({ readonly: readonlyProp, onApiCall, showPreview, isD
     const [showDropdown, setShowDropdown] = useState(false);
 
     const modellingType = workflowState?.modelGenesis?.config?.modelling_type || 'binary';
+    const isMultivariateMultiseries = modellingType === 'multivariate_multiseries';
 
     const reductionMethodsConfig = step5Response?.dimensionality_reduction?.dimentionality_reduction_n_components || [];
     const availableReductionMethods = Object.keys(DIMENSIONALITY_REDUCTION_DESCRIPTIONS)
@@ -466,6 +467,7 @@ function FeatureImportance({ readonly: readonlyProp, onApiCall, showPreview, isD
     const handleApiCall = async () => {
         if (readonly) return true;
         try {
+            const dimensionalityReductionEnabled = !isMultivariateMultiseries && toggles.dimensionalityReduction;
             const requestBody = {
                 ensemble_id: datasetState?.ensembleId,
                 workflow_id: currentWorkflowId,
@@ -473,7 +475,7 @@ function FeatureImportance({ readonly: readonlyProp, onApiCall, showPreview, isD
                 method: methodCategory,
                 sub_method: subMethod || 'random',
                 n_features: numFeatures,
-                dimensionality_reduction: toggles.dimensionalityReduction,
+                dimensionality_reduction: dimensionalityReductionEnabled,
                 dimensionality_reduction_method: reductionMethod,
                 n_components: nComponents
             };
@@ -503,7 +505,7 @@ function FeatureImportance({ readonly: readonlyProp, onApiCall, showPreview, isD
                     method: methodCategory,
                     sub_method: subMethod,
                     n_features: numFeatures,
-                    dimensionality_reduction: toggles.dimensionalityReduction,
+                    dimensionality_reduction: dimensionalityReductionEnabled,
                     dimensionality_reduction_method: reductionMethod,
                     n_components: nComponents
                 },
@@ -603,6 +605,7 @@ function FeatureImportance({ readonly: readonlyProp, onApiCall, showPreview, isD
                 onExpand={() => setExpandedSections(prev => ({ ...prev, featureImportance: !prev.featureImportance }))}
                 readonly={readonly}
                 sectionKey="featureImportance"
+                isLastSection={isMultivariateMultiseries}
             >
                 <div className="space-y-4">
                     {/* Method Category */}
@@ -665,67 +668,69 @@ function FeatureImportance({ readonly: readonlyProp, onApiCall, showPreview, isD
                 </div>
             </FeatureSection>
 
-            {/* ── Dimensionality Reduction ── */}
-            <FeatureSection
-                title="Dimensionality Reduction"
-                isToggled={toggles.dimensionalityReduction}
-                isExpanded={expandedSections.dimensionalityReduction}
-                onToggle={() => toggleSwitch('dimensionalityReduction')}
-                onExpand={() => setExpandedSections(prev => ({ ...prev, dimensionalityReduction: !prev.dimensionalityReduction }))}
-                readonly={readonly}
-                sectionKey="dimensionalityReduction"
-                isLastSection={true}
-            >
-                <div className="space-y-4">
-                    <div>
-                        <h5 className="text-sm font-medium text-gray-700 mb-2">Reduction Method</h5>
-                        <SearchableDropdown
-                            value={reductionMethod}
-                            onChange={setReductionMethod}
-                            options={availableReductionMethods}
-                            disabled={readonly}
-                            label={null}
-                            searchValue={searchValue}
-                            setSearchValue={setSearchValue}
-                            showDropdown={showDropdown}
-                            setShowDropdown={setShowDropdown}
-                            type="dimensionality"
-                        />
-                    </div>
-
-                    {currentRange.low !== currentRange.high && (
-                        <div className="pt-2">
-                            <h5 className="text-sm font-medium text-gray-700 mb-2">Number of Components</h5>
-                            <input
-                                type="range"
-                                min={currentRange.low}
-                                max={currentRange.high}
-                                value={nComponents}
-                                onChange={(e) => setNComponents(parseInt(e.target.value))}
+            {/* ── Dimensionality Reduction (not available for multivariate_multiseries) ── */}
+            {!isMultivariateMultiseries && (
+                <FeatureSection
+                    title="Dimensionality Reduction"
+                    isToggled={toggles.dimensionalityReduction}
+                    isExpanded={expandedSections.dimensionalityReduction}
+                    onToggle={() => toggleSwitch('dimensionalityReduction')}
+                    onExpand={() => setExpandedSections(prev => ({ ...prev, dimensionalityReduction: !prev.dimensionalityReduction }))}
+                    readonly={readonly}
+                    sectionKey="dimensionalityReduction"
+                    isLastSection={true}
+                >
+                    <div className="space-y-4">
+                        <div>
+                            <h5 className="text-sm font-medium text-gray-700 mb-2">Reduction Method</h5>
+                            <SearchableDropdown
+                                value={reductionMethod}
+                                onChange={setReductionMethod}
+                                options={availableReductionMethods}
                                 disabled={readonly}
-                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#8e78b7]"
-                                style={{
-                                    background: `linear-gradient(to right, #8e78b7 0%, #8e78b7 ${((nComponents - currentRange.low) / (currentRange.high - currentRange.low)) * 100}%, #e5e7eb ${((nComponents - currentRange.low) / (currentRange.high - currentRange.low)) * 100}%, #e5e7eb 100%)`
-                                }}
+                                label={null}
+                                searchValue={searchValue}
+                                setSearchValue={setSearchValue}
+                                showDropdown={showDropdown}
+                                setShowDropdown={setShowDropdown}
+                                type="dimensionality"
                             />
-                            <div className="flex justify-between text-xs text-gray-500 mt-1">
-                                <span>{currentRange.low}</span>
-                                <span className="font-bold text-[#8e78b7]">{nComponents}</span>
-                                <span>{currentRange.high}</span>
-                            </div>
                         </div>
-                    )}
 
-                    {currentRange.low === currentRange.high && (
-                        <div className="pt-2">
-                            <h5 className="text-sm font-medium text-gray-700 mb-2">Number of Components</h5>
-                            <div className="px-3 py-2 bg-gray-100 rounded border border-gray-200 text-sm text-gray-700">
-                                Fixed at <span className="font-bold text-[#8e78b7]">{currentRange.low}</span> component(s)
+                        {currentRange.low !== currentRange.high && (
+                            <div className="pt-2">
+                                <h5 className="text-sm font-medium text-gray-700 mb-2">Number of Components</h5>
+                                <input
+                                    type="range"
+                                    min={currentRange.low}
+                                    max={currentRange.high}
+                                    value={nComponents}
+                                    onChange={(e) => setNComponents(parseInt(e.target.value))}
+                                    disabled={readonly}
+                                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#8e78b7]"
+                                    style={{
+                                        background: `linear-gradient(to right, #8e78b7 0%, #8e78b7 ${((nComponents - currentRange.low) / (currentRange.high - currentRange.low)) * 100}%, #e5e7eb ${((nComponents - currentRange.low) / (currentRange.high - currentRange.low)) * 100}%, #e5e7eb 100%)`
+                                    }}
+                                />
+                                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                    <span>{currentRange.low}</span>
+                                    <span className="font-bold text-[#8e78b7]">{nComponents}</span>
+                                    <span>{currentRange.high}</span>
+                                </div>
                             </div>
-                        </div>
-                    )}
-                </div>
-            </FeatureSection>
+                        )}
+
+                        {currentRange.low === currentRange.high && (
+                            <div className="pt-2">
+                                <h5 className="text-sm font-medium text-gray-700 mb-2">Number of Components</h5>
+                                <div className="px-3 py-2 bg-gray-100 rounded border border-gray-200 text-sm text-gray-700">
+                                    Fixed at <span className="font-bold text-[#8e78b7]">{currentRange.low}</span> component(s)
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </FeatureSection>
+            )}
         </div>
     );
 }

@@ -336,7 +336,7 @@ export function ConsolidationNode({ id, data }) {
         joins: updatedJoins.length > 0 ? updatedJoins : finalPayload?.joins || [],
         columnsDataType: columnsPayload,
         view_name: "",
-        isMateralizedView: "false",
+        isMaterializedView: "false",
         isCaching: "false",
         base_join: baseJoin,
         ...(connection && { base_join_def: connection.def }),
@@ -397,7 +397,7 @@ export function ConsolidationNode({ id, data }) {
         const newPayload = {
           operation: unionType,
           view_type: "Integrated View",
-          isMateralizedView: "false",
+          isMaterializedView: "false",
           isCaching: "false",
           view_name: "",
           union: unions,

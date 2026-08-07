@@ -6,7 +6,7 @@ import {
   FiPlay, FiCpu, FiBox, FiGitMerge,
   FiTarget, FiShare2, FiBookOpen, FiLink,
   FiSearch, FiGlobe, FiClock, FiVolume2, FiRepeat, FiFileText, FiBell, FiAlertTriangle, FiZap, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiLayers, FiInbox, FiDatabase, FiServer,
-  FiCode, FiSliders, FiInfo, FiMic, FiEye, FiVideo, FiMail, FiChevronDown
+  FiCode, FiSliders, FiInfo, FiMic, FiEye, FiVideo, FiMail, FiChevronDown, FiUploadCloud
 } from 'react-icons/fi';
 import { 
   listAgentTemplates, 
@@ -43,6 +43,7 @@ export const NODE_TYPES = [
   { type: 'rag_node',   icon: FiBookOpen,  label: 'RAG',          desc: 'Retrieves relevant context from a vector search database.', detailedDesc: 'Retrieves relevant reference chunks from knowledge collection vector databases using similarity searches to ground AI prompts and prevent hallucinations.', bg: '#FFF3B8', color: '#92400E', category: 'Knowledge & RAG' },
   { type: 'vector_ingestion', icon: FiBox,      label: 'Vector Ingestion',    desc: 'Indexes external document collections into the RAG vector store.', detailedDesc: 'Processes, chunks, embeds, and uploads directories of documents into the vector store database for use by RAG retrieval systems.', bg: '#E0F2FE', color: '#0EA5E9', category: 'Knowledge & RAG' },
   { type: 'ocr_node',       icon: FiEye,   label: 'OCR Node',     desc: 'Extract text from images or PDF documents.', detailedDesc: 'Uses advanced vision models or OCR engines to convert scanned files, PDFs, or images into raw text. The extracted text is saved to context variables.', bg: '#FDF2F8', color: '#DB2777', category: 'Media Services' },
+  { type: 'multi_file_ingestion', icon: FiUploadCloud, label: 'Multi-File Ingestion', desc: 'Uploads & validates multi-file batches, extracts page/document metadata, and iterates through queue.', detailedDesc: 'Interactive batch uploader node with size & extension validation, session file storage, rich metadata calculation, page-by-page PDF splitting, and loop/done output routing handles.', bg: '#EEF2FF', color: '#4F46E5', category: 'Media Services' },
   { type: 'signature_stamp_extractor', icon: FiEdit, label: 'Signature & Stamp Extractor', desc: 'Extract signatures and stamps from documents.', detailedDesc: 'Uses color-specific thresholding to find ink blobs (signatures and stamps), crops them, encodes them to base64, and classifies them using a vision LLM.', bg: '#FDF2F8', color: '#DB2777', category: 'Media Services' },
 
   // External Integrations

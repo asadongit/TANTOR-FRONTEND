@@ -402,7 +402,9 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
     const [isLoading, setIsLoading] = useState(false);
     const [showFieldErrors, setShowFieldErrors] = useState(false);
 
-    const numericColumns = workflowState?.dataPreprocessing?.step1?.apiResponse?.numerical_columns || [];
+    const entityColumns = workflowState?.modelGenesis?.config?.entity_cols || [];
+    const numericColumns = (workflowState?.dataPreprocessing?.step1?.apiResponse?.numerical_columns || [])
+        .filter(col => !entityColumns.includes(col));
     const categoricalColumns = workflowState?.dataPreprocessing?.step2?.apiResponse?.categorical_columns || [];
     const hasCategoricalColumns = categoricalColumns.length > 0;
 
@@ -414,6 +416,7 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
 
     const modellingType = workflowState?.modelGenesis?.config?.modelling_type || 'binary';
     const isOutlierTreatmentDisabled = !hasOutliers;
+    const showTimeSeriesFeatures = !['binary', 'multiclass', 'regression'].includes(modellingType);
 
     const getAvailableOptions = (optionsConfig, modellingType) => {
     return optionsConfig.filter(option => option.availability[modellingType] === 'yes');
@@ -425,7 +428,7 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
             setToggles({
                 outlierTreatment: hasOutliers ? (step3Config.outlier_treatment || false) : false,
                 categoricalEncoding: hasCategoricalColumns ? true : (step3Config.categorical_encoding || false),
-                timeSeries: step3Config.time_series_active || false,
+                timeSeries: showTimeSeriesFeatures ? (step3Config.time_series_active || false) : false,
             });
             if (step3Config.outlier_treatment_strategy) setOutlierStrategy(step3Config.outlier_treatment_strategy);
             if (step3Config.outlier_season_period !== undefined) setOutlierSeasonPeriod(String(step3Config.outlier_season_period));
@@ -557,7 +560,7 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
                             : { col: op.col, window: Number(op.window), agg: op.type, new_col: computeNewCol(op) }
                     )
                     : [],
-                time_series_entity_cols: ['brand', 'category'],
+                time_series_entity_cols: entityColumns,
                 time_series_sort_col: 'date',
             };
 
@@ -867,46 +870,48 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
                 </FeatureSection>
             )}
             {/* ── Time Series Features ── */}
-            <FeatureSection
-                title="Time Series Features"
-                isToggled={toggles.timeSeries}
-                isExpanded={expandedSections.timeSeries}
-                onToggle={() => toggleSwitch('timeSeries')}
-                onExpand={() => toggleSection('timeSeries')}
-                readonly={readonly}
-                sectionKey="timeSeries"
-                hasError={timeSeriesError}
-            >
-                <div className="space-y-3">
-                    {(() => {
-                        const duplicateKeys = getDuplicateKeys();
-                        return timeSeriesOperations.map(op => (
-                            <TimeSeriesOperationRow
-                                key={op.id}
-                                op={op}
-                                numericColumns={numericColumns}
-                                readonly={readonly}
-                                showErrors={showFieldErrors}
-                                onChange={(field, value) => updateOperation(op.id, field, value)}
-                                onRemove={() => removeOperation(op.id)}
-                                canRemove={timeSeriesOperations.length > 1}
-                                isDuplicate={!!op.col && duplicateKeys.has(computeNewCol(op))}
-                            />
-                        ));
-                    })()}
-                    {!readonly && (
-                        <button
-                            onClick={addOperation}
-                            className="text-sm text-[#8e78b7] hover:underline font-medium"
-                        >
-                            + Add Operation
-                        </button>
-                    )}
-                    {timeSeriesError && (
-                        <p className="text-xs text-red-500 mt-1">Please complete all operation fields</p>
-                    )}
-                </div>
-            </FeatureSection>
+            {showTimeSeriesFeatures && (
+                <FeatureSection
+                    title="Time Series Features"
+                    isToggled={toggles.timeSeries}
+                    isExpanded={expandedSections.timeSeries}
+                    onToggle={() => toggleSwitch('timeSeries')}
+                    onExpand={() => toggleSection('timeSeries')}
+                    readonly={readonly}
+                    sectionKey="timeSeries"
+                    hasError={timeSeriesError}
+                >
+                    <div className="space-y-3">
+                        {(() => {
+                            const duplicateKeys = getDuplicateKeys();
+                            return timeSeriesOperations.map(op => (
+                                <TimeSeriesOperationRow
+                                    key={op.id}
+                                    op={op}
+                                    numericColumns={numericColumns}
+                                    readonly={readonly}
+                                    showErrors={showFieldErrors}
+                                    onChange={(field, value) => updateOperation(op.id, field, value)}
+                                    onRemove={() => removeOperation(op.id)}
+                                    canRemove={timeSeriesOperations.length > 1}
+                                    isDuplicate={!!op.col && duplicateKeys.has(computeNewCol(op))}
+                                />
+                            ));
+                        })()}
+                        {!readonly && (
+                            <button
+                                onClick={addOperation}
+                                className="text-sm text-[#8e78b7] hover:underline font-medium"
+                            >
+                                + Add Operation
+                            </button>
+                        )}
+                        {timeSeriesError && (
+                            <p className="text-xs text-red-500 mt-1">Please complete all operation fields</p>
+                        )}
+                    </div>
+                </FeatureSection>
+            )}
         </div>
     );
 }

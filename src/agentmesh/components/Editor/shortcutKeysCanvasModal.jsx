@@ -2,12 +2,18 @@
 /* eslint-disable jsx-a11y/no-static-element-interactions */
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 import React from 'react';
-import { FiX, FiMousePointer, FiSearch, FiFileText, FiTrash2, FiRotateCcw, FiRotateCw, FiLayers, FiZap } from 'react-icons/fi';
+import { FiX, FiMousePointer, FiSearch, FiFileText, FiTrash2, FiRotateCcw, FiRotateCw, FiLayers, FiZap, FiMaximize2 } from 'react-icons/fi';
 
 export default function ShortcutKeysCanvasModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const shortcuts = [
+    {
+      id: 'fit-view',
+      keys: ['F'],
+      description: 'Fit all canvas nodes into view with optimal framing (when no node is selected).',
+      icon: <FiMaximize2 size={16} />,
+    },
     {
       id: 'ctrl-drag',
       keys: ['Ctrl', 'Drag'],

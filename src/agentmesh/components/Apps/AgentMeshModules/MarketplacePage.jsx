@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWorkflowStore, useUIStore, useRunStore } from '../../../store';
+import { getButtonDisplayLabel } from '../../Editor/RunPanelModules/constants';
 import { listMarketplaceUsecases, listWorkflowCategories, getWorkflow } from '../../../api/agentmesh';
-import { FiUser, FiMessageSquare, FiInfo, FiTag, FiX, FiZap, FiBookOpen, FiLoader } from 'react-icons/fi';
+import { FiUser, FiMessageSquare, FiInfo, FiTag, FiX, FiZap, FiBookOpen, FiLoader, FiGrid } from 'react-icons/fi';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import bannerImage from '../../../assets/data/Stack-p-2000.png';
 import Pagination from '../../Common/Pagination';
@@ -300,7 +301,7 @@ function MarketplaceListRow({ w, onChat, onDetails, isRunning, idx, isLaunching 
             onMouseEnter={e => { e.currentTarget.style.background = 'var(--theme-primary)'; e.currentTarget.style.color = 'white'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'var(--theme-primary-glow)'; e.currentTarget.style.color = 'var(--theme-primary)'; }}
           >
-            <FiZap size={14} /> {n.data?.button_label || n.data?.label || 'Run'}
+            <FiZap size={14} /> {getButtonDisplayLabel(n)}
           </button>
         ))}
         <button
@@ -466,7 +467,7 @@ function MarketplaceCard({ w, onChat, onDetails, isRunning, idx, isLaunching }) 
               onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--theme-primary)'; e.currentTarget.style.color = 'white'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--theme-primary-glow)'; e.currentTarget.style.color = 'var(--theme-primary)'; }}
             >
-              <FiZap size={13} /> {n.data?.button_label || n.data?.label || 'Run'}
+              <FiZap size={13} /> {getButtonDisplayLabel(n)}
             </button>
           ))}
           <button

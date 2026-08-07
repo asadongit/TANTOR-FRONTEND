@@ -19,7 +19,7 @@ export default function HistorySidebar({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 2000 }}>
+        <div style={{ position: 'absolute', inset: 0, zIndex: 9000 }}>
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}

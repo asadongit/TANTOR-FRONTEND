@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { useWorkflowStore, useUIStore } from '../../../store';
+import { getButtonDisplayLabel } from '../../Editor/RunPanelModules/constants';
 import { listWorkflows, deleteWorkflow, cloneWorkflow, dispatchScheduleAction, listWorkflowCategories, getWorkflow } from '../../../api/agentmesh';
 import { FiSearch, FiRefreshCw, FiPlus, FiTrash2, FiGitBranch, FiCopy, FiDownload, FiArrowRight, FiPause, FiPlay, FiFolder, FiTag, FiChevronDown, FiChevronRight, FiEdit2, FiX, FiCheck, FiMoreHorizontal, FiZap, FiInfo } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -140,7 +141,7 @@ function WorkflowListRow({ w, onOpen, onDelete, onClone, onExport, onPause, onRe
                   boxShadow: '0 4px 10px rgba(142, 119, 187, 0.2)'
                 }}
               >
-                <FiZap size={12} /> {n.data?.button_label || n.data?.label || 'Run'}
+                <FiZap size={12} /> {getButtonDisplayLabel(n)}
               </button>
             ))
           }
@@ -405,7 +406,7 @@ function WorkflowCard({ w, onOpen, onDelete, onClone, onExport, onPause, onResum
                 ui.setInitialRunInput(n.data?.button_input || 'Start');
                 ui.setRunOpen(true);
               }}
-              title={`Quick Run: ${n.data?.button_label || n.data?.label || 'Trigger'}`}
+              title={`Quick Run: ${getButtonDisplayLabel(n)}`}
               style={{
                 height: 36, padding: '0 14px', borderRadius: 8, border: '1px solid var(--theme-primary-glow)',
                 background: 'var(--theme-primary-glow)', color: 'var(--theme-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -414,7 +415,7 @@ function WorkflowCard({ w, onOpen, onDelete, onClone, onExport, onPause, onResum
               onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--theme-primary)'; e.currentTarget.style.color = 'white'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--theme-primary-glow)'; e.currentTarget.style.color = 'var(--theme-primary)'; }}
             >
-              <FiZap size={13} /> {n.data?.button_label || n.data?.label || 'Run'}
+              <FiZap size={13} /> {getButtonDisplayLabel(n)}
             </button>
           ))
         }

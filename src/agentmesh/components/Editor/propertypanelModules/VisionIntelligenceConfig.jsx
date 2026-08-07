@@ -4,10 +4,12 @@ import {
   Select,
   Field,
   Input,
+  Textarea,
   Slider,
   InfoBanner,
   AdvancedSection,
   HitlConfigSection,
+  LLMConfigSection,
 } from "./SharedComponents";
 
 export default function VisionIntelligenceConfig({
@@ -207,10 +209,10 @@ export default function VisionIntelligenceConfig({
         return value >= (data.vision_quality_blur_threshold ?? 100);
       case "contrast":
         return value >= (data.vision_quality_min_contrast ?? 0.10) &&
-               value <= (data.vision_quality_max_contrast ?? 0.45);
+          value <= (data.vision_quality_max_contrast ?? 0.45);
       case "brightness":
         return value >= (data.vision_quality_min_brightness ?? 40) &&
-               value <= (data.vision_quality_max_brightness ?? 215);
+          value <= (data.vision_quality_max_brightness ?? 215);
       case "resolution":
         return value >= (data.vision_quality_min_shortest_side ?? 600);
       default:
@@ -230,10 +232,6 @@ export default function VisionIntelligenceConfig({
 
   return (
     <>
-      <InfoBanner type="info">
-        <strong>Vision Intelligence Engine</strong> unifies 1:1 InsightFace biometric verification, signature/stamp detection, and document image quality gates.
-      </InfoBanner>
-
       <Field
         label="Vision Operation Mode"
         hint="Select the active computer vision task for this node."
@@ -245,6 +243,10 @@ export default function VisionIntelligenceConfig({
             {
               value: "face_verification",
               label: "Biometric Face Verification (InsightFace)",
+            },
+            {
+              value: "ocr",
+              label: "Document OCR Extraction (Vision LLM)",
             },
             {
               value: "signature_stamp_detection",
@@ -261,6 +263,136 @@ export default function VisionIntelligenceConfig({
           ]}
         />
       </Field>
+
+      {/* Mode: OCR Extraction */}
+      {currentMode === "ocr" && (
+        <div style={{ marginTop: 10 }}>
+          <Field
+            label="OCR Mode"
+            hint="Vision uses Cloud LLMs; Standard uses local engines; External sends files to an API service (e.g., DocBot)."
+          >
+            <Select
+              value={data.ocr_engine || "vision"}
+              onChange={(v) => update({ ocr_engine: v })}
+              options={[
+                { value: "vision", label: "Vision OCR (AI/LLM)" },
+                { value: "standard", label: "Standard OCR (Local)" },
+                { value: "external", label: "External Service (API)" },
+              ]}
+            />
+          </Field>
+
+          {(data.ocr_engine || "vision") === "vision" && (
+            <>
+              <Field
+                label="OCR Instruction / Prompt"
+                hint="Instruction for the vision model. Be specific about what data to extract."
+              >
+                <Textarea
+                  value={data.ocr_prompt || "Please perform OCR on this document and return the full text accurately."}
+                  onChange={(v) => update({ ocr_prompt: v })}
+                  placeholder="e.g. Extract all text from this receipt accurately..."
+                />
+              </Field>
+
+              <div
+                style={{
+                  marginTop: 16,
+                  borderTop: "1px solid var(--border)",
+                  paddingTop: 16,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--text-muted)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.8px",
+                    marginBottom: 12,
+                  }}
+                >
+                  Model Settings
+                </div>
+                <LLMConfigSection
+                  llm={data.llm}
+                  onChange={(v) => update({ llm: v })}
+                />
+              </div>
+            </>
+          )}
+
+          {data.ocr_engine === "standard" && (
+            <div
+              style={{
+                padding: "16px",
+                background: "var(--bg-card-neutral, #F8FAFC)",
+                borderRadius: 12,
+                border: "1px solid var(--border)",
+                marginTop: 10,
+              }}
+            >
+              <Field
+                label="Local OCR Engine"
+                hint="Select the local model installed on your server."
+              >
+                <Select
+                  value={data.ocr_standard_model || "tesseract"}
+                  onChange={(v) => update({ ocr_standard_model: v })}
+                  options={[
+                    { value: "tesseract", label: "Tesseract OCR" },
+                    { value: "chandra", label: "Chandra OCR" },
+                    { value: "surya", label: "Surya OCR" },
+                  ]}
+                />
+              </Field>
+            </div>
+          )}
+
+          {data.ocr_engine === "external" && (
+            <div
+              style={{
+                padding: 16,
+                background: "#FFF7ED",
+                borderRadius: 12,
+                border: "1px solid #FED7AA",
+                marginTop: 10,
+              }}
+            >
+              <Field label="Service URL" hint="Full URL of the extraction API endpoint.">
+                <Input
+                  value={data.ocr_service_url || ""}
+                  onChange={(v) => update({ ocr_service_url: v })}
+                  placeholder="http://localhost:8003/api/ocr/upload"
+                />
+              </Field>
+              <Field label="Response Type" hint="How the service returns data.">
+                <Select
+                  value={data.ocr_service_response_type || "sse"}
+                  onChange={(v) => update({ ocr_service_response_type: v })}
+                  options={[
+                    { value: "sse", label: "SSE Stream (Server-Sent Events)" },
+                    { value: "json", label: "JSON (Standard Response)" },
+                  ]}
+                />
+              </Field>
+            </div>
+          )}
+
+          <div style={{ marginTop: 16 }}>
+            <Field
+              label="Document Image / File Key"
+              hint="Context key containing file path to process. Defaults to 'latest_file_path'."
+            >
+              <Input
+                value={data.ocr_input_key || "latest_file_path"}
+                onChange={(v) => update({ ocr_input_key: stripBraces(v) })}
+                placeholder="latest_file_path"
+              />
+            </Field>
+          </div>
+        </div>
+      )}
 
       {/* Mode 1: Face Verification Configs */}
       {currentMode === "face_verification" && (
@@ -304,18 +436,50 @@ export default function VisionIntelligenceConfig({
 
       {/* Mode 2: Signature & Stamp Detection */}
       {currentMode === "signature_stamp_detection" && (
-        <Field
-          label="Document Image Source Key"
-          hint="Context key containing the document image to scan for stamps and signatures."
-        >
-        <Input
-              value={data.vision_id_image_key || "latest_file_path"}
-              onChange={(v) => update({ vision_id_image_key: stripBraces(v) })}
+        <>
+          <Field
+            label="Document Image / PDF Source Key"
+            hint="Context key containing document file path (image/PDF) or base64 to scan."
+          >
+            <Input
+              value={data.vision_id_image_key || data.extractor_input_key || "latest_file_path"}
+              onChange={(v) =>
+                update({
+                  vision_id_image_key: stripBraces(v),
+                  extractor_input_key: stripBraces(v),
+                })
+              }
               placeholder="latest_file_path"
             />
           </Field>
-        )
-      }
+
+          <Field
+            label="Extraction Mode / AI Engine"
+            hint="Choose between fast local CV candidate bounding boxes or Vision LLM AI text OCR analysis."
+          >
+            <Select
+              value={data.vision_enable_llm ? "llm" : "cv"}
+              onChange={(v) => update({ vision_enable_llm: v === "llm" })}
+              options={[
+                {
+                  value: "llm",
+                  label: "Vision LLM Enabled (Deep AI OCR & Analysis)",
+                },
+                {
+                  value: "cv",
+                  label: "CV-Only Detection (Fast Local Ink Bounding Boxes)",
+                },
+              ]}
+            />
+          </Field>
+
+          {data.vision_enable_llm && (
+            <div style={{ marginTop: 12, padding: 12, border: "1px solid var(--border)", borderRadius: 8, background: "var(--bg-primary)" }}>
+              <LLMConfigSection data={data} update={update} />
+            </div>
+          )}
+        </>
+      )}
 
       {/* Mode 3: Document Quality Gate */}
       {currentMode === "document_quality_gate" && (
@@ -651,12 +815,12 @@ export default function VisionIntelligenceConfig({
           hint="Context key containing the image path or base64 to inspect."
         >
           <Input
-              value={data.vision_id_image_key || "latest_file_path"}
-              onChange={(v) => update({ vision_id_image_key: stripBraces(v) })}
-              placeholder="latest_file_path"
-            />
-          </Field>
-        )}
+            value={data.vision_id_image_key || "latest_file_path"}
+            onChange={(v) => update({ vision_id_image_key: stripBraces(v) })}
+            placeholder="latest_file_path"
+          />
+        </Field>
+      )}
 
       {/* Common Output Key */}
       <Field

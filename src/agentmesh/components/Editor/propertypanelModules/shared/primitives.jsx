@@ -33,7 +33,7 @@ export const MODELS = {
   openrouter: ['meta-llama/llama-3.1-405b-instruct', 'google/gemini-pro-1.5', 'anthropic/claude-3.5-sonnet'],
   azure: ['azure-openai/gpt-4o', 'azure-openai/gpt-35-turbo'],
   bedrock: ['anthropic.claude-3-sonnet-20240229-v1:0', 'meta.llama3-70b-instruct-v1:0', 'amazon.titan-text-express-v1'],
-  vllm: ['custom-model']
+  vllm: ['Qwen/Qwen2.5-VL-7B-Instruct', 'custom-model']
 };
 
 export const inputStyle = {

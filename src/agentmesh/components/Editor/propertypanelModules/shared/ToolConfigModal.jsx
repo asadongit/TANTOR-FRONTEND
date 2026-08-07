@@ -103,6 +103,8 @@ export const ToolConfigModal = memo(function ToolConfigModal({ toolName, config 
             <Toggle checked={config.return_direct || false} onChange={(v) => set('return_direct', v)} label="Return result direct to user" />
             <div className="h-px bg-[var(--border)] my-3" />
             <Toggle checked={config.interrupt_before || false} onChange={(v) => set('interrupt_before', v)} label="Pause before execution (Human approval)" />
+            <div className="h-px bg-[var(--border)] my-3" />
+            <Toggle checked={config.exclude_from_subagent || false} onChange={(v) => set('exclude_from_subagent', v)} label="Exclude from sub-agents" />
           </CollapsibleSection>
 
           {toolName === 'chart_generator' && (
@@ -125,9 +127,18 @@ export const ToolConfigModal = memo(function ToolConfigModal({ toolName, config 
                 <Field key={f.name} label={f.name.replace(/_/g, ' ')} hint={f.description}>
                   {f.options && f.options.length > 0 ? (
                     <Select
-                      value={config[f.name] || f.default}
+                      value={config[f.name] ?? f.default ?? ''}
                       onChange={(v) => set(f.name, f.type === 'number' ? parseFloat(v) : v)}
-                      options={f.options.map(o => ({ value: o, label: o }))}
+                      options={f.options.map(o => ({ value: o, label: String(o) }))}
+                    />
+                  ) : f.type === 'boolean' ? (
+                    <Select
+                      value={String(config[f.name] ?? f.default ?? 'false')}
+                      onChange={(v) => set(f.name, v === 'true')}
+                      options={[
+                        { value: 'true', label: 'true' },
+                        { value: 'false', label: 'false' }
+                      ]}
                     />
                   ) : f.type === 'textarea' ? (
                     <Textarea

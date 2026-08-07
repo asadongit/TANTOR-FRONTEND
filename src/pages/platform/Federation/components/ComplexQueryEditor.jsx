@@ -3,45 +3,69 @@ import AceEditor from "react-ace";
 import { useStateContext } from "../context/contextViewProvider";
 import { X, FileCode } from "lucide-react";
 
-function ComplexQueryEditor({setShowQueryEditor}) {
+function ComplexQueryEditor({setShowQueryEditor, onQuerySave}) {
   const [query, setQuery] = useState("");
   
   const {userSelections, setUserSelections, finalPayload, handleFinalPayload} = useStateContext("");
   
   useEffect(() => {
-    if(finalPayload.view_type === "Integrated View"){
+    if (finalPayload?.view_type === "Integrated View") {
       if (finalPayload.complex_query) {
         setQuery(finalPayload.complex_query);
+      } else if (userSelections?.has("complex_query")) {
+        setQuery(userSelections.get("complex_query"));
       } else {
         setQuery("");
       }
-    }
-    else if(userSelections.has("complex_query")) {
+    } else if (userSelections?.has("complex_query")) {
       setQuery(userSelections.get("complex_query"));
+    } else {
+      setQuery("");
     }
   }, [finalPayload, userSelections]);
   
   const handelExecute = () => {
-    if(query.trim() != ""){
-    if(finalPayload?.view_type == 'Integrated View'){
-      const updatedPayload = { ...finalPayload,  "complex_query" : query};
+    const trimmedQuery = query.trim();
+    if (trimmedQuery !== "") {
+      if (finalPayload?.view_type === 'Integrated View') {
+        const updatedPayload = { ...finalPayload, "complex_query": query };
+        handleFinalPayload(updatedPayload);
+      } else {
+        setUserSelections((prev) => {
+          const updatedSelections = new Map(prev);
+          updatedSelections.set("complex_query", query);
+          return updatedSelections;
+        });
+      }
+    } else {
+      if (finalPayload?.complex_query !== undefined) {
+        const updatedPayload = { ...finalPayload };
+        delete updatedPayload.complex_query;
+        handleFinalPayload(updatedPayload);
+      }
+      setUserSelections((prev) => {
+        const updatedSelections = new Map(prev);
+        updatedSelections.delete("complex_query");
+        return updatedSelections;
+      });
+    }
+    setShowQueryEditor(false);
+    onQuerySave?.(trimmedQuery);
+  };
+
+  const handleClear = () => {
+    setQuery("");
+    if (finalPayload?.complex_query !== undefined) {
+      const updatedPayload = { ...finalPayload };
+      delete updatedPayload.complex_query;
       handleFinalPayload(updatedPayload);
     }
-    else{
-    setUserSelections(prev => {
-        const updatedSelections = new Map(prev);
-        updatedSelections.set("complex_query", query);
-        return updatedSelections;
+    setUserSelections((prev) => {
+      const updatedSelections = new Map(prev);
+      updatedSelections.delete("complex_query");
+      return updatedSelections;
     });
-  }
-}
-    setShowQueryEditor(false);
-  }
-
-  const handleClear = () =>{
-    setQuery("")
-    delete finalPayload.complex_query;
-  }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-end bg-black bg-opacity-0 p-0 h-screen">

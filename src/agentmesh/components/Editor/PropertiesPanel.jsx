@@ -112,6 +112,9 @@ const LAZY_CONFIGS = {
   ),
   rag_node: lazy(() => import("./propertypanelModules/RagNodeConfig")),
   ocr_node: lazy(() => import("./propertypanelModules/OcrNodeConfig")),
+  multi_file_ingestion: lazy(
+    () => import("./propertypanelModules/MultiFileIngestionConfig"),
+  ),
   vision_intelligence: lazy(
     () => import("./propertypanelModules/VisionIntelligenceConfig")
   ),
@@ -440,7 +443,7 @@ export default function PropertiesPanel() {
         </div>
 
         <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
-          <InfoBanner type="info">
+          <InfoBanner type="neutral">
             Conditional edges are used by <strong>Router</strong> nodes. If a
             node is not a Router, the edge acts as a standard flow connection.
           </InfoBanner>

@@ -108,16 +108,18 @@ const [cfDesiredValue, setCfDesiredValue] = useState('');
   );
 };
 
-const FieldTooltip = ({ lines, position = "right" }) => {
+export const FieldTooltip = ({ lines, position = "right", openUpward = false }) => {
   const [visible, setVisible] = useState(false);
 
-  const bubbleStyle = position === "left"
-    ? { right: 0, top: '1.5rem' }
-    : { left: 0, top: '1.5rem' };
+  const bubbleStyle = {
+    ...(position === "left" ? { right: 0 } : { left: 0 }),
+    ...(openUpward ? { bottom: '1.5rem' } : { top: '1.5rem' })
+  };
 
-  const arrowStyle = position === "left"
-    ? { right: '0.375rem', top: '-0.375rem' }
-    : { left: '0.75rem', top: '-0.375rem' };
+  const arrowStyle = {
+    ...(position === "left" ? { right: '0.375rem' } : { left: '0.75rem' }),
+    ...(openUpward ? { bottom: '-0.375rem' } : { top: '-0.375rem' })
+  };
 
   return (
     <div className="relative inline-flex items-center">

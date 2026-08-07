@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { useWorkflowStore, useRunStore, useUIStore } from '../../store';
-import { executeWorkflow, compileWorkflow, listThreads, getThreadHistory, deleteThread, listVfsFiles } from '../../api/agentmesh';
+import { useAuth } from '../../../context/AuthContext';
+import { useShallow } from 'zustand/react/shallow';
+import { executeWorkflow, streamWorkflow, compileWorkflow, listThreads, getThreadHistory, deleteThread, listVfsFiles } from '../../api/agentmesh';
 import {
   FiSend, FiRotateCcw, FiPaperclip, FiMic, FiChevronDown, FiChevronUp, FiArrowUp,
   FiAlertCircle, FiCpu, FiBox, FiActivity,
@@ -13,7 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 // Import RunPanelModules submodules
 import {
   THEME_BG, THEME_GRAY, THEME_BORDER, THEME_TEXT, THEME_ACCENT, THEME_SECONDARY, THEME_USER_BUBBLE, FONT,
-  getButtonCategoryStyles, genThreadId, findProfileReportHtml, PAUSE_UI
+  getButtonCategoryStyles, getButtonDisplayLabel, genThreadId, findProfileReportHtml, PAUSE_UI
 } from './RunPanelModules/constants';
 import useAudioPlayer from './RunPanelModules/useAudioPlayer';
 import { MinimalButton, ActionButton, ActionButtonGroup, ReworkFormPanel } from './RunPanelModules/HitlControls';
@@ -21,6 +23,7 @@ import FormRenderer from './RunPanelModules/FormRenderer';
 import SpeechRecorder from './RunPanelModules/SpeechRecorder';
 import CameraRenderer from './RunPanelModules/CameraRenderer';
 import OcrRenderer from './RunPanelModules/OcrRenderer';
+import MultiFileUploadRenderer from './RunPanelModules/MultiFileUploadRenderer';
 import FollowupRenderer from './RunPanelModules/FollowupRenderer';
 import TurnRenderer from './RunPanelModules/TurnRenderer';
 import ChatInput from './RunPanelModules/ChatInput';
@@ -31,17 +34,54 @@ import HistorySidebar from './RunPanelModules/HistorySidebar';
 import PauseModal from './RunPanelModules/PauseModal';
 
 export default function RunPanel({ onClose }) {
+  const { decodedToken } = useAuth();
+  const langfuseUserId = decodedToken?.preferred_username || 'anonymous';
   const {
     workflowId, workflowName, isDirty, isCompiled, nodes, edges,
     autoNewSession, setWorkflowMeta, workflowDescription, workflowGroup,
     workflowCategory, globalErrorNode, dynamicResumption, warmup
-  } = useWorkflowStore();
+  } = useWorkflowStore(useShallow((s) => ({
+    workflowId: s.workflowId,
+    workflowName: s.workflowName,
+    isDirty: s.isDirty,
+    isCompiled: s.isCompiled,
+    nodes: s.nodes,
+    edges: s.edges,
+    autoNewSession: s.autoNewSession,
+    setWorkflowMeta: s.setWorkflowMeta,
+    workflowDescription: s.workflowDescription,
+    workflowGroup: s.workflowGroup,
+    workflowCategory: s.workflowCategory,
+    globalErrorNode: s.globalErrorNode,
+    dynamicResumption: s.dynamicResumption,
+    warmup: s.warmup,
+  })));
   const {
     running, streamEvents, runOutput, runError, threadId, history,
     startRun, addEvent, finishRun, setError, reset, removeEventsFromIndex,
     pausedInfo, setPausedInfo, setHistory, addToHistory, removeFromHistory, setEvents,
     latestContext
-  } = useRunStore();
+  } = useRunStore(useShallow((s) => ({
+    running: s.running,
+    streamEvents: s.streamEvents,
+    runOutput: s.runOutput,
+    runError: s.runError,
+    threadId: s.threadId,
+    history: s.history,
+    startRun: s.startRun,
+    addEvent: s.addEvent,
+    finishRun: s.finishRun,
+    setError: s.setError,
+    reset: s.reset,
+    removeEventsFromIndex: s.removeEventsFromIndex,
+    pausedInfo: s.pausedInfo,
+    setPausedInfo: s.setPausedInfo,
+    setHistory: s.setHistory,
+    addToHistory: s.addToHistory,
+    removeFromHistory: s.removeFromHistory,
+    setEvents: s.setEvents,
+    latestContext: s.latestContext,
+  })));
 
   const [reworkFeedback, setReworkFeedback] = useState('');
   const [showHistory, setShowHistory] = useState(false);
@@ -94,6 +134,19 @@ export default function RunPanel({ onClose }) {
 
   const hasAnyStartingNode = STARTING_TRIGGER_TYPES.some(t => (startingNodes[t] || []).length > 0);
   const hideInput = !isChatStarted && (hasButtonTriggers || hasAutoTriggers || hasOcrNodes || hasAnyStartingNode);
+
+  const pausedButtonFanout = useMemo(() => {
+    if (!pausedInfo.isPaused || !pausedInfo.nextNode) return false;
+    const allButtonNodes = nodes.filter(n => n.type === 'button_trigger' || n.data?.type === 'button_trigger');
+    if (allButtonNodes.length === 0) return false;
+    const pausedNode = nodes.find(n => n.id === pausedInfo.nextNode);
+    if (!pausedNode) return pausedInfo.nodeType === 'button_trigger';
+    const isPausedNodeButton = pausedNode.type === 'button_trigger' || pausedNode.data?.type === 'button_trigger';
+    if (isPausedNodeButton) return true;
+    return edges
+      .filter(e => e.source === pausedNode.id)
+      .some(e => allButtonNodes.some(b => b.id === e.target));
+  }, [pausedInfo, nodes, edges]);
 
   const hasBlackboardTool = useMemo(() => {
     return nodes.some(n => {
@@ -189,6 +242,46 @@ export default function RunPanel({ onClose }) {
   // Can the user run? 
   const canRun = true; // We auto-compile now
 
+  // 🚀 Streaming run → result promise. The SSE final/interrupt events carry the same
+  // payload shape as the run-mode response, so the post-processing below is shared.
+  const streamToResult = useCallback((workflowId, payload) =>
+    new Promise((resolve, reject) => {
+      let result = {};
+      let streamedTokens = 0;
+      streamWorkflow(workflowId, payload, (evt) => {
+        if (evt.type === 'token') {
+          streamedTokens += 1;
+          addEvent({ type: 'token', content: evt.content, node: evt.node, agent_name: evt.agent_name });
+        } else if (evt.type === 'node_start') {
+          addEvent({ type: 'node_start', node: evt.node, agent_name: evt.agent_name });
+        } else if (evt.type === 'tool_call') {
+          addEvent({ type: 'tool_call', tool: evt.tool, input: evt.input });
+        } else if (evt.type === 'tool_result') {
+          addEvent({ type: 'tool_result', tool: evt.tool, output: evt.output });
+        } else if (evt.type === 'interrupt') {
+          result = {
+            status: 'paused', is_paused: true,
+            is_breakpoint: evt.is_breakpoint, pause_type: evt.pause_type,
+            pause_config: evt.pause_config,
+            next_node: evt.node, output: evt.output,
+            messages: evt.messages || [], context: evt.context || {},
+            active_agent: evt.active_agent, streamedTokens,
+          };
+        } else if (evt.type === 'final') {
+          result = {
+            status: 'success', is_paused: false,
+            output: evt.output ?? evt.content,
+            messages: evt.messages || [], context: evt.context || {},
+            active_agent: evt.active_agent, streamedTokens,
+          };
+        } else if (evt.type === 'error') {
+          reject(new Error(evt.message || evt.content || 'Stream failed'));
+        } else if (evt.type === 'done') {
+          resolve(result);
+        }
+      });
+    }), [addEvent]);
+
   const onSend = useCallback(async (overrideInput, overrideContext, overrideTargetId, isAutoTrigger) => {
     const textToSubmit = typeof overrideInput === 'string' ? overrideInput : '';
     if (!textToSubmit.trim() || useRunStore.getState().running) return;
@@ -223,10 +316,10 @@ export default function RunPanel({ onClose }) {
         addEvent({ type: 'user_message', content: currentInput });
       }
 
-      const res = await executeWorkflow(workflowId, {
+      const res = await streamToResult(workflowId, {
         input: currentInput,
         thread_id: tid,
-        context: overrideContext || {},
+        context: { source: 'canvas', user_id: langfuseUserId, ...(overrideContext || {}) },
         target_node_id: (typeof overrideTargetId === 'string' ? overrideTargetId : null) || useUIStore.getState().targetNodeId
       });
 
@@ -254,7 +347,11 @@ export default function RunPanel({ onClose }) {
         }
 
         const { nodeType, nodeConfig } = resolvePauseConfig(res, storeNodes, pausedOriginalNodeId);
-        const enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
+        let enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
+        const isToolPause = nodeType === 'tool_node' || pausedOriginalNodeId === 'human_gate' || res.next_node === 'human_gate' || res.next_node?.includes('human_gate');
+        if (isToolPause) {
+          enabledActions = enabledActions.filter(a => a !== 'rework');
+        }
 
         setPausedInfo({
           isPaused: true,
@@ -284,7 +381,7 @@ export default function RunPanel({ onClose }) {
       }
       const newMessages = userMsgIdx >= 0 ? messages.slice(userMsgIdx + 1) : messages;
 
-      const { chartCount, lastActiveAgent: processedAgent, lastActiveAgentName: processedAgentName } = processWorkflowMessages(newMessages, addEvent, null);
+      const { chartCount, lastActiveAgent: processedAgent, lastActiveAgentName: processedAgentName } = processWorkflowMessages(newMessages, addEvent, null, { skipLiveStructure: (res.streamedTokens || 0) > 0 });
       let lastActiveAgent = processedAgent;
       let lastActiveAgentName = processedAgentName;
 
@@ -299,9 +396,13 @@ export default function RunPanel({ onClose }) {
       }
 
       const isPlaceholder = /imgur|<img|placeholder/i.test(output);
-      if (output.trim() && !isPlaceholder) {
+      // Only synthesize a token event when the stream produced no live tokens
+      // (non-LLM outputs like OCR/aggregator summaries). Real token streaming
+      // already rendered the final message live.
+      const streamedLive = (res.streamedTokens || 0) > 0;
+      if (!streamedLive && output.trim() && !isPlaceholder) {
         addEvent({ type: 'token', content: output, node: lastActiveAgent, agent_name: lastActiveAgentName });
-      } else if (chartCount === 0 && output.trim()) {
+      } else if (!streamedLive && chartCount === 0 && output.trim()) {
         addEvent({ type: 'token', content: output, node: lastActiveAgent, agent_name: lastActiveAgentName });
       }
 
@@ -342,7 +443,7 @@ export default function RunPanel({ onClose }) {
   }, [
     isDirty, isCompiled, threadId, autoNewSession, workflowId,
     history, startRun, addEvent, finishRun, setError, reset, setPausedInfo, addToHistory,
-    playAudio
+    playAudio, streamToResult
   ]);
 
   useEffect(() => {
@@ -416,8 +517,9 @@ export default function RunPanel({ onClose }) {
         }
       }
 
-      if (clearFromIdx >= 0 && removeEventsFromIndex) {
-        removeEventsFromIndex(clearFromIdx);
+      const clearFromSeq = clearFromIdx >= 0 ? streamEvents[clearFromIdx]?._seq : null;
+      if (clearFromSeq != null && removeEventsFromIndex) {
+        removeEventsFromIndex(clearFromSeq);
       }
     }
 
@@ -426,6 +528,7 @@ export default function RunPanel({ onClose }) {
       const payload = {
         ...(isForm ? actionArg : {}),  // Spread individual form field values
         ...(choicePayload || {}),      // Spread choice selection payload
+        user_id: langfuseUserId,
         feedback: reworkFeedback || null,
         decision: isForm ? (actionArg.decision || action) : action,
         include_original_output: pausedInfo.includeOriginalOutput ?? true,
@@ -464,7 +567,11 @@ export default function RunPanel({ onClose }) {
         }
 
         const { nodeType, nodeConfig } = resolvePauseConfig(res, storeNodes, resumeOriginalNodeId);
-        const enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
+        let enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
+        const isToolPause = nodeType === 'tool_node' || resumeOriginalNodeId === 'human_gate' || res.next_node === 'human_gate' || res.next_node?.includes('human_gate');
+        if (isToolPause) {
+          enabledActions = enabledActions.filter(a => a !== 'rework');
+        }
         
         setPausedInfo({
           isPaused: true,
@@ -591,14 +698,33 @@ export default function RunPanel({ onClose }) {
       startRun(tid);
 
       // 🕵️ NEW: Restore HITL Pause state from history
-      if (res.is_paused) {
+      // Always clear any stale pausedInfo from a previous session first, otherwise
+      // opening a completed (non-paused) thread keeps the old HITL buttons visible.
+      if (!res.is_paused) {
+        setPausedInfo({
+          isPaused: false,
+          nextNode: null,
+          gateNodeId: null,
+          pausedNodeOutput: null,
+          threadId: null,
+          showReworkForm: false,
+          enabledActions: ['approve', 'rework', 'reject'],
+          nodeType: null,
+          nodeConfig: null,
+          context: {}
+        });
+      } else if (res.is_paused) {
         const nextNode = res.next_node;
         const originalNodeId = nextNode?.replace(/^(gate_|pre_gate_|post_gate_)/, '') || nextNode;
 
         const storeNodes = useWorkflowStore.getState().nodes;
         const { nodeType, nodeConfig } = resolvePauseConfig(res, storeNodes, originalNodeId);
         
-        const enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
+        let enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
+        const isToolPause = nodeType === 'tool_node' || originalNodeId === 'human_gate' || res.next_node === 'human_gate' || res.next_node?.includes('human_gate');
+        if (isToolPause) {
+          enabledActions = enabledActions.filter(a => a !== 'rework');
+        }
 
         const lastAiMsg = [...messages].reverse().find(m => m.type === 'AIMessage');
 
@@ -1013,6 +1139,22 @@ export default function RunPanel({ onClose }) {
           onSubmit={(data) => onResume(data)}
         />
       </PauseModal>
+
+      {/* Multi-File Ingestion Overlay */}
+      <PauseModal
+        isOpen={pausedInfo.isPaused && pausedInfo.nodeType === 'multi_file_ingestion'}
+        title={pausedInfo.nodeConfig?.form_title || 'Multi-File Batch Upload'}
+        icon={FiPaperclip}
+        maxWidth={540}
+        bodyPadding="20px"
+      >
+        <MultiFileUploadRenderer
+          config={pausedInfo.nodeConfig || {}}
+          context={pausedInfo.context || {}}
+          isLoading={running}
+          onSubmit={(data) => onResume(data)}
+        />
+      </PauseModal>
       {/* Followup Paused Overlay - LLM asked structured questions */}
       <PauseModal
         isOpen={pausedInfo.isPaused && pausedInfo.nodeType === 'followup_form'}
@@ -1041,7 +1183,7 @@ export default function RunPanel({ onClose }) {
         display: shouldHideInput ? 'none' : 'block'
       }}>
         <div style={{ margin: '0 auto', position: 'relative', pointerEvents: 'auto', maxWidth: 680, width: '100%' }}>
-          {pausedInfo.isPaused && !(PAUSE_UI[pausedInfo.nodeType]?.showsHitl === false) ? (
+          {pausedInfo.isPaused && !(PAUSE_UI[pausedInfo.nodeType]?.showsHitl === false) && !pausedButtonFanout ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%' }}>
               <AnimatePresence>
                 {pausedInfo.showReworkForm && (
@@ -1095,7 +1237,7 @@ export default function RunPanel({ onClose }) {
                   </motion.div>
                 )}
               </AnimatePresence>
-              {pausedInfo.nodeType !== 'followup_selection' && (
+              {pausedInfo.nodeType !== 'followup_selection' && pausedInfo.nodeType !== 'button_trigger' && (
                 (pausedInfo.isBreakpoint || pausedInfo.nodeType === 'breakpoint' || pausedInfo.gateNodeId?.startsWith('bp_gate_')) ? (
 
                   <div style={{
@@ -1248,59 +1390,107 @@ export default function RunPanel({ onClose }) {
                   })()}
                 </div>
               )}
-              {canRun && !running && !isChatStarted && (hasButtonTriggers || hasOcrNodes) && (
+              {canRun && !running && (!isChatStarted || pausedButtonFanout) && (
                 <div style={{
                   display: 'flex',
                   flexWrap: 'wrap',
                   gap: 12,
-                  marginBottom: hideInput ? 10 : 4,
+                  marginBottom: (hideInput || pausedInfo.isPaused) ? 10 : 4,
                   padding: '0 4px',
-                  justifyContent: hideInput ? 'center' : 'flex-start'
+                  justifyContent: (hideInput || pausedInfo.isPaused) ? 'center' : 'flex-start'
                 }}>
-                  {startingButtonTriggers.map(btnNode => {
-                    const catStyles = getButtonCategoryStyles(btnNode.data?.button_category || btnNode.button_category || btnNode.data?.category || btnNode.category);
-                    return (
-                      <motion.button
-                        key={btnNode.id}
-                        whileHover={{ scale: 1.01, translateY: -1 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => onSend(btnNode.data?.button_input || 'Start')}
-                        style={{
-                          padding: hideInput ? '10px 20px' : '6px 14px',
-                          borderRadius: hideInput ? 10 : 8,
-                          background: hideInput ? (btnNode.data?.button_category ? catStyles.color : 'var(--theme-primary, #6366F1)') : catStyles.bg,
-                          border: hideInput ? 'none' : `1px solid ${catStyles.border}`,
-                          color: hideInput ? '#FFFFFF' : catStyles.color,
-                          fontSize: hideInput ? 12.5 : 11,
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!hideInput) {
-                            e.currentTarget.style.background = catStyles.bgHover;
-                            e.currentTarget.style.borderColor = catStyles.borderHover;
+                  {(() => {
+                    let buttonsToRender = startingButtonTriggers;
+                    if (pausedInfo.isPaused) {
+                      const allButtonNodes = nodes.filter(n => n.type === 'button_trigger' || n.data?.type === 'button_trigger');
+                      const matchedPausedNode = nodes.find(n => n.id === pausedInfo.nextNode);
+                      const isButtonPause = pausedInfo.nodeType === 'button_trigger' || pausedInfo.nextNode?.includes('button') || pausedInfo.gateNodeId?.includes('button');
+                      if (matchedPausedNode) {
+                        const isPausedNodeButton = matchedPausedNode.type === 'button_trigger' || matchedPausedNode.data?.type === 'button_trigger';
+                        if (isPausedNodeButton) {
+                          // Case A: Paused node itself is a button → show it + sibling buttons from the same parent
+                          const parentEdges = edges.filter(e => e.target === matchedPausedNode.id);
+                          if (parentEdges.length > 0) {
+                            const parentIds = new Set(parentEdges.map(e => e.source));
+                            const siblingTargets = edges.filter(e => parentIds.has(e.source)).map(e => e.target);
+                            buttonsToRender = allButtonNodes.filter(n => siblingTargets.includes(n.id) || n.id === matchedPausedNode.id);
                           } else {
-                            e.currentTarget.style.opacity = '0.9';
+                            buttonsToRender = [matchedPausedNode];
                           }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!hideInput) {
-                            e.currentTarget.style.background = catStyles.bg;
-                            e.currentTarget.style.borderColor = catStyles.border;
-                          } else {
-                            e.currentTarget.style.opacity = '1';
+                        } else {
+                          // Case B: Paused node fans out to parallel buttons (post_gate multi-choice pause)
+                          const outgoingButtonTargets = edges
+                            .filter(e => e.source === matchedPausedNode.id)
+                            .map(e => e.target)
+                            .filter(t => allButtonNodes.some(b => b.id === t));
+                          if (outgoingButtonTargets.length > 0) {
+                            buttonsToRender = allButtonNodes.filter(n => outgoingButtonTargets.includes(n.id));
+                          } else if (isButtonPause && allButtonNodes.length > 0) {
+                            buttonsToRender = allButtonNodes;
                           }
-                        }}
-                      >
-                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: hideInput ? '#FFFFFF' : catStyles.dotColor, opacity: 0.8 }} />
-                        {btnNode.data?.button_label || btnNode.data?.label || 'Run'}
-                      </motion.button>
-                    );
-                  })}
+                        }
+                      } else if (isButtonPause && allButtonNodes.length > 0) {
+                        buttonsToRender = allButtonNodes;
+                      }
+                    }
+                    const isSolid = !pausedInfo.isPaused && !!hideInput;
+                    return buttonsToRender.map(btnNode => {
+                      const cat = getButtonCategoryStyles(btnNode.data?.button_category);
+                      return (
+                        <motion.button
+                          key={btnNode.id}
+                          whileHover={{ scale: 1.01, y: -1 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => {
+                            const buttonInput = btnNode.data?.button_input || btnNode.data?.label || 'Start';
+                            if (pausedInfo.isPaused) {
+                              onResume('approve', { clicked_button_id: btnNode.id, button_input: buttonInput });
+                            } else {
+                              onSend(buttonInput);
+                            }
+                          }}
+                          style={{
+                            padding: isSolid ? '10px 20px' : '9px 18px',
+                            borderRadius: isSolid ? 10 : 12,
+                            background: isSolid ? cat.color : cat.bg,
+                            border: isSolid ? 'none' : `1px solid ${cat.border}`,
+                            color: isSolid ? '#FFFFFF' : cat.color,
+                            fontSize: isSolid ? 12.5 : 13,
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            boxShadow: isSolid ? 'none' : `0 2px 8px ${cat.border}`,
+                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                          }}
+                          onMouseEnter={(e) => {
+                            if (isSolid) {
+                              e.currentTarget.style.background = cat.color;
+                              e.currentTarget.style.opacity = '0.9';
+                            } else {
+                              e.currentTarget.style.background = cat.bgHover;
+                              e.currentTarget.style.borderColor = cat.borderHover;
+                              e.currentTarget.style.boxShadow = `0 4px 12px ${cat.borderHover}`;
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (isSolid) {
+                              e.currentTarget.style.background = cat.color;
+                              e.currentTarget.style.opacity = '1';
+                            } else {
+                              e.currentTarget.style.background = cat.bg;
+                              e.currentTarget.style.borderColor = cat.border;
+                              e.currentTarget.style.boxShadow = `0 2px 8px ${cat.border}`;
+                            }
+                          }}
+                        >
+                          <span style={{ width: isSolid ? 6 : 7, height: isSolid ? 6 : 7, borderRadius: '50%', background: isSolid ? '#FFFFFF' : cat.dotColor, opacity: isSolid ? 0.8 : 1 }} />
+                          {getButtonDisplayLabel(btnNode)}
+                        </motion.button>
+                      );
+                    });
+                  })()}
 
                   {hasOcrNodes && (
                     <motion.label
@@ -1370,7 +1560,7 @@ export default function RunPanel({ onClose }) {
                 </motion.button>
               )}
 
-              {!hideInput && !hasStartingSttNode && !hasStartingCameraNode && !(pausedInfo.isPaused && pausedInfo.nodeType === 'stt_trigger') && !(pausedInfo.isPaused && pausedInfo.nodeType === 'camera') && !(pausedInfo.isPaused && pausedInfo.nodeType === 'followup_selection') && (
+              {!hideInput && !hasStartingSttNode && !hasStartingCameraNode && !pausedButtonFanout && !(pausedInfo.isPaused && (pausedInfo.nodeType === 'stt_trigger' || pausedInfo.nodeType === 'camera' || pausedInfo.nodeType === 'followup_selection' || pausedInfo.nodeType === 'button_trigger')) && (
                 <ChatInput
                   onSend={onSend}
                   running={running}

@@ -1,6 +1,27 @@
-import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, Search, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, Search, X, MoreVertical } from 'lucide-react';
 import React, { useState, useMemo, useEffect } from 'react';
 import { tw } from '../../../../../components/themeContext';
+
+const ENTITY_METRIC_RAW_KEY = {
+  MAE: 'mae', RMSE: 'rmse', MAPE: 'mape', SMAPE: 'smape', WMAPE: 'wmape', MASE: 'mase',
+  R2: 'r2', QuantileLoss: 'quantile_loss', HuberLoss: 'huber_loss',
+  Accuracy: 'accuracy', Precision: 'precision', Recall: 'recall', F1: 'f1', LogLoss: 'log_loss',
+};
+
+const hasEntityMetrics = (algo) => {
+  const em = algo?.entityMetrics;
+  if (!em) return false;
+  return Object.keys(em.train || {}).length > 0 || Object.keys(em.test || {}).length > 0;
+};
+
+const sortEntityIds = (ids) => [...ids].sort((a, b) => {
+  const aNum = parseFloat(a);
+  const bNum = parseFloat(b);
+  if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
+  return String(a).localeCompare(String(b));
+});
+
+const formatEntityVal = (val) => (typeof val === 'number' ? val.toFixed(3) : 'N/A');
 
 const CLASSIFICATION_METRICS = [
   { key: 'Accuracy', label: 'Accuracy', testKey: 'testAccuracy', trainKey: 'trainAccuracy', isLowerBetter: false },
@@ -61,6 +82,27 @@ const TIMESERIES_METRICS = [
     label: 'MASE',
     testKey: 'testMASE',
     trainKey: 'trainMASE',
+    isLowerBetter: true,
+  },
+  {
+    key: 'R2',
+    label: 'R²',
+    testKey: 'testR2',
+    trainKey: 'trainR2',
+    isLowerBetter: false,
+  },
+  {
+    key: 'QuantileLoss',
+    label: 'Quantile Loss',
+    testKey: 'testQuantileLoss',
+    trainKey: 'trainQuantileLoss',
+    isLowerBetter: true,
+  },
+  {
+    key: 'HuberLoss',
+    label: 'Huber Loss',
+    testKey: 'testHuberLoss',
+    trainKey: 'trainHuberLoss',
     isLowerBetter: true,
   },
 ];
@@ -126,6 +168,77 @@ const formatVal = (val, isLowerBetter = false, isRegression = false) => {
   return isLowerBetter ? val : `${val}%`;
 };
 
+const EntityMetricsModal = ({ algo, visibleMetrics, testVisible, trainVisible, onClose }) => {
+  if (!algo) return null;
+
+  const entityIds = sortEntityIds(
+    Array.from(new Set([
+      ...Object.keys(algo.entityMetrics?.test || {}),
+      ...Object.keys(algo.entityMetrics?.train || {}),
+    ]))
+  );
+
+  const renderSection = (label, source, visMap) => {
+    const metrics = visibleMetrics.filter(m => visMap[m.key]);
+    if (metrics.length === 0 || !source) return null;
+    return (
+      <div className="mb-4 last:mb-0">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">{label}</p>
+        <div className="overflow-x-auto rounded-lg border border-gray-100">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-gray-50 text-gray-500 border-b border-gray-100">
+                <th className="text-left py-2 px-3 font-semibold">Entity</th>
+                {metrics.map(m => (
+                  <th key={m.key} className="text-left py-2 px-3 font-semibold whitespace-nowrap">{m.label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {entityIds.filter(id => source[id]).map(id => (
+                <tr key={id} className="border-b border-gray-50 last:border-b-0">
+                  <td className="py-2 px-3 text-gray-800 font-medium whitespace-nowrap">{id}</td>
+                  {metrics.map(m => {
+                    const rawKey = ENTITY_METRIC_RAW_KEY[m.key] || m.key.toLowerCase();
+                    return (
+                      <td key={m.key} className="py-2 px-3 text-gray-700 whitespace-nowrap">
+                        {formatEntityVal(source[id][rawKey])}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[80vh] flex flex-col">
+        <div className="flex items-center justify-between p-5 border-b border-gray-100 flex-shrink-0">
+          <div className="min-w-0 pr-3">
+            <h3 className="text-sm font-semibold text-gray-900">Entity-wise Metrics</h3>
+            <p className="text-xs text-gray-500 truncate" title={algo.fullName}>
+              {getShortName(algo.fullName ?? algo.displayName)}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 flex-shrink-0">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-5 overflow-y-auto">
+          {renderSection('Test', algo.entityMetrics?.test, testVisible)}
+          {renderSection('Train', algo.entityMetrics?.train, trainVisible)}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const UnifiedMetricsTable = ({ allData, searchQuery, rowsPerPage = 10 }) => {
   const hasTimeSeriesMetrics =
   allData.some(algo => algo.testSMAPE !== undefined);
@@ -143,6 +256,7 @@ const metricConfig =
   hasTimeSeriesMetrics || hasRegressionMetrics;    
   const [sortConfig, setSortConfig] = useState({ key: null, prefix: null, direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
+  const [entityModalAlgo, setEntityModalAlgo] = useState(null);
 
   useEffect(() => {
   setCurrentPage(1);
@@ -177,6 +291,11 @@ const metricConfig =
 
   const testColCount = visibleMetrics.filter(m => testVisible[m.key]).length;
   const trainColCount = visibleMetrics.filter(m => trainVisible[m.key]).length;
+
+  const handleEntityIconClick = (e, algo) => {
+    e.stopPropagation();
+    setEntityModalAlgo(algo);
+  };
 
   const processedData = useMemo(() => {
     let filtered = allData.filter(algo => {
@@ -304,10 +423,22 @@ const metricConfig =
                 >
                   {/* Algorithm name */}
                   <td className="py-1.5 px-4 text-gray-800 border-r border-gray-200 font-medium" title={algo.fullName}>
-                    <HighlightMatch
-                      text={getShortName(algo.fullName ?? algo.displayName)}
-                      query={searchQuery}
-                    />
+                    <div className="flex items-center justify-between gap-2">
+                      <HighlightMatch
+                        text={getShortName(algo.fullName ?? algo.displayName)}
+                        query={searchQuery}
+                      />
+                      {hasEntityMetrics(algo) && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleEntityIconClick(e, algo)}
+                          className="flex-shrink-0 p-0.5 rounded text-gray-400 hover:text-[#8e78b7] hover:bg-[#8e78b7]/10 transition-colors"
+                          title="Entity wise metrics"
+                        >
+                          <MoreVertical className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </td>
 
                   {/* Test metric cells */}
@@ -357,6 +488,16 @@ const metricConfig =
           total={processedData.length}
         />
       </div>
+
+      {entityModalAlgo && (
+        <EntityMetricsModal
+          algo={entityModalAlgo}
+          visibleMetrics={visibleMetrics}
+          testVisible={testVisible}
+          trainVisible={trainVisible}
+          onClose={() => setEntityModalAlgo(null)}
+        />
+      )}
     </div>
   );
 };

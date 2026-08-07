@@ -2,6 +2,14 @@ import { create } from 'zustand';
 // ─── Constants & Utils ──────────────────────────────────────────────────────────
 const genId = () => Math.random().toString(36).substring(2, 7);
 
+// Native deep-clone for history snapshots — 3-5x faster than the legacy
+// JSON.parse(JSON.stringify(...)) double-encode path in modern engines (F5).
+// Falls back to the JSON technique where structuredClone is unavailable.
+const deepClone = (value) => {
+  if (typeof structuredClone === 'function') return structuredClone(value);
+  return JSON.parse(JSON.stringify(value));
+};
+
 const NODE_DEFAULTS = {
   start: { label: 'START' },
   end: { label: 'END' },
@@ -21,7 +29,7 @@ const NODE_DEFAULTS = {
   cron: { label: 'Cron Schedule', enabled: true, cron_expression: '0 9 * * *', timezone: 'UTC' },
   polling: { label: 'Polling Trigger', enabled: true, poller_tool: '', tool_arguments: {}, destination_key: 'payload', cron_expression: '*/5 * * * *', timezone: 'UTC' },
   splitter: { label: 'Splitter', split_field: 'items', batch_size: 1, destination_field: 'item', discovery_keys: '' },
-  aggregator: { label: 'Aggregator', action: 'append', field_to_aggregate: 'item', destination_field: 'aggregated_results' },
+  aggregator: { label: 'Aggregator', action: 'append', field_to_aggregate: 'item', destination_field: 'aggregated_results', group_by: '' },
   form_node: { label: 'Form Submission', form_title: 'Information Required', form_description: 'Please fill out the following form.', form_fields: [{ id: 'feedback', label: 'Your Feedback', type: 'text', required: true }], form_submit_label: 'Submit' },
   camera: { label: 'Camera Capture', form_title: 'Camera Verification', form_description: 'Please align your face in the frame and capture a live image for verification.', form_fields: [], form_submit_label: 'Submit Photo' },
   notification: { label: 'Notification', notification_title: 'Workflow Alert', notification_message: 'The workflow has reached this point.', notification_type: 'info' },
@@ -32,12 +40,13 @@ const NODE_DEFAULTS = {
   data_cleaning: { label: 'Data Cleaning', data_cleaning_rules: ['GEN_TRIM_WHITESPACE'], data_cleaning_target: 'latest_message', data_cleaning_input_key: '', data_cleaning_output_key: 'cleaned_data' },
   graph_ingestion: { label: 'Graph Ingestion', graph_target_key: 'latest_message', graph_neo4j_uri: '', graph_neo4j_user: '', graph_neo4j_password: '', graph_ingestion_mode: 'visual', graph_cypher_query: '', graph_nodes_schema: [], graph_relations_schema: [] },
   db_node: { label: 'Database', db_engine: 'mongodb', db_operation: 'insert_one', db_output_key: 'db_result', db_limit: 100 },
-  ocr_node: { label: 'OCR Node', ocr_input_key: 'latest_file_path', ocr_prompt: 'Please perform OCR on this document and return the full text accurately.', llm: { provider: 'groq', model: 'llama-3.2-90b-vision-preview', temperature: 0 }, interrupt_before: false, interrupt_after: false },
+  ocr_node: { label: 'OCR Node', ocr_input_key: '', ocr_prompt: 'Please perform OCR on this document and return the full text accurately.', llm: { provider: 'groq', model: 'llama-3.2-90b-vision-preview', temperature: 0 }, interrupt_before: false, interrupt_after: false },
+  multi_file_ingestion: { label: 'Multi-File Ingestion', allowed_extensions: ['pdf', 'jpg', 'jpeg', 'png', 'webp'], max_file_size_mb: 25.0, max_files_count: 10, strategy_rules: [], interrupt_before: true, interrupt_after: false },
   signature_stamp_extractor: { label: 'Signature & Stamp Extractor', extractor_input_key: 'latest_file_path', extractor_output_key: 'extracted_elements', llm: { provider: 'groq', model: 'meta-llama/llama-4-scout-17b-16e-instruct', temperature: 0 }, interrupt_before: false, interrupt_after: false },
   pattern_extract: { label: 'Pattern Extractor', extract_mode: 'identifier', extract_patterns: [], extract_input_key: 'flattened_json', extract_output_key: 'extracted_identifiers', identifiers_input_key: 'extracted_identifiers' },
   api_node: { label: 'API Request', method: 'GET', url: '', headers: {}, params: {}, body: '', auth_method: 'none', api_auth_config: {}, use_curl: false, curl_command: '' },
   vector_ingestion: { label: 'Vector Ingestion', vector_store: 'chroma', vector_collection: 'default', chunk_size: 1000, chunk_overlap: 100, chunking_strategy: 'recursive', ingestion_source_key: 'latest_ocr_output' },
-  classification: { label: 'Classification Agent', classification_classes: [{ class: 'Class A', description: 'Description for Class A' }], classification_summary: false, classification_engine: 'llm', classification_input_field: '', llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 } },
+  classification: { label: 'Classification Agent', classification_classes: [{ class: 'Class A', description: 'Description for Class A' }], classification_summary: false, classification_engine: 'llm', classification_input_field: '', classification_input_key: '', llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 } },
   sensitivity_classifier: { label: 'Sensitivity Classifier', classification_input_key: 'latest_ocr_output', classification_output_key: '', engine_mode: 'both', custom_entities: '', output_format: 'markdown' },
   pii_gate_node: { label: 'PII Verification Gate', input_key: 'latest_ocr_output', interrupt_after: true },
   ingestion_router: { label: 'Ingestion Router', scan_mode: 'auto', file_filters: ['.pdf', '.jpg', '.png', '.jpeg'], concurrency_limit: 5, parent_folder_key: 'parent_folder_path', folder_identifier_key: 'customer_folder_name', curl_command_key: 'curl_command' },
@@ -126,6 +135,7 @@ const NODE_DEFAULTS = {
   vision_intelligence: {
     label: 'Vision Intelligence',
     vision_mode: 'face_verification',
+    vision_enable_llm: false,
     vision_face_match_threshold: 0.65,
     vision_quality_min_score: 0.70,
     vision_quality_blur_threshold: 100,
@@ -133,7 +143,8 @@ const NODE_DEFAULTS = {
     vision_quality_max_contrast: 0.45,
     vision_id_image_key: 'latest_file_path',
     vision_selfie_image_key: 'vcip_capture_path',
-    vision_output_key: 'vision_result'
+    vision_output_key: 'vision_result',
+    llm: { provider: 'groq', model: 'meta-llama/llama-4-scout-17b-16e-instruct', temperature: 0 }
   }
 };
 
@@ -218,6 +229,7 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
           extractor_input_key: n.extractor_input_key || n.data?.extractor_input_key || 'latest_file_path',
           extractor_output_key: n.extractor_output_key || n.data?.extractor_output_key || 'extracted_elements',
           vision_mode: n.vision_mode || n.data?.vision_mode || 'face_verification',
+          vision_enable_llm: n.vision_enable_llm ?? n.data?.vision_enable_llm ?? false,
           vision_face_match_threshold: n.vision_face_match_threshold ?? n.data?.vision_face_match_threshold ?? 0.65,
           vision_quality_min_score: n.vision_quality_min_score ?? n.data?.vision_quality_min_score ?? 0.70,
           vision_quality_blur_threshold: n.vision_quality_blur_threshold ?? n.data?.vision_quality_blur_threshold ?? 100,
@@ -226,6 +238,10 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
           vision_id_image_key: n.vision_id_image_key || n.data?.vision_id_image_key || 'latest_file_path',
           vision_selfie_image_key: n.vision_selfie_image_key || n.data?.vision_selfie_image_key || 'vcip_capture_path',
           vision_output_key: n.vision_output_key || n.data?.vision_output_key || 'vision_result',
+          allowed_extensions: n.allowed_extensions || n.data?.allowed_extensions || ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
+          max_file_size_mb: n.max_file_size_mb ?? n.data?.max_file_size_mb ?? 25.0,
+          max_files_count: n.max_files_count ?? n.data?.max_files_count ?? 10,
+          strategy_rules: n.strategy_rules || n.data?.strategy_rules || [],
         },
       };
     });
@@ -293,8 +309,8 @@ export const useWorkflowStore = create((set, get) => ({
   takeHistorySnapshot: () => {
     const s = get();
     const current = {
-      nodes: JSON.parse(JSON.stringify(s.nodes)),
-      edges: JSON.parse(JSON.stringify(s.edges)),
+      nodes: deepClone(s.nodes),
+      edges: deepClone(s.edges),
     };
     const lastPast = s.history.past[s.history.past.length - 1];
     if (lastPast && JSON.stringify(lastPast) === JSON.stringify(current)) {
@@ -319,8 +335,8 @@ export const useWorkflowStore = create((set, get) => ({
     const previous = past[past.length - 1];
     const newPast = past.slice(0, past.length - 1);
     const current = {
-      nodes: JSON.parse(JSON.stringify(get().nodes)),
-      edges: JSON.parse(JSON.stringify(get().edges)),
+      nodes: deepClone(get().nodes),
+      edges: deepClone(get().edges),
     };
     const newFuture = [current, ...future];
 
@@ -342,8 +358,8 @@ export const useWorkflowStore = create((set, get) => ({
     const next = future[0];
     const newFuture = future.slice(1);
     const current = {
-      nodes: JSON.parse(JSON.stringify(get().nodes)),
-      edges: JSON.parse(JSON.stringify(get().edges)),
+      nodes: deepClone(get().nodes),
+      edges: deepClone(get().edges),
     };
     const newPast = [...past, current];
 
@@ -431,8 +447,8 @@ export const useWorkflowStore = create((set, get) => ({
       workflowId: id,
       workflowName: name,
       workflowDescription: desc,
-      workflowGroup: group || 'Default',
-      workflowCategory: category || 'General',
+      workflowGroup: group ?? '',
+      workflowCategory: category ?? '',
       globalErrorNode: globalErrorNode || '',
       dynamicResumption: dynamicResumption ?? false,
       warmup: warmup ?? false,
@@ -1037,111 +1053,104 @@ export const useWorkflowStore = create((set, get) => ({
     useVariablesStore.getState().reset();
   },
 
+  // ─── Per-node-type field maps (only export what's relevant) ──────────────────
+  PER_TYPE_FIELDS: {
+    // Common agent fields shared by many node types
+    _agent: ['task', 'llm', 'memory', 'iteration_policy', 'tools', 'tool_configs', 'return_direct', 'skills', 'subagents', 'harness_profile', 'code_interpreter', 'max_iterations', 'timeout_seconds', 'context_schema', 'agent_input_prefix', 'output_key_prefix'],
+    _common: ['interrupt_before', 'interrupt_after', 'hitl_actions', 'on_error', 'continue_on_fail', 'mute_chat_bubble', 'context_mode', 'max_context_chars'],
+
+    llm_agent: ['task', 'llm', 'memory', 'iteration_policy', 'tools', 'tool_configs', 'return_direct', 'skills', 'subagents', 'harness_profile', 'code_interpreter', 'max_iterations', 'timeout_seconds', 'context_schema', 'agent_input_prefix', 'output_key_prefix', 'interrupt_before', 'interrupt_after', 'hitl_actions', 'on_error', 'continue_on_fail', 'mute_chat_bubble', 'context_mode', 'max_context_chars', 'allowed_transitions'],
+    deep_agent: ['task', 'llm', 'tools', 'tool_configs', 'skills', 'deep_agent_backend', 'deep_agent_root_dir', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
+    tool_node: ['tools', 'tool_configs', 'return_direct', 'interrupt_before', 'interrupt_after'],
+    direct_tool: ['direct_tool_name', 'tool_arguments', 'destination_key', 'return_direct', 'interrupt_before', 'interrupt_after'],
+    router: ['routing_key', 'member_ids', 'branches', 'condition', 'custom_python_rules', 'python_rules'],
+    switch: ['routing_key', 'branches', 'condition', 'custom_python_rules', 'python_rules'],
+    condition: ['condition', 'custom_python_rules', 'python_rules'],
+    set_data: ['message'],
+    wait: ['wait_seconds'],
+    chat_model: ['llm'],
+    rag_node: ['task', 'llm', 'search_type', 'vector_store', 'vector_collection', 'embedding_model', 'k_results', 'threshold', 'chunking_strategy', 'show_citations', 'interrupt_before', 'interrupt_after', 'chunk_size', 'chunk_overlap', 'ingestion_source_key'],
+    subgraph: ['workflow_id', 'interrupt_before', 'interrupt_after'],
+    supervisor: ['member_ids', 'llm', 'iteration_policy', 'tools', 'tool_configs', 'allowed_transitions', 'interrupt_before', 'interrupt_after'],
+    swarm: ['member_ids', 'llm', 'iteration_policy', 'tools', 'tool_configs', 'allowed_transitions', 'interrupt_before', 'interrupt_after'],
+    webhook: ['enabled', 'path', 'secret', 'auth_method', 'response_mode', 'response_node'],
+    webhook_response: ['response_status', 'response_headers', 'response_body_key'],
+    cron: ['enabled', 'cron_expression', 'timezone'],
+    polling: ['enabled', 'poller_tool', 'tool_arguments', 'destination_key', 'cron_expression', 'timezone'],
+    splitter: ['split_field', 'batch_size', 'destination_field', 'discovery_keys', 'interrupt_before', 'interrupt_after'],
+    aggregator: ['action', 'field_to_aggregate', 'destination_field', 'separator', 'group_by'],
+    form_node: ['form_title', 'form_description', 'form_fields', 'form_submit_label', 'form_use_context_schema', 'interrupt_before', 'interrupt_after'],
+    camera: ['form_title', 'form_description', 'form_fields', 'form_submit_label', 'interrupt_before', 'interrupt_after'],
+    notification: ['notification_title', 'notification_message', 'notification_type', 'mute_notification_message', 'show_chat_button'],
+    error_router: ['llm', 'on_error'],
+    output_parser: ['parse_mode', 'fallback_to_raw', 'output_context_key'],
+    pii_node: ['pii_engine', 'datafog_engine', 'pii_target', 'pii_entities', 'pii_custom_regex', 'docbot_url', 'docbot_method', 'hitl_enabled', 'identifiers_input_key', 'rendered_input_key', 'context_variable_key', 'interrupt_before', 'interrupt_after'],
+    data_cleaning: ['data_cleaning_rules', 'data_cleaning_target', 'data_cleaning_input_key', 'data_cleaning_output_key'],
+    graph_ingestion: ['graph_target_key', 'graph_neo4j_uri', 'graph_neo4j_user', 'graph_neo4j_password', 'graph_ingestion_mode', 'graph_cypher_query', 'graph_nodes_schema', 'graph_relations_schema', 'graph_collection', 'graph_sender_key', 'graph_receiver_key', 'graph_txn_id_key', 'graph_amount_key', 'graph_timestamp_key'],
+    db_node: ['db_engine', 'db_connection_string', 'db_database', 'db_collection', 'db_operation', 'db_document', 'db_query', 'db_output_key', 'db_limit'],
+    ocr_node: ['ocr_input_key', 'ocr_prompt', 'ocr_engine', 'ocr_standard_model', 'llm', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail', 'docbot_url', 'docbot_method'],
+    multi_file_ingestion: ['allowed_extensions', 'max_file_size_mb', 'max_files_count', 'strategy_rules', 'interrupt_before', 'interrupt_after', 'hitl_actions', 'on_error'],
+    signature_stamp_extractor: ['extractor_input_key', 'extractor_output_key', 'llm', 'interrupt_before', 'interrupt_after'],
+    pattern_extract: ['extract_mode', 'extract_patterns', 'extract_input_key', 'extract_output_key', 'identifiers_input_key'],
+    api_node: ['api_method', 'api_url', 'api_headers', 'api_params', 'api_body', 'api_auth_type', 'api_auth_config', 'api_response_format', 'connection_id', 'api_protocol', 'graphql_query', 'use_curl', 'curl_command', 'on_error', 'continue_on_fail', 'api_description', 'api_enabled', 'api_execution_mode', 'additional_apis'],
+    vector_ingestion: ['vector_store', 'vector_collection', 'chunk_size', 'chunk_overlap', 'chunking_strategy', 'ingestion_source_key'],
+    classification: ['classification_classes', 'classification_summary', 'classification_engine', 'classification_input_field', 'classification_input_key', 'classification_output_key', 'classification_extract_identifiers', 'llm', 'interrupt_before', 'interrupt_after'],
+    sensitivity_classifier: ['classification_input_key', 'classification_output_key', 'engine_mode', 'custom_entities', 'output_format', 'llm', 'interrupt_before', 'interrupt_after'],
+    pii_gate_node: ['input_key', 'interrupt_after'],
+    ingestion_router: ['scan_mode', 'file_filters', 'concurrency_limit', 'parent_folder_key', 'folder_identifier_key', 'curl_command_key', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
+    event_emitter: ['webhook_url', 'emit_status', 'interrupt_before', 'interrupt_after'],
+    json_transform: ['transform_operation', 'transform_separator', 'transform_pick_fields', 'transform_rename_map', 'transform_omit_keys', 'transform_input_key', 'transform_output_key', 'jt_input_key', 'jt_output_key', 'jt_mode', 'jt_query', 'jt_operations', 'jt_expression', 'jt_pass_through'],
+    json_transform_va: ['transform_operation', 'transform_separator', 'transform_pick_fields', 'transform_rename_map', 'transform_omit_keys', 'transform_input_key', 'transform_output_key'],
+    code_execution: ['ce_language', 'ce_code', 'ce_input_key', 'ce_output_key', 'ce_mode'],
+    email_node: ['email_provider', 'email_to', 'email_cc', 'email_bcc', 'email_subject', 'email_body', 'email_html', 'email_smtp_server', 'email_smtp_port', 'email_user', 'email_password', 'email_attachments', 'email_headers', 'email_smtp_timeout', 'email_auth_method', 'email_tenant_id', 'email_client_id', 'email_client_secret', 'email_google_service_account_json', 'email_google_delegated_user'],
+    stt_trigger: ['auto_start', 'auto_stop', 'silence_delay', 'stt_lang'],
+    button_trigger: ['button_label', 'button_input', 'button_category'],
+    auto_trigger: ['button_input', 'task', 'llm'],
+    textToAudio: ['tts_library', 'audio_voice', 'kittentts_model', 'audio_speed', 'mute_audio', 'audio_input_text'],
+    vision_intelligence: ['vision_mode', 'vision_enable_llm', 'vision_face_match_threshold', 'vision_quality_min_score', 'vision_quality_blur_threshold', 'vision_quality_min_contrast', 'vision_quality_max_contrast', 'vision_id_image_key', 'vision_selfie_image_key', 'vision_output_key', 'llm', 'interrupt_before', 'interrupt_after'],
+    group: ['name', 'description', 'internal_nodes', 'internal_edges', 'original_edges'],
+    ingestion_adapter: ['source_format', 'target_serialization', 'validation_mode', 'flatten_depth', 'flatten_separator', 'field_aliases', 'default_values', 'source_key', 'external_integrations', 'internal_integrations', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
+    payload_builder: ['payload_template', 'payload_destination_key'],
+    webhook_response: ['response_status', 'response_headers', 'response_body_key'],
+    report_generator: ['template_content', 'template_output_key', 'template_data_key', 'template_file_path', 'template_id', 'input_data_key', 'output_file_name', 'report_format', 'template_category', 'interrupt_before', 'interrupt_after'],
+    weightage: ['weightage_categories', 'weightage_output_key', 'weightage_approve_threshold', 'weightage_review_threshold', 'weightage_risk_bands', 'weightage_output_flags', 'weightage_cross_rules', 'interrupt_before', 'interrupt_after'],
+    form_decisions: ['form_decisions'],
+    debug: ['debug_scope', 'debug_key'],
+    ingestion: ['scan_mode', 'file_filters', 'concurrency_limit', 'webhook_url', 'emit_status'],
+  },
+
   buildConfig: () => {
     const s = get();
 
-    // Filter out system nodes and cardboards for the backend config
+    // Compute connected node IDs from edges (including START/END edges)
+    const connectedNodeIds = new Set(s.edges.flatMap(e => [e.source, e.target]));
+
+    // Filter out system nodes, cardboards, and orphan (disconnected) nodes
     const finalNodes = s.nodes
-      .filter(n => !['__start__', '__end__'].includes(n.id) && n.type !== 'cardboardNode' && n.data?.type !== 'cardboard')
+      .filter(n => {
+        if (['__start__', '__end__'].includes(n.id)) return false;
+        if (n.type === 'cardboardNode' || n.data?.type === 'cardboard') return false;
+        // Keep trigger nodes even if disconnected (they act as implicit START nodes)
+        if (['webhook', 'cron', 'polling'].includes(n.data?.type)) return true;
+        // Drop orphan nodes with no edges
+        if (!connectedNodeIds.has(n.id)) return false;
+        return true;
+      })
       .map((n) => {
         const d = n.data;
+        const nodeType = n.data?.type || n.type;
 
-        // 🧪 WHITELIST: Only export fields defined in the Backend NodeConfig schema
-        const validFields = [
-          'id', 'type', 'label', 'position', 'task', 'llm', 'memory', 'iteration_policy',
-          'tools', 'tool_configs', 'return_direct', 'routing_key', 'workflow_id', 'member_ids', 'allowed_transitions',
-          'branches', 'condition', 'message', 'wait_seconds', 'skills', 'custom_python_rules', 'python_rules',
-          'subagents', 'harness_profile', 'code_interpreter', 'max_iterations', 'timeout_seconds', 'context_schema',
-          'parse_mode', 'fallback_to_raw', 'output_context_key',
-          'deep_agent_backend', 'deep_agent_root_dir',
-          'vector_store', 'vector_collection', 'embedding_model',
-          'chunk_size', 'chunk_overlap', 'ingestion_source_key',
-          'k_results', 'threshold', 'chunking_strategy', 'search_type',
-          'interrupt_before', 'interrupt_after', 'hitl_actions',
-          'audio_voice', 'mute_audio', 'tts_library', 'kittentts_model', 'audio_speed', 'audio_input_text',
-          'split_field', 'batch_size',
-          'file_format', 'file_name', 'file_data_key', 'file_overwrite',
-          'api_method', 'api_url', 'api_headers', 'api_params', 'api_body', 'api_auth_type', 'api_auth_config', 'api_response_format', 'connection_id', 'api_protocol', 'graphql_query', 'use_curl', 'curl_command',
-          'notification_title', 'notification_message', 'notification_type', 'mute_notification_message', 'show_chat_button',
-          'form_title', 'form_description', 'form_fields', 'form_submit_label', 'form_use_context_schema',
-          'pii_engine', 'datafog_engine', 'pii_target', 'pii_entities', 'pii_custom_regex', 'docbot_url', 'docbot_method', 'hitl_enabled', 'identifiers_input_key', 'rendered_input_key', 'context_variable_key',
-          'data_cleaning_rules', 'data_cleaning_target', 'data_cleaning_input_key', 'data_cleaning_output_key',
-          'graph_target_key', 'graph_neo4j_uri', 'graph_neo4j_user', 'graph_neo4j_password',
-          'graph_collection', 'graph_sender_key', 'graph_receiver_key', 'graph_txn_id_key', 'graph_amount_key', 'graph_timestamp_key',
-          'ocr_input_key', 'ocr_prompt', 'ocr_engine', 'ocr_standard_model',
-          'scan_mode', 'file_filters', 'concurrency_limit', 'webhook_url', 'emit_status',
-          'on_error',
-          'continue_on_fail',
-          'response_status', 'response_headers', 'response_body_key',
-          'direct_tool_name', 'tool_arguments', 'destination_key',
-          'classification_classes', 'classification_summary', 'classification_engine', 'classification_input_field',
-          'engine_mode', 'custom_entities', 'output_format',
-          'template_content', 'template_output_key', 'template_data_key', 'template_file_path',
-          'template_id', 'input_data_key', 'output_file_name', 'report_format', 'template_category',
-          'button_label', 'button_input', 'button_category',
-          'jt_input_key', 'jt_output_key', 'jt_mode', 'jt_query', 'jt_operations', 'jt_expression', 'jt_pass_through',
-          'weightage_categories', 'weightage_output_key',
-          'weightage_approve_threshold', 'weightage_review_threshold',
-          'weightage_risk_bands', 'weightage_output_flags', 'weightage_cross_rules',
-          'db_connection_string', 'db_database', 'db_collection', 'db_operation', 'db_document', 'db_query', 'db_output_key', 'db_limit',
-          'transform_operation', 'transform_separator', 'transform_pick_fields', 'transform_rename_map', 'transform_omit_keys', 'transform_input_key', 'transform_output_key',
-          'ocr_service_url', 'ocr_service_params', 'ocr_service_headers', 'ocr_service_response_type', 'ocr_service_file_field', 'ocr_service_text_path', 'ocr_multi_file_key',
-          'classification_input_key', 'classification_output_key',
-          'destination_field', 'action', 'field_to_aggregate', 'separator',
-          'show_citations',
-          'extract_mode', 'extract_patterns', 'extract_input_key', 'extract_output_key', 'identifiers_input_key',
-          'debug_scope', 'debug_key',
-          'subscription_filters', 'subscription_input_key', 'subscription_output_key',
-          'payload_template', 'payload_destination_key', 'auto_collect_prefix', 'clean_binary_from',
-          'classification_extract_identifiers', 'discovery_keys', 'agent_input_prefix', 'output_key_prefix', 'input_key',
-          'parent_folder_key', 'folder_identifier_key', 'curl_command_key',
-          // Ingestion Adapter Generic Configs
-          'source_format', 'target_serialization', 'validation_mode',
-          'flatten_depth', 'flatten_separator', 'field_aliases', 'default_values',
-          // Pre-Enrichment Configs
-          'source_key', 'external_integrations', 'internal_integrations',
-          // Form Decisions
-          'form_decisions',
-          // Node Display Configs
-          'mute_chat_bubble',
-          // API Extended Configs
-          'api_description', 'api_enabled', 'api_execution_mode', 'additional_apis',
-          // DB Engine
-          'db_engine',
-          // Group Node config fields
-          'name', 'description', 'internal_nodes', 'internal_edges', 'original_edges',
-          // Context Management
-          'context_mode', 'max_context_chars',
-          // Code Execution
-          'ce_language', 'ce_code', 'ce_input_key', 'ce_output_key', 'ce_mode',
-          // SMTP Email Node
-          'email_provider', 'email_to', 'email_cc', 'email_bcc', 'email_subject', 'email_body', 'email_html', 'email_smtp_server', 'email_smtp_port', 'email_user', 'email_password', 'email_attachments', 'email_headers', 'email_smtp_timeout',
-          'email_auth_method', 'email_tenant_id', 'email_client_id', 'email_client_secret',
-          'email_google_service_account_json', 'email_google_delegated_user',
-          // STT Configs
-          'auto_start', 'auto_stop', 'silence_delay', 'stt_lang',
-          // Vision Intelligence
-          'vision_mode', 'vision_face_match_threshold', 'vision_quality_min_score',
-          'vision_quality_blur_threshold', 'vision_quality_min_contrast', 'vision_quality_max_contrast',
-          'vision_id_image_key', 'vision_selfie_image_key', 'vision_output_key'
-        ];
+        // Per-type field whitelist — only export what's relevant to this node type
+        const typeFields = get().PER_TYPE_FIELDS[nodeType] || [];
+        const validFields = new Set([
+          'id', 'type', 'label', 'position', 'routing_key',
+          ...typeFields
+        ]);
 
         const nodeConfig = {};
         validFields.forEach(field => {
           if (d[field] !== undefined) {
-            if (field === 'subscription_filters') {
-              if (typeof d[field] === 'string') {
-                if (d[field].trim() === '') {
-                  nodeConfig[field] = null;
-                } else {
-                  try { nodeConfig[field] = JSON.parse(d[field]); } catch (e) { nodeConfig[field] = null; }
-                }
-              } else {
-                nodeConfig[field] = Object.keys(d[field] || {}).length > 0 ? d[field] : null;
-              }
-            } else {
-              nodeConfig[field] = d[field];
-            }
+            nodeConfig[field] = d[field];
           }
         });
 
@@ -1474,9 +1483,13 @@ export const useUIStore = create((set) => ({
 }));
 
 // ─── Run Store ────────────────────────────────────────────────────────────────
+const MAX_STREAM_EVENTS = 2000;
+
 export const useRunStore = create((set) => ({
   running: false,
   streamEvents: [],
+  eventVersion: 0,
+  nextEventSeq: 1,
   runOutput: null,
   runError: null,
   threadId: null,
@@ -1504,12 +1517,36 @@ export const useRunStore = create((set) => ({
     runOutput: null,
     threadId: threadId || s.threadId
   })),
-  addEvent: (evt) => set((s) => ({ streamEvents: [...s.streamEvents, evt] })),
-  setEvents: (evts) => set({ streamEvents: evts }),
+  addEvent: (evt) => set((s) => {
+    const withSeq = { ...evt, _seq: s.nextEventSeq };
+    let streamEvents = [...s.streamEvents, withSeq];
+    if (streamEvents.length > MAX_STREAM_EVENTS) {
+      streamEvents = streamEvents.slice(streamEvents.length - MAX_STREAM_EVENTS);
+    }
+    return {
+      streamEvents,
+      eventVersion: s.eventVersion + 1,
+      nextEventSeq: s.nextEventSeq + 1,
+    };
+  }),
+  setEvents: (evts) => set((s) => {
+    const withSeq = (evts || []).map((e, i) => ({ ...e, _seq: s.nextEventSeq + i }));
+    return {
+      streamEvents: withSeq,
+      eventVersion: s.eventVersion + 1,
+      nextEventSeq: s.nextEventSeq + withSeq.length,
+    };
+  }),
   finishRun: (output) => set({ running: false, runOutput: output }),
   setError: (err) => set({ running: false, runError: err }),
   setPausedInfo: (info) => set((s) => ({ pausedInfo: { ...s.pausedInfo, ...info } })),
-  removeEventsFromIndex: (index) => set((s) => ({ streamEvents: s.streamEvents.slice(0, index) })),
+  removeEventsFromIndex: (seq) => set((s) => {
+    const pos = s.streamEvents.findIndex((e) => e._seq === seq);
+    return {
+      streamEvents: pos < 0 ? s.streamEvents : s.streamEvents.slice(0, pos),
+      eventVersion: s.eventVersion + 1,
+    };
+  }),
 
   setHistory: (history) => set({ history }),
   addToHistory: (item) => set((s) => ({
@@ -1521,6 +1558,8 @@ export const useRunStore = create((set) => ({
   reset: () => set({
     running: false,
     streamEvents: [],
+    eventVersion: 0,
+    nextEventSeq: 1,
     runOutput: null,
     runError: null,
     threadId: null,

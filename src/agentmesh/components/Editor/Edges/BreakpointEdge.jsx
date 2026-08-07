@@ -19,6 +19,8 @@ const BreakpointEdge = ({
   data = {},
   selected,
   interactionWidth = 20,
+  label,
+  labelStyle,
 }) => {
   const isBreakpoint = Boolean(data?.isBreakpoint);
   const wireStyle = data?.wireStyle || "smoothstep";
@@ -62,6 +64,13 @@ const BreakpointEdge = ({
     filter: isBreakpoint ? "drop-shadow(0 0 4px rgba(239, 68, 68, 0.6))" : undefined,
   };
 
+  // Determine edge label text (either explicit label or formatted condition key/op/val)
+  const condition = data?.condition;
+  const conditionLabel = condition?.key
+    ? `${condition.key} ${condition.operator || "=="} ${condition.value !== undefined ? condition.value : ""}`.trim()
+    : null;
+  const displayLabel = label || conditionLabel;
+
   return (
     <>
       <style>{`
@@ -83,9 +92,31 @@ const BreakpointEdge = ({
             position: "absolute",
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             pointerEvents: "all",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
           }}
           className="nodrag nopan"
         >
+          {displayLabel && (
+            <div
+              style={{
+                padding: "2px 8px",
+                borderRadius: "4px",
+                fontSize: "11px",
+                fontWeight: 600,
+                backgroundColor: "rgba(255, 255, 255, 0.85)",
+                backdropFilter: "blur(4px)",
+                color: "#334155",
+                border: "1px solid rgba(203, 213, 225, 0.8)",
+                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
+                whiteSpace: "nowrap",
+                ...labelStyle,
+              }}
+            >
+              {displayLabel}
+            </div>
+          )}
           {isBreakpoint && (
             <div
               title="🛑 Breakpoint Active (Flow will pause here). Alt+Click wire to toggle off."

@@ -238,6 +238,18 @@ export default function OcrNodeConfig({ data, update }) {
         </Field>
 
         <Field
+          label="Input File Path Key"
+          hint="Context key containing file path to process. Defaults to 'latest_file_path'."
+        >
+          <Input
+            stripBraces
+            value={data.ocr_input_key || "latest_file_path"}
+            onChange={(v) => update({ ocr_input_key: v })}
+            placeholder="latest_file_path"
+          />
+        </Field>
+
+        <Field
           label="Destination Key"
           hint="The context key where OCR results are saved. Defaults to 'latest_ocr_output'."
         >

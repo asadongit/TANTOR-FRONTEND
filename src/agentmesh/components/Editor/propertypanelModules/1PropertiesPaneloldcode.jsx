@@ -4607,34 +4607,7 @@ export default function PropertiesPanel() {
               </div>
 
               <div id="advanced-options-agent" style={{ display: 'none', padding: '16px', background: 'var(--bg-panel, white)' }}>
-                {/* 6a. Data Subscriptions (Pub/Sub) */}
-                <div style={{ marginBottom: 20 }}>
-                  <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase' }}>Data Subscriptions (Pub/Sub)</div>
-                  <Field label="Subscription Filters (JSON Array/Object)" hint="If provided, the agent will filter the input array and ONLY execute if matches are found.">
-                    <Textarea 
-                      value={typeof data.subscription_filters === 'string' ? data.subscription_filters : data.subscription_filters ? JSON.stringify(data.subscription_filters, null, 2) : ''} 
-                      onChange={(v) => update({ subscription_filters: v })}
-                      placeholder='{\n  "class": ["BALANCE_SHEET"]\n}'
-                      rows={4}
-                    />
-                  </Field>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <div style={{ flex: 1 }}>
-                      <Field label="Input Array Key" hint="The context key containing the array to filter.">
-                        <Input value={data.subscription_input_key !== undefined ? data.subscription_input_key : 'aggregated_results'} onChange={(v) => update({ subscription_input_key: v })} placeholder="aggregated_results" />
-                      </Field>
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <Field label="Output Data Key" hint="Where the matched data is stored for the prompt.">
-                        <Input value={data.subscription_output_key || ''} onChange={(v) => update({ subscription_output_key: v })} placeholder="latest_ocr_output" />
-                      </Field>
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ height: '1px', background: 'var(--border)', margin: '16px 0' }} />
-
-                {/* 6b. Human-in-the-Loop */}
+                {/* 6a. Human-in-the-Loop */}
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase' }}>Human-in-the-Loop</div>
                   <Toggle
@@ -4690,7 +4663,6 @@ export default function PropertiesPanel() {
                   <Field label="Routing Key" hint="Optional: Save the agent's output into this state key (e.g. 'intent') to determine the next path in conditional edges.">
                     <Input value={data.routing_key || ''} onChange={(v) => update({ routing_key: v })} placeholder="e.g. intent" />
                   </Field>
-                  <Toggle checked={data.return_direct} onChange={(v) => syncToggle('return_direct', v)} label="Return result direct to user" />
                 </div>
 
                 <div style={{ height: '1px', background: 'var(--border)', margin: '16px 0' }} />

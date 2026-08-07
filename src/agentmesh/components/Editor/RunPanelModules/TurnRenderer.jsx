@@ -11,13 +11,94 @@ import {
   THEME_GRAY,
 } from "./constants";
 
-export function UnifiedAgentTurn({
+// Incremental turn parser. Only the newly appended events are processed per
+// render (O(1) per token instead of re-scanning the whole transcript O(n²)).
+// Events are attributed by identity: pure appends continue the last turn,
+// while truncations/replacements (rework, thread switch, cap-trim) rebuild.
+function parseStreamEvents(streamEvents, nodeMap, stateRef) {
+  const list = streamEvents || [];
+  const state = stateRef.current || { count: 0, lastEvent: null, turns: [] };
+
+  if (
+    list.length === state.count &&
+    (list.length === 0 || list[list.length - 1] === state.lastEvent)
+  ) {
+    stateRef.current = state;
+    return state.turns;
+  }
+
+  const pureAppend =
+    state.count === 0 ||
+    (list.length > state.count && list[state.count - 1] === state.lastEvent);
+
+  if (!pureAppend) {
+    state.turns = [];
+    state.count = 0;
+    state.lastEvent = null;
+  }
+
+  const turns = state.turns;
+  let currentTurn = turns.length ? turns[turns.length - 1] : null;
+
+  const isMuted = (nodeId) => {
+    if (!nodeId) return false;
+    const node = nodeMap.get(nodeId);
+    return node?.data?.mute_chat_bubble === true;
+  };
+
+  for (let i = state.count; i < list.length; i++) {
+    const evt = list[i];
+    if (evt.type === "user_message") {
+      if (
+        currentTurn &&
+        turns[turns.length - 1] !== currentTurn &&
+        (currentTurn.user || currentTurn.agents.length || currentTurn.logs.length)
+      ) {
+        turns.push(currentTurn);
+      }
+      currentTurn = { user: { ...evt, index: i, seq: evt._seq }, agents: [], logs: [], intermediateSteps: [] };
+    } else if (evt.type === "token") {
+      if (!isMuted(evt.node)) {
+        if (!currentTurn) currentTurn = { user: null, agents: [], logs: [], intermediateSteps: [] };
+        const agents = currentTurn.agents;
+        const lastAgent = agents.length ? agents[agents.length - 1] : null;
+        if (lastAgent && lastAgent.node === evt.node) {
+          agents[agents.length - 1] = {
+            ...lastAgent,
+            content: lastAgent.content + evt.content,
+            index: i,
+          };
+        } else {
+          agents.push({ ...evt, index: i });
+          currentTurn.intermediateSteps = agents.slice(0, -1);
+        }
+      }
+    } else {
+      if (evt.type === "node_start" && isMuted(evt.node)) {
+        continue;
+      }
+      if (!currentTurn) currentTurn = { user: null, agents: [], logs: [], intermediateSteps: [] };
+      currentTurn.logs.push({ ...evt, index: i });
+    }
+  }
+
+  if (currentTurn && turns[turns.length - 1] !== currentTurn) {
+    turns.push(currentTurn);
+  }
+
+  state.count = list.length;
+  state.lastEvent = list[list.length - 1] || null;
+  stateRef.current = state;
+  return turns;
+}
+
+const UnifiedAgentTurn = React.memo(function UnifiedAgentTurn({
   finalAgent,
   intermediateSteps,
   isLast,
   running,
   onRegenerate,
-  nodes = [],
+  nodeMap,
   onShowVfs,
 }) {
   const [threadExpanded, setThreadExpanded] = useState(false);
@@ -25,7 +106,7 @@ export function UnifiedAgentTurn({
 
   const resolveLabel = (id, agentNameFallback) => {
     if (agentNameFallback && agentNameFallback !== id) return agentNameFallback;
-    const node = nodes.find((n) => n.id === id);
+    const node = nodeMap.get(id);
     return node?.data?.label || node?.label || id;
   };
 
@@ -340,9 +421,11 @@ export function UnifiedAgentTurn({
       </div>
     </motion.div>
   );
-}
+});
 
-const TurnRenderer = React.forwardRef(
+export { UnifiedAgentTurn };
+
+const TurnRenderer = React.memo(React.forwardRef(
   (
     {
       streamEvents,
@@ -354,38 +437,12 @@ const TurnRenderer = React.forwardRef(
     },
     ref,
   ) => {
-    const turns = [];
-    let currentTurn = { user: null, agents: [], logs: [] };
-
-    const isMuted = (nodeId) => {
-      if (!nodeId) return false;
-      const node = nodes.find((n) => n.id === nodeId);
-      return node?.data?.mute_chat_bubble === true;
-    };
-
-    for (let i = 0; i < streamEvents.length; i++) {
-      const evt = streamEvents[i];
-      if (evt.type === "user_message") {
-        if (
-          currentTurn.user ||
-          currentTurn.agents.length ||
-          currentTurn.logs.length
-        ) {
-          turns.push(currentTurn);
-        }
-        currentTurn = { user: { ...evt, index: i }, agents: [], logs: [] };
-      } else if (evt.type === "token") {
-        if (!isMuted(evt.node)) {
-          currentTurn.agents.push({ ...evt, index: i });
-        }
-      } else {
-        if (evt.type === "node_start" && isMuted(evt.node)) {
-          continue;
-        }
-        currentTurn.logs.push({ ...evt, index: i });
-      }
-    }
-    turns.push(currentTurn);
+    const nodeMap = React.useMemo(
+      () => new Map((nodes || []).map((n) => [n.id, n])),
+      [nodes],
+    );
+    const parserRef = React.useRef(null);
+    const turns = parseStreamEvents(streamEvents, nodeMap, parserRef);
 
     return (
       <div
@@ -399,10 +456,8 @@ const TurnRenderer = React.forwardRef(
       >
         {turns.map((turn, tIdx) => {
           const isAbsoluteLastTurn = tIdx === turns.length - 1;
-          const intermediateAgents = turn.agents.slice(0, -1);
+          const intermediateSteps = turn.intermediateSteps;
           const finalAgent = turn.agents[turn.agents.length - 1];
-
-          const userIdx = turn.user?.index ?? -1;
 
           return (
             <React.Fragment key={tIdx}>
@@ -439,16 +494,16 @@ const TurnRenderer = React.forwardRef(
                 <UnifiedAgentTurn
                   key={`unified-${tIdx}`}
                   finalAgent={finalAgent}
-                  intermediateSteps={intermediateAgents}
+                  intermediateSteps={intermediateSteps}
                   isLast={isAbsoluteLastTurn}
                   running={running}
-                  nodes={nodes}
+                  nodeMap={nodeMap}
                   onShowVfs={onShowVfs}
                   onRegenerate={
                     isAbsoluteLastTurn && !running && turn.user
                       ? () => {
-                          if (userIdx !== -1 && removeEventsFromIndex) {
-                            removeEventsFromIndex(userIdx);
+                          if (turn.user.seq != null && removeEventsFromIndex) {
+                            removeEventsFromIndex(turn.user.seq);
                           }
                           onSend(turn.user.content);
                         }
@@ -533,6 +588,6 @@ const TurnRenderer = React.forwardRef(
       </div>
     );
   },
-);
+));
 
 export default TurnRenderer;

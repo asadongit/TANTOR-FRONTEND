@@ -15,8 +15,7 @@ const NAV_ITEMS = [
   { id: 'library', label: 'Library', icon: FiBox },
   { id: 'marketplace', label: 'Marketplace', icon: FiMessageSquare },
   { id: 'logs', label: 'Logs', icon: FiList },
-  { id: 'rag', label: 'Knowledge', icon: FiBookOpen },
-  // { id: 'observability', label: 'Observability', icon: FiActivity },
+  { id: 'observability', label: 'Observability', icon: FiBarChart2 },
   { id: 'connections', label: 'Connections', icon: FiLink },
 ];
 
