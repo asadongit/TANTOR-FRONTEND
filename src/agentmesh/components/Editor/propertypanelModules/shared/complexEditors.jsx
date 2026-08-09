@@ -455,10 +455,26 @@ export const VisualOperationsEditor = memo(function VisualOperationsEditor({ val
   const [aiOpen, setAiOpen] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiAdvice, setAiAdvice] = useState('');
+  const [suggestedOps, setSuggestedOps] = useState(null);
+
+  const handleApplySuggestedOps = () => {
+    if (suggestedOps && Array.isArray(suggestedOps)) {
+      onChange([...value, ...suggestedOps]);
+      toast.success("Suggested operation(s) applied!");
+      setSuggestedOps(null);
+      setAiAdvice('');
+      setAiOpen(false);
+      setAiPrompt('');
+    }
+  };
 
   const handleAiGenerate = async () => {
     if (!aiPrompt.trim()) return;
     setAiLoading(true);
+    setAiAdvice('');
+    setSuggestedOps(null);
+
     try {
       const activeWorkflow = useWorkflowStore.getState();
       const currentWorkflow = {
@@ -468,15 +484,20 @@ export const VisualOperationsEditor = memo(function VisualOperationsEditor({ val
         edges: activeWorkflow.edges
       };
 
-      const systemPrompt = `You are the Workflow Architect AI. The user wants to configure a JSON Transform Visual Operations list.
-We have the following runtime context:
+      const systemPrompt = `You are the Workflow Architect AI assistant for AgentMesh JSON Transform.
+Analyze the user's prompt against the runtime context below and determine their true intent.
+
+Runtime Context:
 ${JSON.stringify(latestContext, null, 2)}
 
-And the user wants to perform this operation:
+User Prompt:
 "${aiPrompt}"
 
-Please respond with ONLY a raw JSON array (enclosed in a \`\`\`json block) representing the list of visual operations matching the user's request.
-Each operation in the array must follow the structure:
+INTENT RULES (DEFAULT TO "guide"):
+1. Set "intent": "guide" whenever the user asks a question, seeks recommendations, or asks which operation/mode is suitable (e.g. "Which operation is suitable to remove 2 keys?", "How do I filter active tasks?", "What is the best operation for..."). Provide clear reasoning in "explanation" and place suggested steps in "operations" so the user can review and click Apply.
+2. Set "intent": "apply" ONLY when the user gives a direct imperative command to modify their workflow without asking for advice (e.g. "Add omit step for ssn and password", "Filter active items now").
+
+Available operation schemas:
 - Extract Field: { "type": "extract_field", "source_path": "nested.path", "field": "field_name", "destination": "dest_key" }
 - Filter: { "type": "filter", "source_path": "list.path", "filter_field": "field_name", "filter_operator": "==", "filter_value": "value", "destination": "dest_key" }
 - Map List: { "type": "map", "source_path": "list.path", "field": "field_to_extract", "destination": "dest_key" }
@@ -495,11 +516,14 @@ Each operation in the array must follow the structure:
 - Pattern Extract (Identifiers): { "type": "pattern_extract_identifiers", "destination": "identifiers", "patterns": [ { "concept": "PAN", "display_label": "PAN Number", "search_keywords": ["pan"], "match_strategy": "contains", "is_required": true } ] }
 - Pattern Extract (Field Mappings): { "type": "pattern_extract_field_mappings", "destination": "field_mappings", "patterns": [ { "concept": "annual_income", "display_label": "Annual Income", "search_keywords": ["annual_income"], "match_strategy": "contains", "target_class": "Financial_Analysis" } ] }
 
-IMPORTANT RULES:
-- Use real context keys from the runtime context above for source_path / filter_value / static_value.
-- Use "auto" for value_type unless the user explicitly asks for a specific type.
-- Operations run in order; the output of one feeds the next.
-Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
+Please respond ONLY with a raw JSON object (enclosed in a \`\`\`json block) following this exact format:
+\`\`\`json
+{
+  "intent": "apply" | "guide",
+  "explanation": "Clear guidance or reasoning...",
+  "operations": [ ... optional list of visual operations matching user intent ... ]
+}
+\`\`\``;
 
       const response = await chatArchitect(
         currentWorkflow,
@@ -509,16 +533,39 @@ Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
       );
 
       if (response && response.status === 'success' && response.reply) {
-        const match = response.reply.match(/```json\s*([\s\S]*?)\s*```/) || response.reply.match(/\[\s*\{[\s\S]*?\}\s*\]/);
-        const jsonStr = match ? match[1] || match[0] : response.reply;
-        const parsed = JSON.parse(jsonStr.trim());
-        if (Array.isArray(parsed)) {
-          onChange([...value, ...parsed]);
-          toast.success("Operations configured by Architect Bot!");
-          setAiOpen(false);
-          setAiPrompt('');
+        const replyText = response.reply;
+        const match = replyText.match(/```json\s*([\s\S]*?)\s*```/) || replyText.match(/\{[\s\S]*?\}/);
+        
+        let resultObj = null;
+        if (match) {
+          try {
+            const jsonStr = match[1] || match[0];
+            resultObj = JSON.parse(jsonStr.trim());
+          } catch (e) {
+            // ignore JSON parse error
+          }
+        }
+
+        if (resultObj && typeof resultObj === 'object') {
+          const { intent = 'guide', explanation = '', operations = [] } = resultObj;
+
+          if (intent === 'apply' && Array.isArray(operations) && operations.length > 0) {
+            onChange([...value, ...operations]);
+            toast.success("Operations configured by Architect Bot!");
+            setAiOpen(false);
+            setAiPrompt('');
+          } else {
+            // Advisory / Guidance path
+            setAiAdvice(explanation || replyText);
+            if (Array.isArray(operations) && operations.length > 0) {
+              setSuggestedOps(operations);
+            }
+            toast("Architect Bot provided recommendations below.", { icon: '💡' });
+          }
         } else {
-          throw new Error("Response was not a list of operations.");
+          // Fallback if AI responded with raw text
+          setAiAdvice(replyText);
+          toast("Architect Bot provided recommendations below.", { icon: '💡' });
         }
       } else {
         throw new Error(response.message || "Failed to generate response.");
@@ -619,8 +666,24 @@ Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
               className={`py-2 px-3 bg-[#7C3AED] text-white border-none rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all duration-200 ${aiLoading || !aiPrompt.trim() ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-purple-700'}`}
             >
               {aiLoading ? <FiLoader className="animate-spin" size={12} /> : <FiZap size={12} />}
-              {aiLoading ? 'Architect Bot Thinking...' : 'Generate Steps'}
+              {aiLoading ? 'Architect Bot Thinking...' : 'Ask / Generate Steps'}
             </button>
+            {aiAdvice && (
+              <div className="text-[11px] text-slate-700 bg-white border border-purple-200 rounded-lg p-3 mt-1 font-normal leading-normal whitespace-pre-wrap flex flex-col gap-2">
+                <div>
+                  <span className="font-bold text-[#7C3AED] block mb-1">💡 Architect Advice:</span>
+                  {aiAdvice}
+                </div>
+                {suggestedOps && Array.isArray(suggestedOps) && suggestedOps.length > 0 && (
+                  <button
+                    onClick={handleApplySuggestedOps}
+                    className="py-1.5 px-3 bg-[#7C3AED] text-white border-none rounded-md text-[11px] font-bold cursor-pointer hover:bg-purple-700 transition-colors self-start flex items-center gap-1 mt-1"
+                  >
+                    <FiPlus size={12} /> Apply Suggested Step{suggestedOps.length > 1 ? 's' : ''} ({suggestedOps.length})
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
