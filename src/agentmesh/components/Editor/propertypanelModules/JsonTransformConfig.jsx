@@ -53,7 +53,7 @@ export default function JsonTransformConfig({ data, update }) {
       {data.jt_mode === "jmespath" && (
         <Field
           label="JMESPath Query"
-          hint="Query string. E.g. tasks[?status=='SUCCESS'].task_id or job_status.tasks[*].task_id"
+          hint="Query string. E.g. tasks[?status=='SUCCESS'].task_id or job_status.tasks[*].task_id. Wrap a context key in {{ }} to substitute its value (e.g. tasks[?age > {{min_age}}])."
         >
           <Textarea
             value={data.jt_query ?? ""}
