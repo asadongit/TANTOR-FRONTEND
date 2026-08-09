@@ -2,6 +2,31 @@ import { create } from 'zustand';
 // ─── Constants & Utils ──────────────────────────────────────────────────────────
 const genId = () => Math.random().toString(36).substring(2, 7);
 
+// Generate a node ID guaranteed not to collide with existing node IDs.
+const genUniqueNodeId = (type, existingIds) => {
+  let id;
+  do {
+    id = `${type}_${genId()}`;
+  } while (existingIds.has(id));
+  return id;
+};
+
+// Type-based unique name: set_data, set_data_1, set_data_2, ...
+const genUniqueTypeName = (type, existingNames) => {
+  if (!existingNames.has(type)) return type;
+  let n = 1;
+  while (existingNames.has(`${type}_${n}`)) n++;
+  return `${type}_${n}`;
+};
+
+// Ensure a duplicated node's label stays unique (X (Copy), X (Copy) 1, ...).
+const genUniqueCopyName = (baseCopy, existingNames) => {
+  if (!existingNames.has(baseCopy)) return baseCopy;
+  let n = 1;
+  while (existingNames.has(`${baseCopy} ${n}`)) n++;
+  return `${baseCopy} ${n}`;
+};
+
 // Native deep-clone for history snapshots — 3-5x faster than the legacy
 // JSON.parse(JSON.stringify(...)) double-encode path in modern engines (F5).
 // Falls back to the JSON technique where structuredClone is unavailable.
@@ -568,20 +593,27 @@ export const useWorkflowStore = create((set, get) => ({
   },
 
   addNode: (type, position) => {
-    let id = `${type}_${genId()}`;
+    const existingNodes = get().nodes;
+    const existingIds = new Set(existingNodes.map(n => n.id));
+    const existingNames = new Set(existingNodes.map(n => n.data?.label));
+
+    let id;
     if (type === 'start') id = '__start__';
-    if (type === 'end') id = '__end__';
+    else if (type === 'end') id = '__end__';
+    else id = genUniqueNodeId(type, existingIds);
 
     // Prevent duplicates of start/end (check by ID and by Type)
     const isSystemNode = type === 'start' || type === 'end';
-    if (get().nodes.some(n => n.id === id || (isSystemNode && n.data?.type === type))) return id;
+    if (existingNodes.some(n => n.id === id || (isSystemNode && n.data?.type === type))) return id;
 
     const isCardboard = type === 'cardboard';
+    const defaults = NODE_DEFAULTS[type] || { label: type };
+    const label = isSystemNode ? (defaults.label || type) : genUniqueTypeName(type, existingNames);
     const newNode = {
       id,
       type: isCardboard ? 'cardboardNode' : 'agentNode',
       position,
-      data: { id, type, ...(NODE_DEFAULTS[type] || { label: type }) },
+      data: { id, type, ...defaults, label },
       ...(isCardboard ? {
         style: { width: 400, height: 300 },
         zIndex: -10
@@ -607,12 +639,16 @@ export const useWorkflowStore = create((set, get) => ({
     if (!node || node.id === '__start__' || node.id === '__end__' || node.data?.type === 'group') return;
 
     const type = node.data?.type || 'node';
-    const newId = `${type}_${genId()}`;
+    const existingNodes = get().nodes;
+    const existingIds = new Set(existingNodes.map(n => n.id));
+    const existingNames = new Set(existingNodes.map(n => n.data?.label));
+    const newId = genUniqueNodeId(type, existingIds);
+    const label = genUniqueCopyName(`${node.data.label || type} (Copy)`, existingNames);
     const newNode = {
       ...node,
       id: newId,
       position: { x: node.position.x + 40, y: node.position.y + 40 },
-      data: { ...node.data, id: newId, label: `${node.data.label} (Copy)` },
+      data: { ...node.data, id: newId, label },
       selected: false,
     };
 
@@ -641,19 +677,24 @@ export const useWorkflowStore = create((set, get) => ({
     get().takeHistorySnapshot();
     set((s) => {
       const newNodes = [];
-      
+      const usedIds = new Set(s.nodes.map(n => n.id));
+      const usedNames = new Set(s.nodes.map(n => n.data?.label));
+
       idsToDuplicate.forEach((nodeId) => {
         const node = s.nodes.find((n) => n.id === nodeId);
         if (!node) return;
         
         const type = node.data?.type || 'node';
-        const newId = `${type}_${genId()}`;
+        const newId = genUniqueNodeId(type, usedIds);
+        const label = genUniqueCopyName(`${node.data.label || type} (Copy)`, usedNames);
+        usedIds.add(newId);
+        usedNames.add(label);
         
         const newNode = {
           ...node,
           id: newId,
           position: { x: node.position.x + 40, y: node.position.y + 40 },
-          data: { ...node.data, id: newId, label: `${node.data.label || node.id} (Copy)` },
+          data: { ...node.data, id: newId, label },
           selected: false,
         };
         newNodes.push(newNode);

@@ -125,18 +125,26 @@ export const usageTooltip = (o) => {
 // ─── Column grid helpers ─────────────────────────────────────────────────────
 export const gridTemplate = (cols) =>
   cols.map((c) => (typeof c.w === 'number' ? `${c.w}px` : c.w)).join(' ');
-export const gridMinWidth = (cols) => cols.reduce((s, c) => s + (typeof c.w === 'number' ? c.w : 180), 0) + 40;
+
+export const gridMinWidth = (cols) => cols.reduce((s, c) => {
+  if (typeof c.w === 'number') return s + c.w;
+  if (typeof c.w === 'string' && c.w.includes('minmax')) {
+    const match = c.w.match(/\d+/);
+    return s + (match ? parseInt(match[0], 10) : 220);
+  }
+  return s + 220;
+}, 0) + 40;
 
 export function HeaderRow({ columns }) {
   return (
     <div style={{
       display: 'grid', gridTemplateColumns: gridTemplate(columns), minWidth: gridMinWidth(columns),
-      alignItems: 'center', gap: 10, padding: '10px 16px', background: '#f8fafc',
-      borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 700,
-      color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em'
+      alignItems: 'center', gap: 10, padding: '10px 16px', background: '#F8FAFC',
+      borderBottom: '1px solid #E2E8F0', fontSize: 11, fontWeight: 700,
+      color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em'
     }}>
       {columns.map((c, i) => (
-        <span key={c.key || i} style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+        <span key={c.key || i} style={{ display: 'flex', alignItems: 'center', justifyContent: c.align === 'center' ? 'center' : 'flex-start', gap: 5, minWidth: 0 }}>
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.label}</span>
           {c.hint && <InfoTooltip text={c.hint} />}
         </span>
@@ -161,40 +169,42 @@ export function PaginationBar({
   onLimitChange,
   rangeText,
   showLimit = true,
+  pageOptions = PAGE_OPTIONS,
 }) {
   const pageLabel = totalPages != null ? `${page} of ${Math.max(totalPages, 1)}` : `Page ${page}`;
   const prevDisabled = page <= 1;
   const nextDisabled = hasNext != null ? !hasNext : totalPages != null && page >= Math.max(totalPages, 1);
 
   const btnStyle = (disabled) => ({
-    display: 'flex', alignItems: 'center', gap: 4, padding: '7px 12px',
-    border: '1px solid var(--border)', borderRadius: 8, background: disabled ? '#f8fafc' : 'white',
-    color: disabled ? 'var(--text-muted)' : 'var(--text-secondary)', fontSize: 12.5, fontWeight: 600,
-    cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit', transition: 'all 0.15s'
+    display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px',
+    border: '1px solid #E2E8F0', borderRadius: 8, background: disabled ? '#F8FAFC' : '#FFFFFF',
+    color: disabled ? '#94A3B8' : '#0F172A', fontSize: 12, fontWeight: 600,
+    cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit', transition: 'all 0.15s ease',
+    boxShadow: disabled ? 'none' : '0 1px 2px rgba(0,0,0,0.03)'
   });
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', flexWrap: 'wrap' }}>
-      {rangeText ? <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>{rangeText}</span> : <span />}
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', flexWrap: 'wrap', background: '#FFFFFF', borderTop: '1px solid #E2E8F0' }}>
+      {rangeText ? <span style={{ fontSize: 12, color: '#64748B', fontWeight: 600 }}>{rangeText}</span> : <span />}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         {showLimit && (
           <select
             value={limit}
             onChange={(e) => onLimitChange && onLimitChange(Number(e.target.value))}
             style={{
-              padding: '7px 10px', background: 'white', border: '1px solid var(--border)',
-              borderRadius: 8, fontSize: 12.5, color: 'var(--text-secondary)', outline: 'none', fontFamily: 'inherit'
+              padding: '6px 10px', background: '#FFFFFF', border: '1px solid #E2E8F0',
+              borderRadius: 8, fontSize: 12, color: '#0F172A', outline: 'none', fontFamily: 'inherit'
             }}
             aria-label="Rows per page"
           >
-            {PAGE_OPTIONS.map((n) => <option key={n} value={n}>{n} / page</option>)}
+            {pageOptions.map((n) => <option key={n} value={n}>{n} / page</option>)}
           </select>
         )}
         <button onClick={onPrev} disabled={prevDisabled} style={btnStyle(prevDisabled)} aria-label="Previous page">
           <FiChevronLeft size={14} />
           Prev
         </button>
-        <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-secondary)', minWidth: 72, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#0F172A', minWidth: 72, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
           {pageLabel}
         </span>
         <button onClick={onNext} disabled={nextDisabled} style={btnStyle(nextDisabled)} aria-label="Next page">
@@ -216,25 +226,26 @@ PaginationBar.propTypes = {
   onLimitChange: PropTypes.func,
   rangeText: PropTypes.string,
   showLimit: PropTypes.bool,
+  pageOptions: PropTypes.arrayOf(PropTypes.number),
 };
 
-export const monoCell = { fontFamily: 'monospace', fontSize: 11, color: 'var(--text-secondary)' };
+export const monoCell = { fontFamily: 'monospace', fontSize: 11, color: '#475569' };
 
 // ─── Badges ──────────────────────────────────────────────────────────────────
 const LEVEL_STYLE = {
-  DEFAULT: { bg: '#f1f5f9', fg: '#64748b' },
-  DEBUG: { bg: '#f8fafc', fg: '#94a3b8' },
-  INFO: { bg: '#eff6ff', fg: '#3b82f6' },
-  WARNING: { bg: '#fffbeb', fg: '#f0a500' },
-  ERROR: { bg: '#fef2f2', fg: '#ef4444' },
+  DEFAULT: { bg: '#F1F5F9', fg: '#64748B' },
+  DEBUG: { bg: '#F8FAFC', fg: '#94A3B8' },
+  INFO: { bg: '#EFF6FF', fg: '#2563EB' },
+  WARNING: { bg: '#FEF3C7', fg: '#D97706' },
+  ERROR: { bg: '#FFF1F2', fg: '#E11D48' },
 };
 
 const TYPE_STYLE = {
-  SPAN: { bg: '#f5f3ff', fg: '#8e78b7' },
-  GENERATION: { bg: '#eff6ff', fg: '#3b82f6' },
-  CHAIN: { bg: '#ecfdf5', fg: '#059669' },
-  EVENT: { bg: '#f8fafc', fg: '#64748b' },
-  AGENT: { bg: '#fffbeb', fg: '#d97706' },
+  SPAN: { bg: '#F4F0FA', fg: '#8E77BB' },
+  GENERATION: { bg: '#EFF6FF', fg: '#2563EB' },
+  CHAIN: { bg: '#ECFDF5', fg: '#059669' },
+  EVENT: { bg: '#F8FAFC', fg: '#64748B' },
+  AGENT: { bg: '#FEF3C7', fg: '#D97706' },
 };
 
 const TYPE_ICON = {
@@ -249,7 +260,7 @@ export function Badge({ label, style, children }) {
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px',
-      borderRadius: 10, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap', ...style
+      borderRadius: 6, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap', ...style
     }}>
       {children}
       {label}
@@ -284,13 +295,13 @@ TypeBadge.propTypes = { type: PropTypes.string };
 
 export function TagChips({ tags, limit = 3 }) {
   const list = Array.isArray(tags) ? tags.filter(Boolean) : [];
-  if (list.length === 0) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
+  if (list.length === 0) return <span style={{ color: '#94A3B8' }}>—</span>;
   return (
     <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', minWidth: 0 }}>
       {list.slice(0, limit).map((t) => (
         <span key={t} title={t} style={{
-          display: 'inline-flex', alignItems: 'center', gap: 3, padding: '1px 7px', borderRadius: 10,
-          background: 'var(--theme-primary-glow)', color: 'var(--theme-primary)', fontSize: 10.5,
+          display: 'inline-flex', alignItems: 'center', gap: 3, padding: '1px 7px', borderRadius: 6,
+          background: '#EFF6FF', color: '#2563EB', fontSize: 10.5,
           fontWeight: 600, whiteSpace: 'nowrap'
         }}>
           <FiTag size={9} />
@@ -298,7 +309,7 @@ export function TagChips({ tags, limit = 3 }) {
         </span>
       ))}
       {list.length > limit && (
-        <span title={list.slice(limit).join(', ')} style={{ fontSize: 10.5, color: 'var(--text-muted)', fontWeight: 600 }}>
+        <span title={list.slice(limit).join(', ')} style={{ fontSize: 10.5, color: '#64748B', fontWeight: 600 }}>
           +{list.length - limit}
         </span>
       )}

@@ -28,22 +28,25 @@ function LatencyCard({ meta, rows, showType }) {
 
   return (
     <div style={{
-      background: 'white', border: '1px solid var(--border)', borderRadius: 14,
-      padding: '16px 16px 12px', display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0
+      background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 14,
+      padding: '18px 18px 14px', display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0,
+      boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)'
     }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
-          <FiClock size={14} color="var(--theme-primary)" style={{ flexShrink: 0 }} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, fontWeight: 700, color: '#0F172A' }}>
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: '#F4F0FA', color: '#8E77BB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <FiClock size={15} />
+          </div>
           {meta.title}
         </div>
         <InfoTooltip text={meta.hint} />
       </div>
 
-      <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ border: '1px solid #E2E8F0', borderRadius: 10, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <div style={{
           display: 'grid', gridTemplateColumns: headerTemplate, alignItems: 'center', gap: 12,
-          padding: '8px 12px', background: '#f8fafc', borderBottom: '1px solid var(--border)',
-          fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', flexShrink: 0
+          padding: '9px 12px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0',
+          fontSize: 10.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em', flexShrink: 0
         }}>
           {showType && <span>Type</span>}
           <span>Name</span>
@@ -51,7 +54,7 @@ function LatencyCard({ meta, rows, showType }) {
         </div>
 
         {rows.length === 0 ? (
-          <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12.5 }}>
+          <div style={{ padding: 24, textAlign: 'center', color: '#64748B', fontSize: 12.5 }}>
             No latency data in this period.
           </div>
         ) : (
@@ -61,16 +64,18 @@ function LatencyCard({ meta, rows, showType }) {
                 key={`${row.type || ''}-${row.name}`}
                 style={{
                   display: 'grid', gridTemplateColumns: headerTemplate, alignItems: 'center', gap: 12,
-                  padding: '8px 12px', borderBottom: idx < rows.length - 1 ? '1px solid var(--border-light)' : 'none',
-                  fontSize: 12, color: 'var(--text-secondary)'
+                  padding: '9px 12px', borderBottom: idx < rows.length - 1 ? '1px solid #F1F5F9' : 'none',
+                  fontSize: 12, color: '#334155', transition: 'background 0.15s ease'
                 }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#F8FAFC'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
               >
                 {showType && <span style={{ minWidth: 0, overflow: 'hidden' }}><TypeBadge type={row.type} /></span>}
-                <span style={{ minWidth: 0, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.name}>
+                <span style={{ minWidth: 0, fontWeight: 600, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.name}>
                   {row.name}
                 </span>
                 {PCOLUMNS.map((c) => (
-                  <span key={c} style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmtLatency(row[c])}</span>
+                  <span key={c} style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 500, color: '#475569' }}>{fmtLatency(row[c])}</span>
                 ))}
               </div>
             ))}
@@ -91,18 +96,18 @@ LatencyCard.propTypes = {
 };
 
 const TYPE_STYLE = {
-  SPAN: { bg: '#f5f3ff', fg: '#8e78b7' },
-  GENERATION: { bg: '#eff6ff', fg: '#3b82f6' },
-  CHAIN: { bg: '#ecfdf5', fg: '#059669' },
-  EVENT: { bg: '#f8fafc', fg: '#64748b' },
-  AGENT: { bg: '#fff7ed', fg: '#f59e0b' },
+  SPAN: { bg: '#F5F3FF', fg: '#7C3AED' },
+  GENERATION: { bg: '#EFF6FF', fg: '#2563EB' },
+  CHAIN: { bg: '#ECFDF5', fg: '#059669' },
+  EVENT: { bg: '#F8FAFC', fg: '#64748B' },
+  AGENT: { bg: '#FEF3C7', fg: '#D97706' },
 };
 
 function TypeBadge({ type }) {
   const s = TYPE_STYLE[type] || TYPE_STYLE.EVENT;
   return (
     <span style={{
-      display: 'inline-flex', padding: '1px 6px', borderRadius: 8, fontSize: 10, fontWeight: 700,
+      display: 'inline-flex', padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700,
       background: s.bg, color: s.fg, whiteSpace: 'nowrap', maxWidth: '100%',
       overflow: 'hidden', textOverflow: 'ellipsis', verticalAlign: 'middle'
     }}>

@@ -52,7 +52,7 @@ export const listMarketplaceUsecases = (params = {}, options = {}) => {
   if (category && category !== 'All') p.set('category', category);
   if (search) p.set('search', search);
   if (tag && tag !== 'All') p.set('tag', tag);
-  if (adminStatus && adminStatus !== 'All') p.set('admin_status', adminStatus);
+  if (adminStatus) p.set('admin_status', adminStatus);
   return request(`/marketplace/usecases?${p}`, options);
 };
 
@@ -238,6 +238,24 @@ export const getObservabilityByModel = (params = {}) => {
   const p = new URLSearchParams({ fromTimestamp: params.fromTimestamp, toTimestamp: params.toTimestamp, dimension: params.dimension || 'providedModelName', limit: params.limit || 20 });
   return request(`/observability/metrics/by-model?${p}`);
 };
+export const getObservabilityScoreMetrics = (params = {}) => {
+  const p = new URLSearchParams({ fromTimestamp: params.fromTimestamp, toTimestamp: params.toTimestamp, limit: params.limit || 20 });
+  if (params.granularity) p.set('granularity', params.granularity);
+  if (params.name) p.set('name', params.name);
+  if (params.dataType) p.set('dataType', params.dataType);
+  if (params.source) p.set('source', params.source);
+  return request(`/observability/metrics/scores?${p}`);
+};
+export const getObservabilityToxicity = (params = {}) => {
+  const p = new URLSearchParams({ fromTimestamp: params.fromTimestamp, toTimestamp: params.toTimestamp });
+  if (params.userId) p.set('userId', params.userId);
+  if (params.sessionId) p.set('sessionId', params.sessionId);
+  if (params.traceName) p.set('traceName', params.traceName);
+  if (params.groupBy) p.set('groupBy', params.groupBy);
+  if (params.threshold != null && params.threshold !== '') p.set('threshold', params.threshold);
+  if (params.limit) p.set('limit', params.limit);
+  return request(`/observability/metrics/toxicity?${p}`);
+};
 export const getObservabilityTraces = (params = {}) => {
   const p = new URLSearchParams({ fromTimestamp: params.fromTimestamp, toTimestamp: params.toTimestamp, limit: params.limit || 50 });
   if (params.cursor) p.set('cursor', params.cursor);
@@ -248,6 +266,9 @@ export const getObservabilityTraces = (params = {}) => {
   if (params.userId) p.set('userId', params.userId);
   if (params.sessionId) p.set('sessionId', params.sessionId);
   if (params.tags) p.set('tags', params.tags);
+  // traceId: direct exact ID filter (Langfuse v2 observations API supports ?traceId=)
+  // Used when navigating from Scores → Traces to view a specific trace.
+  if (params.traceId) p.set('traceId', params.traceId);
   return request(`/observability/traces?${p}`);
 };
 export const getObservabilityTraceDetail = (traceId) =>
@@ -262,6 +283,11 @@ export const getObservabilityScores = (params = {}) => {
   if (params.authorUserId) p.set('authorUserId', params.authorUserId);
   if (params.configId) p.set('configId', params.configId);
   if (params.queueId) p.set('queueId', params.queueId);
+  if (params.traceId) p.set('traceId', params.traceId);
+  if (params.traceName) p.set('traceName', params.traceName);
+  if (params.observationId) p.set('observationId', params.observationId);
+  if (params.sessionId) p.set('sessionId', params.sessionId);
+  if (params.value != null && params.value !== '') p.set('value', params.value);
   if (params.valueMin != null && params.valueMin !== '') p.set('valueMin', params.valueMin);
   if (params.valueMax != null && params.valueMax !== '') p.set('valueMax', params.valueMax);
   return request(`/observability/scores?${p}`);
@@ -292,6 +318,13 @@ export const getObservabilityLatency = (params = {}) => {
   const p = new URLSearchParams({ fromTimestamp: params.fromTimestamp, toTimestamp: params.toTimestamp, limit: params.limit || 10 });
   return request(`/observability/latency?${p}`);
 };
+export const getObservabilityModelLatency = (params = {}) => {
+  const p = new URLSearchParams({ fromTimestamp: params.fromTimestamp, toTimestamp: params.toTimestamp, granularity: params.granularity || 'day', limit: params.limit || 20 });
+  if (params.models) p.set('models', params.models);
+  return request(`/observability/metrics/model-latency?${p}`);
+};
+export const getObservabilitySystemMetrics = () =>
+  request('/observability/system-metrics');
 
 // ─── 2026 Deep Agent Protocols ────────────────────────────────────────────────
 export const listVfsFiles = (rootDir, threadId) => {
@@ -355,7 +388,7 @@ export const listComponentTemplateFilters = (params) => {
   return request(`/component-templates/filters?${p}`);
 };
 
-export const listComponentTemplates = (params = {}, options = {}) => {
+export const listComponentTemplates = (params = {}) => {
   const { page = 1, limit = 50, group, category_id, category_name, type, search, exclude_type } = params;
   const p = new URLSearchParams({ page, limit });
   if (group) p.set('group', group);
