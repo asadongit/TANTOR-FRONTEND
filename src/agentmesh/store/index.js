@@ -1101,7 +1101,10 @@ export const useWorkflowStore = create((set, get) => ({
     button_trigger: ['button_label', 'button_input', 'button_category'],
     auto_trigger: ['button_input', 'task', 'llm'],
     textToAudio: ['tts_library', 'audio_voice', 'kittentts_model', 'audio_speed', 'mute_audio', 'audio_input_text'],
-    vision_intelligence: ['vision_mode', 'vision_enable_llm', 'vision_face_match_threshold', 'vision_quality_min_score', 'vision_quality_blur_threshold', 'vision_quality_min_contrast', 'vision_quality_max_contrast', 'vision_id_image_key', 'vision_selfie_image_key', 'vision_output_key', 'llm', 'interrupt_before', 'interrupt_after'],
+    // vision_mode: 'ocr' delegates to build_ocr_node with this same node config,
+    // so the ocr_* fields must be saved here too — without them the OCR mode
+    // silently falls back to its defaults and the engine choice is unreachable.
+    vision_intelligence: ['vision_mode', 'vision_enable_llm', 'vision_face_match_threshold', 'vision_quality_min_score', 'vision_quality_blur_threshold', 'vision_quality_min_contrast', 'vision_quality_max_contrast', 'vision_id_image_key', 'vision_selfie_image_key', 'vision_output_key', 'llm', 'interrupt_before', 'interrupt_after', 'ocr_engine', 'ocr_prompt', 'ocr_input_key', 'ocr_standard_model', 'ocr_fallback_engine', 'ocr_text_layer_min_chars', 'ocr_max_pages', 'ocr_on_max_pages'],
     group: ['name', 'description', 'internal_nodes', 'internal_edges', 'original_edges'],
     ingestion_adapter: ['source_format', 'target_serialization', 'validation_mode', 'flatten_depth', 'flatten_separator', 'field_aliases', 'default_values', 'source_key', 'external_integrations', 'internal_integrations', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
     payload_builder: ['payload_template', 'payload_destination_key'],
