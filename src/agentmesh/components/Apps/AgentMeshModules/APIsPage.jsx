@@ -247,7 +247,14 @@ export default function APIsPage() {
 
   const handleUseTemplate = (template) => {
     const config = template.config || {};
-    const id = `api_node_${Math.random().toString(36).substring(2, 7)}`;
+    const existingIds = new Set(nodes.map(n => n.id));
+    const existingNames = new Set(nodes.map(n => n.data?.label));
+    let id;
+    do {
+      id = `api_node_${Math.random().toString(36).substring(2, 7)}`;
+    } while (existingIds.has(id));
+    const baseName = template.name || config.label || 'API Node';
+    const label = existingNames.has(baseName) ? `${baseName} (Copy)` : baseName;
     
     // Position intelligently
     const lastNode = nodes[nodes.length - 1];
@@ -263,7 +270,7 @@ export default function APIsPage() {
         ...config,
         id,
         type: 'api_node',
-        label: template.name || config.label || 'API Node'
+        label
       }
     };
 

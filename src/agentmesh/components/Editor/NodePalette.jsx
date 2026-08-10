@@ -75,7 +75,6 @@ export const NODE_TYPES = [
   { type: 'set_data',   icon: FiEdit,      label: 'Set Message',    desc: 'Saves static values or sets custom messages in context.', detailedDesc: 'Directly injects or updates key-value pairs in the workflow state context, useful for initializing variables or formatting static response text.', bg: '#F5F3FF', color: '#7C3AED', category: 'Data & Storage' },
   { type: 'output_parser', icon: FiFilter,  label: 'Output Parser',  desc: 'Repairs and validates malformed JSON text outputs.', detailedDesc: 'Analyzes raw agent text outputs, extracts JSON strings, repairs syntax errors, and validates schema format to ensure robust structured data downstream.', bg: '#FEF3C7', color: '#D97706', category: 'Data & Storage' },
   { type: 'payload_builder', icon: FiBox,  label: 'Payload Builder',  desc: 'Constructs structured JSON objects from templates.', detailedDesc: 'Builds custom JSON payloads by mapping keys and values from context variables, preparing data to be sent to external webhooks or APIs.', bg: '#E0F2FE', color: '#0369A1', category: 'Data & Storage' },
-  { type: 'pattern_extract', icon: FiSearch, label: 'Pattern Extractor', desc: 'Extracts specific values using Regex or keywords.', detailedDesc: 'Searches text data for specific patterns (like dates, invoice numbers, or amounts) using regular expressions or keyword match lists and saves them as structured variables.', bg: '#FDF2F8', color: '#DB2777', category: 'Data & Storage' },
   { type: 'db_node',    icon: FiDatabase,  label: 'Database',       desc: 'Reads or writes data to SQL (Postgres, SQLite) or NoSQL (MongoDB) databases.', detailedDesc: 'Directly executes queries, updates, inserts, or deletes in PostgreSQL, SQLite, or MongoDB using connection strings and parameterized inputs.', bg: '#D1FAE5', color: '#065F46', category: 'Data & Storage' },
   { type: 'json_transform', icon: FiCode,   label: 'JSON Transform', desc: 'Reshapes JSON data using JMESPath queries or Python.', detailedDesc: 'Applies JMESPath query syntax or lightweight Python code to filter, reshape, map, and transform complex JSON payloads into the desired format.', bg: '#F5F3FF', color: '#7C3AED', category: 'Data & Storage' },
   { type: 'code_execution', icon: FiCode,   label: 'Code',         desc: 'Executes custom Python scripts for data processing and transformation.', detailedDesc: 'Write and run Python code directly in your workflow. Full multi-line script support with sandboxed execution. Available variables: input_data, input_items, context. Set the result variable to produce output.', bg: '#F1F5F9', color: '#475569', category: 'Data & Storage' },
@@ -110,7 +109,17 @@ function getNodeDetails(type) {
   return found || { icon: FiLayers, label: type, desc: 'Custom configured node', bg: '#E0F2FE', color: '#0EA5E9' };
 }
 
-const instantiateGroupTemplate = (config, newPosition) => {
+// Returns a label that doesn't collide with any label already in `existing`.
+// e.g. base "X" -> "X", then "X (Copy)", then "X (Copy 2)", "X (Copy 3)"...
+function uniqueLabel(base, existing) {
+  if (!existing.has(base)) return base;
+  if (!existing.has(`${base} (Copy)`)) return `${base} (Copy)`;
+  let n = 2;
+  while (existing.has(`${base} (Copy ${n})`)) n += 1;
+  return `${base} (Copy ${n})`;
+}
+
+const instantiateGroupTemplate = (config, newPosition, existingIds = new Set()) => {
   const originalPos = config.position || { x: 0, y: 0 };
   const dx = newPosition.x - originalPos.x;
   const dy = newPosition.y - originalPos.y;
@@ -119,8 +128,12 @@ const instantiateGroupTemplate = (config, newPosition) => {
   const internalNodes = (config.internal_nodes || []).map(n => {
     const oldId = n.id;
     const type = n.data?.type || 'node';
-    const newId = `${type}_${Math.random().toString(36).substring(2, 7)}`;
+    let newId;
+    do {
+      newId = `${type}_${Math.random().toString(36).substring(2, 7)}`;
+    } while (existingIds.has(newId));
     idMap[oldId] = newId;
+    existingIds.add(newId);
 
     return {
       ...n,
@@ -172,6 +185,7 @@ export default function NodePalette({ onClose }) {
 
   const isFetchingRef = useRef(false);
   const tooltipRef = useRef(null);
+  const usedLabelsRef = useRef(new Set());
 
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -392,10 +406,20 @@ export default function NodePalette({ onClose }) {
         : { x: 200 + Math.random() * 300, y: 100 + Math.random() * 200 };
 
       if (type === 'group') {
-        config = instantiateGroupTemplate(config, position);
+        config = instantiateGroupTemplate(config, position, new Set(nodes.map(n => n.id)));
       }
 
-      const id = `${type}_${Math.random().toString(36).substring(2, 7)}`;
+      const existingIds = new Set(nodes.map(n => n.id));
+      const existingNames = new Set(nodes.map(n => n.data?.label));
+      // Merge session-created labels so rapid re-drops of the same template
+      // (before the store re-renders) still get a unique " (Copy N)" suffix.
+      for (const used of usedLabelsRef.current) existingNames.add(used);
+      let id;
+      do {
+        id = `${type}_${Math.random().toString(36).substring(2, 7)}`;
+      } while (existingIds.has(id));
+      const label = uniqueLabel(item.name || config.label || type, existingNames);
+      usedLabelsRef.current.add(label);
       const newNode = {
         id,
         type: 'agentNode',
@@ -404,7 +428,7 @@ export default function NodePalette({ onClose }) {
           ...config,
           id,
           type,
-          label: item.name || config.label || item.name
+          label
         }
       };
       setNodesDirty([...nodes, newNode]);
@@ -413,11 +437,15 @@ export default function NodePalette({ onClose }) {
       const config = item.config || {};
       const id = addNode('api_node', { x: 200 + Math.random() * 300, y: 100 + Math.random() * 200 });
       if (id) {
+        const existingNames = new Set(nodes.map(n => n.data?.label));
+        for (const used of usedLabelsRef.current) existingNames.add(used);
+        const label = uniqueLabel(item.name || config.label || 'API Node', existingNames);
+        usedLabelsRef.current.add(label);
         setNodeData(id, {
           ...config,
           id,
           type: 'api_node',
-          label: item.name || config.label || 'API Node'
+          label
         });
       }
       onClose?.();
@@ -455,11 +483,15 @@ export default function NodePalette({ onClose }) {
     }
     const id = addNode(type, { x: 200 + Math.random() * 300, y: 100 + Math.random() * 200 });
     if (id) {
+      const existingNames = new Set(nodes.map(n => n.data?.label));
+      for (const used of usedLabelsRef.current) existingNames.add(used);
+      const label = uniqueLabel(agentTypeToSelect.name || config.label || type, existingNames);
+      usedLabelsRef.current.add(label);
       setNodeData(id, {
         ...config,
         id,
         type,
-        label: agentTypeToSelect.name || config.label || type
+        label
       });
     }
     setAgentTypeToSelect(null);

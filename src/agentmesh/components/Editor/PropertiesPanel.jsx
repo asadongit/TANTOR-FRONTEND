@@ -119,9 +119,6 @@ const LAZY_CONFIGS = {
   vision_intelligence: lazy(
     () => import("./propertypanelModules/VisionIntelligenceConfig")
   ),
-  pattern_extract: lazy(
-    () => import("./propertypanelModules/PatternExtractConfig"),
-  ),
   db_node: lazy(() => import("./propertypanelModules/DbNodeConfig")),
   pii_gate_node: lazy(() => import("./propertypanelModules/PiiGateNodeConfig")),
   ingestion_router: lazy(
@@ -582,7 +579,6 @@ export default function PropertiesPanel() {
     file_store: FiFileText,
     webhook_response: FiShare2,
     error_router: FiAlertTriangle,
-    pattern_extract: FiSearch,
     db_node: FiBox,
     json_transform: FiCode,
     condition: FiHelpCircle,

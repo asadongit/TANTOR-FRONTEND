@@ -68,7 +68,6 @@ const NODE_CONFIGS = {
   aggregator: { bg: '#F0F9FF', color: '#0EA5E9', icon: FiLayers, round: 14 },
   webhook_response: { bg: '#E0F2FE', color: '#0369A1', icon: FiShare2, round: 14 },
   debug_node:    { bg: '#F1F5F9', color: '#475569', icon: FiActivity, round: 14 },
-  pattern_extract: { bg: '#FDF2F8', color: '#DB2777', icon: FiSearch, round: 14 },
   cd_postprocessor: { bg: '#F5F3FF', color: '#6B21A8', icon: FiLayers, round: 14 },
   cd_document_router: { bg: '#ECFDF5', color: '#059669', icon: FiGitMerge, round: 14 },
   ingestion_router: { bg: '#C9F5E0', color: '#065F46', icon: FiLayers, round: 14 },

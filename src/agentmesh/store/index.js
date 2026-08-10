@@ -2,6 +2,31 @@ import { create } from 'zustand';
 // ─── Constants & Utils ──────────────────────────────────────────────────────────
 const genId = () => Math.random().toString(36).substring(2, 7);
 
+// Generate a node ID guaranteed not to collide with existing node IDs.
+const genUniqueNodeId = (type, existingIds) => {
+  let id;
+  do {
+    id = `${type}_${genId()}`;
+  } while (existingIds.has(id));
+  return id;
+};
+
+// Type-based unique name: set_data, set_data_1, set_data_2, ...
+const genUniqueTypeName = (type, existingNames) => {
+  if (!existingNames.has(type)) return type;
+  let n = 1;
+  while (existingNames.has(`${type}_${n}`)) n++;
+  return `${type}_${n}`;
+};
+
+// Ensure a duplicated node's label stays unique (X (Copy), X (Copy) 1, ...).
+const genUniqueCopyName = (baseCopy, existingNames) => {
+  if (!existingNames.has(baseCopy)) return baseCopy;
+  let n = 1;
+  while (existingNames.has(`${baseCopy} ${n}`)) n++;
+  return `${baseCopy} ${n}`;
+};
+
 // Native deep-clone for history snapshots — 3-5x faster than the legacy
 // JSON.parse(JSON.stringify(...)) double-encode path in modern engines (F5).
 // Falls back to the JSON technique where structuredClone is unavailable.
@@ -43,7 +68,6 @@ const NODE_DEFAULTS = {
   ocr_node: { label: 'OCR Node', ocr_input_key: '', ocr_prompt: 'Please perform OCR on this document and return the full text accurately.', llm: { provider: 'groq', model: 'llama-3.2-90b-vision-preview', temperature: 0 }, interrupt_before: false, interrupt_after: false },
   multi_file_ingestion: { label: 'Multi-File Ingestion', allowed_extensions: ['pdf', 'jpg', 'jpeg', 'png', 'webp'], max_file_size_mb: 25.0, max_files_count: 10, strategy_rules: [], interrupt_before: true, interrupt_after: false },
   signature_stamp_extractor: { label: 'Signature & Stamp Extractor', extractor_input_key: 'latest_file_path', extractor_output_key: 'extracted_elements', llm: { provider: 'groq', model: 'meta-llama/llama-4-scout-17b-16e-instruct', temperature: 0 }, interrupt_before: false, interrupt_after: false },
-  pattern_extract: { label: 'Pattern Extractor', extract_mode: 'identifier', extract_patterns: [], extract_input_key: 'flattened_json', extract_output_key: 'extracted_identifiers', identifiers_input_key: 'extracted_identifiers' },
   api_node: { label: 'API Request', method: 'GET', url: '', headers: {}, params: {}, body: '', auth_method: 'none', api_auth_config: {}, use_curl: false, curl_command: '' },
   vector_ingestion: { label: 'Vector Ingestion', vector_store: 'chroma', vector_collection: 'default', chunk_size: 1000, chunk_overlap: 100, chunking_strategy: 'recursive', ingestion_source_key: 'latest_ocr_output' },
   classification: { label: 'Classification Agent', classification_classes: [{ class: 'Class A', description: 'Description for Class A' }], classification_summary: false, classification_engine: 'llm', classification_input_field: '', classification_input_key: '', llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 } },
@@ -568,20 +592,27 @@ export const useWorkflowStore = create((set, get) => ({
   },
 
   addNode: (type, position) => {
-    let id = `${type}_${genId()}`;
+    const existingNodes = get().nodes;
+    const existingIds = new Set(existingNodes.map(n => n.id));
+    const existingNames = new Set(existingNodes.map(n => n.data?.label));
+
+    let id;
     if (type === 'start') id = '__start__';
-    if (type === 'end') id = '__end__';
+    else if (type === 'end') id = '__end__';
+    else id = genUniqueNodeId(type, existingIds);
 
     // Prevent duplicates of start/end (check by ID and by Type)
     const isSystemNode = type === 'start' || type === 'end';
-    if (get().nodes.some(n => n.id === id || (isSystemNode && n.data?.type === type))) return id;
+    if (existingNodes.some(n => n.id === id || (isSystemNode && n.data?.type === type))) return id;
 
     const isCardboard = type === 'cardboard';
+    const defaults = NODE_DEFAULTS[type] || { label: type };
+    const label = isSystemNode ? (defaults.label || type) : genUniqueTypeName(type, existingNames);
     const newNode = {
       id,
       type: isCardboard ? 'cardboardNode' : 'agentNode',
       position,
-      data: { id, type, ...(NODE_DEFAULTS[type] || { label: type }) },
+      data: { id, type, ...defaults, label },
       ...(isCardboard ? {
         style: { width: 400, height: 300 },
         zIndex: -10
@@ -607,12 +638,16 @@ export const useWorkflowStore = create((set, get) => ({
     if (!node || node.id === '__start__' || node.id === '__end__' || node.data?.type === 'group') return;
 
     const type = node.data?.type || 'node';
-    const newId = `${type}_${genId()}`;
+    const existingNodes = get().nodes;
+    const existingIds = new Set(existingNodes.map(n => n.id));
+    const existingNames = new Set(existingNodes.map(n => n.data?.label));
+    const newId = genUniqueNodeId(type, existingIds);
+    const label = genUniqueCopyName(`${node.data.label || type} (Copy)`, existingNames);
     const newNode = {
       ...node,
       id: newId,
       position: { x: node.position.x + 40, y: node.position.y + 40 },
-      data: { ...node.data, id: newId, label: `${node.data.label} (Copy)` },
+      data: { ...node.data, id: newId, label },
       selected: false,
     };
 
@@ -641,19 +676,24 @@ export const useWorkflowStore = create((set, get) => ({
     get().takeHistorySnapshot();
     set((s) => {
       const newNodes = [];
-      
+      const usedIds = new Set(s.nodes.map(n => n.id));
+      const usedNames = new Set(s.nodes.map(n => n.data?.label));
+
       idsToDuplicate.forEach((nodeId) => {
         const node = s.nodes.find((n) => n.id === nodeId);
         if (!node) return;
         
         const type = node.data?.type || 'node';
-        const newId = `${type}_${genId()}`;
+        const newId = genUniqueNodeId(type, usedIds);
+        const label = genUniqueCopyName(`${node.data.label || type} (Copy)`, usedNames);
+        usedIds.add(newId);
+        usedNames.add(label);
         
         const newNode = {
           ...node,
           id: newId,
           position: { x: node.position.x + 40, y: node.position.y + 40 },
-          data: { ...node.data, id: newId, label: `${node.data.label || node.id} (Copy)` },
+          data: { ...node.data, id: newId, label },
           selected: false,
         };
         newNodes.push(newNode);
@@ -1086,7 +1126,6 @@ export const useWorkflowStore = create((set, get) => ({
     ocr_node: ['ocr_input_key', 'ocr_prompt', 'ocr_engine', 'ocr_standard_model', 'llm', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail', 'docbot_url', 'docbot_method', 'ocr_fallback_engine', 'ocr_text_layer_min_chars', 'ocr_max_pages', 'ocr_on_max_pages'],
     multi_file_ingestion: ['allowed_extensions', 'max_file_size_mb', 'max_files_count', 'strategy_rules', 'interrupt_before', 'interrupt_after', 'hitl_actions', 'on_error'],
     signature_stamp_extractor: ['extractor_input_key', 'extractor_output_key', 'llm', 'interrupt_before', 'interrupt_after'],
-    pattern_extract: ['extract_mode', 'extract_patterns', 'extract_input_key', 'extract_output_key', 'identifiers_input_key'],
     api_node: ['api_method', 'api_url', 'api_headers', 'api_params', 'api_body', 'api_auth_type', 'api_auth_config', 'api_response_format', 'connection_id', 'api_protocol', 'graphql_query', 'use_curl', 'curl_command', 'on_error', 'continue_on_fail', 'api_description', 'api_enabled', 'api_execution_mode', 'additional_apis'],
     vector_ingestion: ['vector_store', 'vector_collection', 'chunk_size', 'chunk_overlap', 'chunking_strategy', 'ingestion_source_key'],
     classification: ['classification_classes', 'classification_summary', 'classification_engine', 'classification_input_field', 'classification_input_key', 'classification_output_key', 'classification_extract_identifiers', 'llm', 'interrupt_before', 'interrupt_after'],
