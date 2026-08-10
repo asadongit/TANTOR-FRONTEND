@@ -476,7 +476,6 @@ export default function Navbar() {
   const pageTitles = {
     canvas: null,
     workflows: 'Workflows',
-    logs: 'Logs',
     library: 'Library',
     rag: 'Knowledge Base',
     observability: 'Observability',

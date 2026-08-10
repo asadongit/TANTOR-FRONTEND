@@ -1398,7 +1398,7 @@ export const useWorkflowStore = create((set, get) => ({
 
 // ─── UI Store ─────────────────────────────────────────────────────────────────
 export const useUIStore = create((set) => ({
-  activePage: 'dashboard',   // dashboard | canvas | workflows | logs | tools | rag
+  activePage: 'dashboard',   // dashboard | canvas | workflows | tools | rag
   selectedNodeId: null,
   selectedEdgeId: null,
   panelOpen: false,
