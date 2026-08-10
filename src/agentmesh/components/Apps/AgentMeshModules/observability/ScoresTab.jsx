@@ -165,7 +165,7 @@ const SCORE_COLUMNS = [
     key: 'traceName',
     label: 'Trace Name',
     w: 220,
-    hint: 'The name of the trace this score is attached to. Click to view trace in Traces tab.',
+    hint: 'The workflow trace name evaluated by this score metric. Click to view in Traces tab.',
     render: (s, ctx) => (
       <span
         onClick={(e) => {
@@ -194,7 +194,7 @@ const SCORE_COLUMNS = [
     key: 'traceId',
     label: 'Trace',
     w: 150,
-    hint: 'The trace this score is attached to. Click to view in Traces tab.',
+    hint: 'Unique ID of the trace evaluated. Click to open trace in Traces tab.',
     render: (s, ctx) => (
       <IdCell
         value={s.traceId}
@@ -208,13 +208,13 @@ const SCORE_COLUMNS = [
       />
     )
   },
-  { key: 'observationId', label: 'Observation', w: 160, hint: 'The observation this score is attached to, if any. Click to view full ID.', render: (s, ctx) => <IdCell value={s.observationId} payload={() => ctx.openContent && ctx.openContent(idPayload(s, 'Observation ID', s.observationId))} /> },
-  { key: 'experimentId', label: 'Experiment', w: 150, hint: 'The dataset run (experiment) this score is attached to, if any. Click to view full ID.', render: (s, ctx) => <IdCell value={s.experimentId} payload={() => ctx.openContent && ctx.openContent(idPayload(s, 'Experiment ID', s.experimentId))} /> },
+  { key: 'observationId', label: 'Observation', w: 160, hint: 'Specific internal sub-step ID evaluated by this score, if applicable.', render: (s, ctx) => <IdCell value={s.observationId} payload={() => ctx.openContent && ctx.openContent(idPayload(s, 'Observation ID', s.observationId))} /> },
+  { key: 'experimentId', label: 'Experiment', w: 150, hint: 'Dataset benchmark or experiment ID attached to this score.', render: (s, ctx) => <IdCell value={s.experimentId} payload={() => ctx.openContent && ctx.openContent(idPayload(s, 'Experiment ID', s.experimentId))} /> },
   {
     key: 'authorUserId',
     label: 'User',
     w: 130,
-    hint: 'The user who created or owns this score. Click to view user sessions in Sessions tab.',
+    hint: 'User ID of the human evaluator or system process that created this score.',
     render: (s, ctx) => {
       const uid = s.authorUserId || s.userId;
       if (!uid) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
@@ -243,17 +243,17 @@ const SCORE_COLUMNS = [
       );
     }
   },
-  { key: 'timestamp', label: 'Timestamp', w: 140, render: (s) => <span>{fmtTime(s.timestamp)}</span> },
-  { key: 'source', label: 'Source', w: 120, hint: 'Where the score came from — ANNOTATION, API, or EVAL.', render: (s) => (
+  { key: 'timestamp', label: 'Timestamp', w: 140, hint: 'Date and time when the score was evaluated.', render: (s) => <span>{fmtTime(s.timestamp)}</span> },
+  { key: 'source', label: 'Source', w: 120, hint: 'Score origin: ANNOTATION (human reviewer), API (custom client code), or EVAL (automated AI evaluator).', render: (s) => (
     s.source ? <PillBadge label={s.source} style={SOURCE_STYLE[s.source] || SOURCE_STYLE.ANNOTATION} /> : '—'
   ) },
-  { key: 'name', label: 'Name', w: 140, render: (s) => <span style={{ fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name || '—'}</span> },
-  { key: 'dataType', label: 'Data Type', w: 120, hint: 'NUMERIC, BOOLEAN, CORRECTION, CATEGORICAL, or TEXT.', render: (s) => (
+  { key: 'name', label: 'Name', w: 140, hint: 'Name of the metric evaluated (e.g. Accuracy, Tone, Groundedness, Toxicity).', render: (s) => <span style={{ fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name || '—'}</span> },
+  { key: 'dataType', label: 'Data Type', w: 120, hint: 'Data type format of the score (NUMERIC, BOOLEAN, CATEGORICAL, TEXT, or CORRECTION).', render: (s) => (
     s.dataType ? <PillBadge label={s.dataType} style={DATA_TYPE_STYLE[s.dataType] || DATA_TYPE_STYLE.CATEGORICAL} /> : '—'
   ) },
-  { key: 'value', label: 'Value', w: 170, hint: 'Score value. Click to inspect JSON.', render: (s, ctx) => <ScoreValue dataType={s.dataType} value={s.value} onOpen={() => ctx.openContent && ctx.openContent(valuePayload(s))} /> },
-  { key: 'metadata', label: 'Metadata', w: 140, hint: 'Metadata key-value pairs. Click to inspect.', render: (s, ctx) => <PreviewCell value={s.metadata} onOpen={() => ctx.openContent && ctx.openContent(metadataPayload(s))} /> },
-  { key: 'comment', label: 'Comment', w: 170, hint: 'Free-text comment. Click to inspect.', render: (s, ctx) => <PreviewCell value={s.comment} onOpen={() => ctx.openContent && ctx.openContent(commentPayload(s))} /> },
+  { key: 'value', label: 'Value', w: 170, hint: 'Actual score value assigned (e.g., numeric rating or True/False pass status). Click to inspect.', render: (s, ctx) => <ScoreValue dataType={s.dataType} value={s.value} onOpen={() => ctx.openContent && ctx.openContent(valuePayload(s))} /> },
+  { key: 'metadata', label: 'Metadata', w: 140, hint: 'Additional metadata attributes associated with this evaluation score. Click to inspect.', render: (s, ctx) => <PreviewCell value={s.metadata} onOpen={() => ctx.openContent && ctx.openContent(metadataPayload(s))} /> },
+  { key: 'comment', label: 'Comment', w: 170, hint: 'Free-text reviewer notes or feedback comments explaining the score. Click to inspect.', render: (s, ctx) => <PreviewCell value={s.comment} onOpen={() => ctx.openContent && ctx.openContent(commentPayload(s))} /> },
 ];
 
 const SCORE_MINWIDTH = gridMinWidth(SCORE_COLUMNS);
@@ -282,7 +282,7 @@ export default function ScoresTab({ range, onSelectTrace, onSelectUser }) {
 
   useEffect(() => {
     let active = true;
-    getObservabilityFacets({ fromTimestamp: range.fromTimestamp, toTimestamp: range.toTimestamp, entity: 'scores' })
+    getObservabilityFacets({ fromTimestamp: range?.fromTimestamp, toTimestamp: range?.toTimestamp, entity: 'scores' })
       .then((f) => { if (active) setFacets(f); })
       .catch(() => { if (active) setFacets({}); });
     return () => { active = false; };
@@ -300,8 +300,8 @@ export default function ScoresTab({ range, onSelectTrace, onSelectUser }) {
       else if (valueOp === 'lte' && v1 != null) valueParams.valueMax = v1;
       else if (valueOp === 'range' && v1 != null && v2 != null) { valueParams.valueMin = v1; valueParams.valueMax = v2; }
       const res = await getObservabilityScores({
-        fromTimestamp: range.fromTimestamp,
-        toTimestamp: range.toTimestamp,
+        fromTimestamp: range?.fromTimestamp,
+        toTimestamp: range?.toTimestamp,
         limit,
         cursor: pageCursor || undefined,
         name: name || undefined,

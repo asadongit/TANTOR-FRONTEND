@@ -198,10 +198,10 @@ export default function ModelLatencyChart({ range }) {
             <FiActivity size={16} />
           </div>
           <div>
-            <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0F172A', letterSpacing: '-0.01em' }}>Model latencies</div>
-            <div style={{ fontSize: 12, color: '#64748B' }}>Latencies per LLM generation</div>
+            <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0F172A', letterSpacing: '-0.01em' }}>Model Latency Trends</div>
+            <div style={{ fontSize: 12, color: '#64748B' }}>Daily response speed trend across AI models</div>
           </div>
-          <InfoTooltip text="Daily latency percentiles per model from the Langfuse Metrics v2 observations view (latency is in milliseconds). Switch percentile tabs or filter models with the dropdown." />
+          <InfoTooltip text="Tracks response speed trends across different AI provider models (e.g. OpenAI vs Anthropic) over time. Use percentile tabs to compare median speed (P50) vs slow response thresholds (P95/P99)." />
         </div>
         <ModelFilterDropdown
           models={allModels}

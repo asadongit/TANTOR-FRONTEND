@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { FiCpu, FiServer, FiHardDrive, FiAlertTriangle, FiActivity, FiArrowUp, FiArrowDown, FiClock, FiRefreshCw, FiTerminal } from 'react-icons/fi';
 import { getObservabilitySystemMetrics } from '../../../../api/agentmesh';
+import { InfoTooltip } from './observabilityShared';
 
 const BADGE_THEMES = {
   '#3b82f6': { bg: '#EFF6FF', icon: '#2563EB' },
@@ -45,6 +46,7 @@ function SystemMetricCard({ icon: Icon, label, value, sub, accent, hint, extra }
         }}>
           <Icon size={18} />
         </div>
+        {hint && <InfoTooltip text={hint} />}
       </div>
       <div>
         <div style={{ fontSize: 12, fontWeight: 600, color: '#64748B', letterSpacing: '0.01em', marginBottom: 4 }}>
@@ -56,7 +58,6 @@ function SystemMetricCard({ icon: Icon, label, value, sub, accent, hint, extra }
       </div>
       {sub && <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 500 }}>{sub}</div>}
       {extra}
-      {hint && <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>{hint}</div>}
     </div>
   );
 }

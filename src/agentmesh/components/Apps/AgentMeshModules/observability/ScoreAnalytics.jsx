@@ -44,8 +44,8 @@ export default function ScoreAnalytics({ range }) {
     setError(null);
     try {
       const res = await getObservabilityScoreMetrics({
-        fromTimestamp: range.fromTimestamp,
-        toTimestamp: range.toTimestamp,
+        fromTimestamp: range?.fromTimestamp,
+        toTimestamp: range?.toTimestamp,
         granularity: 'day',
         limit: TREND_LIMIT,
         dataType: dataType || undefined,

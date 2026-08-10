@@ -58,65 +58,65 @@ const TRACE_COLUMNS = [
       <FiChevronDown size={15} />
     </motion.div>
   ) },
-  { key: 'level', label: 'Level', w: 70, hint: 'Highest-severity level observed anywhere in the trace.', render: (t) => (
+  { key: 'level', label: 'Level', w: 70, hint: 'Highest status severity (DEFAULT, WARNING, ERROR) recorded across any step in this trace.', render: (t) => (
     <span style={{ fontSize: 11.5, fontWeight: 600, color: t.level === 'ERROR' ? '#E11D48' : t.level === 'WARNING' ? '#D97706' : '#64748B' }}>
       {t.level || 'DEFAULT'}
     </span>
   ) },
-  { key: 'name', label: 'Workflow', w: 220, hint: 'Workflow executed for this trace.', render: (t) => (
+  { key: 'name', label: 'Workflow', w: 220, hint: 'The name of the automated AI workflow or process executed during this run.', render: (t) => (
     <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.workflowName || t.name || '(unnamed trace)'}</span>
       {t.level === 'ERROR' && <FiAlertTriangle size={13} color="#E11D48" style={{ flexShrink: 0 }} />}
     </span>
   ) },
-  { key: 'type', label: 'Type', w: 90, render: (t) => (
+  { key: 'type', label: 'Type', w: 90, hint: 'Root execution type (SPAN = logic container, GENERATION = AI prompt step, CHAIN = multi-step flow).', render: (t) => (
     <span style={{ fontSize: 11.5, fontWeight: 500, color: '#475569' }}>
       {t.type || 'SPAN'}
     </span>
   ) },
-  { key: 'id', label: 'ID', w: 120, render: (t) => <span style={monoCell} title={t.traceId}>{t.traceId ? t.traceId.slice(0, 12) + '…' : '—'}</span> },
-  { key: 'timestamp', label: 'Timestamp', w: 130, render: (t) => <span>{fmtTime(t.startTime)}</span> },
-  { key: 'environment', label: 'Environment', w: 110, render: (t) => <span title={t.environment}>{t.environment || '—'}</span> },
-  { key: 'userId', label: 'User ID', w: 100, render: (t) => <span title={t.userId} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.userId || '—'}</span> },
-  { key: 'sessionId', label: 'Session ID', w: 130, render: (t) => <span title={t.sessionId} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.sessionId || '—'}</span> },
-  { key: 'input', label: 'Input', w: 150, hint: 'The trace input payload (raw content from Langfuse, often JSON). Click to inspect.', render: (t, ctx) => <PreviewCell value={t.input} onOpen={() => ctx.openContent && ctx.openContent(ioPayload(t))} /> },
-  { key: 'output', label: 'Output', w: 150, hint: 'The trace output payload (raw content from Langfuse, often JSON). Click to inspect.', render: (t, ctx) => <PreviewCell value={t.output} onOpen={() => ctx.openContent && ctx.openContent(ioPayload(t))} /> },
-  { key: 'metadata', label: 'Metadata', w: 120, hint: 'Trace metadata key-value pairs. Click to inspect.', render: (t, ctx) => <PreviewCell value={t.metadata} onOpen={() => ctx.openContent && ctx.openContent(metadataPayload(t))} /> },
-  { key: 'tags', label: 'Tags', w: 130, hint: 'Tags attached to this trace.', render: (t) => <TagChips tags={t.tags} /> },
-  { key: 'version', label: 'Version', w: 80, render: (t) => <span>{t.version || '—'}</span> },
-  { key: 'latency', label: 'Duration', w: 90, hint: 'Total execution time, from earliest observation start to latest observation end.', render: (t) => <span>{fmtTimeShortToSec(t.durationSec ?? t.latencySec)}</span> },
-  { key: 'totalTokens', label: 'Tokens', w: 80, hint: 'Total tokens across all LLM generations of the trace.', render: (t) => <span title={`Input ${fmtInt(t.inputTokens)} / Output ${fmtInt(t.outputTokens)}`}>{fmtNumber(t.totalTokens)}</span> },
-  { key: 'inputTokens', label: 'In Tokens', w: 80, render: (t) => <span>{fmtInt(t.inputTokens)}</span> },
-  { key: 'outputTokens', label: 'Out Tokens', w: 80, render: (t) => <span>{fmtInt(t.outputTokens)}</span> },
-  { key: 'totalCost', label: 'Cost', w: 85, hint: 'Estimated LLM spend. $0 until model pricing is configured.', render: (t) => <span>{fmtUsd(t.totalCost)}</span> },
-  { key: 'inputCost', label: 'In Cost', w: 85, render: (t) => <span>{fmtUsd(t.inputCost)}</span> },
-  { key: 'outputCost', label: 'Out Cost', w: 85, render: (t) => <span>{fmtUsd(t.outputCost)}</span> },
-  { key: 'errors', label: 'Errors', w: 60, hint: 'Number of ERROR-level observations in the trace.', render: (t) => <span style={{ color: (t.levelCounts?.ERROR || 0) > 0 ? 'var(--red)' : 'var(--text-secondary)' }}>{t.levelCounts?.ERROR || 0}</span> },
-  { key: 'warnings', label: 'Warnings', w: 70, render: (t) => <span style={{ color: (t.levelCounts?.WARNING || 0) > 0 ? '#d97706' : 'var(--text-secondary)' }}>{t.levelCounts?.WARNING || 0}</span> },
+  { key: 'id', label: 'ID', w: 120, hint: 'Unique trace identifier code assigned by the telemetry system.', render: (t) => <span style={monoCell} title={t.traceId}>{t.traceId ? t.traceId.slice(0, 12) + '…' : '—'}</span> },
+  { key: 'timestamp', label: 'Timestamp', w: 130, hint: 'Date and time when the workflow execution began.', render: (t) => <span>{fmtTime(t.startTime)}</span> },
+  { key: 'environment', label: 'Environment', w: 110, hint: 'Deployment environment where this run occurred (e.g. Production, Staging).', render: (t) => <span title={t.environment}>{t.environment || '—'}</span> },
+  { key: 'userId', label: 'User ID', w: 100, hint: 'The user account or actor attributed to this workflow run.', render: (t) => <span title={t.userId} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.userId || '—'}</span> },
+  { key: 'sessionId', label: 'Session ID', w: 130, hint: 'The conversation session ID grouping related user requests together.', render: (t) => <span title={t.sessionId} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.sessionId || '—'}</span> },
+  { key: 'input', label: 'Input', w: 150, hint: 'Initial prompt or payload supplied to the workflow. Click to expand full text.', render: (t, ctx) => <PreviewCell value={t.input} onOpen={() => ctx.openContent && ctx.openContent(ioPayload(t))} /> },
+  { key: 'output', label: 'Output', w: 150, hint: 'Final answer or data produced by the workflow. Click to expand full text.', render: (t, ctx) => <PreviewCell value={t.output} onOpen={() => ctx.openContent && ctx.openContent(ioPayload(t))} /> },
+  { key: 'metadata', label: 'Metadata', w: 120, hint: 'Additional key-value metadata attached to this run. Click to view.', render: (t, ctx) => <PreviewCell value={t.metadata} onOpen={() => ctx.openContent && ctx.openContent(metadataPayload(t))} /> },
+  { key: 'tags', label: 'Tags', w: 130, hint: 'Categorization tags assigned to filter and organize traces.', render: (t) => <TagChips tags={t.tags} /> },
+  { key: 'version', label: 'Version', w: 80, hint: 'Workflow code or prompt version string.', render: (t) => <span>{t.version || '—'}</span> },
+  { key: 'latency', label: 'Duration', w: 90, hint: 'Total time taken to complete the entire trace from start to finish.', render: (t) => <span>{fmtTimeShortToSec(t.durationSec ?? t.latencySec)}</span> },
+  { key: 'totalTokens', label: 'Tokens', w: 80, hint: 'Total text units (input prompts + generated output) consumed across all LLM steps in this trace.', render: (t) => <span title={`Input ${fmtInt(t.inputTokens)} / Output ${fmtInt(t.outputTokens)}`}>{fmtNumber(t.totalTokens)}</span> },
+  { key: 'inputTokens', label: 'In Tokens', w: 80, hint: 'Tokens sent in prompt & context to AI models.', render: (t) => <span>{fmtInt(t.inputTokens)}</span> },
+  { key: 'outputTokens', label: 'Out Tokens', w: 80, hint: 'Tokens generated by AI models in response.', render: (t) => <span>{fmtInt(t.outputTokens)}</span> },
+  { key: 'totalCost', label: 'Cost', w: 85, hint: 'Calculated API spend in USD based on token usage and model prices.', render: (t) => <span>{fmtUsd(t.totalCost)}</span> },
+  { key: 'inputCost', label: 'In Cost', w: 85, hint: 'Calculated spend for input prompt tokens.', render: (t) => <span>{fmtUsd(t.inputCost)}</span> },
+  { key: 'outputCost', label: 'Out Cost', w: 85, hint: 'Calculated spend for generated output tokens.', render: (t) => <span>{fmtUsd(t.outputCost)}</span> },
+  { key: 'errors', label: 'Errors', w: 60, hint: 'Number of individual steps inside this trace that failed with an error.', render: (t) => <span style={{ color: (t.levelCounts?.ERROR || 0) > 0 ? 'var(--red)' : 'var(--text-secondary)' }}>{t.levelCounts?.ERROR || 0}</span> },
+  { key: 'warnings', label: 'Warnings', w: 70, hint: 'Number of warning alerts recorded during execution.', render: (t) => <span style={{ color: (t.levelCounts?.WARNING || 0) > 0 ? '#d97706' : 'var(--text-secondary)' }}>{t.levelCounts?.WARNING || 0}</span> },
 ];
 
 const TRACE_MINWIDTH = gridMinWidth(TRACE_COLUMNS);
 
 export const OBS_COLUMNS = [
-  { key: 'time', label: 'Time', w: 85, render: (o) => <span style={{ color: '#64748B' }}>{fmtTimeShort(o.startTime)}</span> },
-  { key: 'name', label: 'Observation', w: 'minmax(240px, 1fr)', hint: 'Observation name & hierarchy tree', render: (o, depth) => (
+  { key: 'time', label: 'Time', w: 85, hint: 'Timestamp when this specific observation step started.', render: (o) => <span style={{ color: '#64748B' }}>{fmtTimeShort(o.startTime)}</span> },
+  { key: 'name', label: 'Observation', w: 'minmax(240px, 1fr)', hint: 'Observation name and step position in the tree (e.g. LLM prompt, database lookup, tool call).', render: (o, depth) => (
     <span style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: depth * 18, overflow: 'hidden' }}>
       <span style={{ color: '#94A3B8', fontSize: 10, flexShrink: 0 }}>{depth > 0 ? '└' : ''}</span>
       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#0F172A', fontWeight: 600 }}>{o.name || '(unnamed)'}</span>
     </span>
   ) },
-  { key: 'type', label: 'Type', w: 90, render: (o) => <TypeBadge type={o.type} /> },
-  { key: 'level', label: 'Level', w: 75, render: (o) => <LevelBadge level={o.level} /> },
-  { key: 'model', label: 'Model', w: 120, render: (o) => <span title={o.modelId} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#475569' }}>{o.modelId || (o.type === 'GENERATION' ? o.name : '—')}</span> },
-  { key: 'latency', label: 'Duration', w: 85, align: 'center', render: (o) => <span style={{ color: '#475569', textAlign: 'center', display: 'block' }}>{fmtTimeShortToSec(o.latencySec)}</span> },
-  { key: 'totalTokens', label: 'Tokens', w: 80, align: 'center', render: (o) => <span style={{ color: '#475569', textAlign: 'center', display: 'block' }}>{fmtNumber(o.totalTokens)}</span> },
-  { key: 'inputTokens', label: 'In Tok', w: 80, align: 'center', render: (o) => <span style={{ color: '#475569', textAlign: 'center', display: 'block' }}>{fmtInt(o.inputTokens)}</span> },
-  { key: 'outputTokens', label: 'Out Tok', w: 80, align: 'center', render: (o) => <span style={{ color: '#475569', textAlign: 'center', display: 'block' }}>{fmtInt(o.outputTokens)}</span> },
-  { key: 'totalCost', label: 'Cost', w: 80, align: 'center', render: (o) => <span style={{ color: '#475569', textAlign: 'center', display: 'block' }}>{fmtUsd(o.totalCost)}</span> },
-  { key: 'input', label: 'Input', w: 110, hint: 'Observation input payload. Click to inspect.', render: (o, depth, ctx) => <PreviewCell value={o.input} onOpen={() => ctx.openContent && ctx.openContent(ioPayload(o))} /> },
-  { key: 'output', label: 'Output', w: 110, hint: 'Observation output payload. Click to inspect.', render: (o, depth, ctx) => <PreviewCell value={o.output} onOpen={() => ctx.openContent && ctx.openContent(ioPayload(o))} /> },
-  { key: 'metadata', label: 'Metadata', w: 100, hint: 'Observation metadata. Click to inspect.', render: (o, depth, ctx) => <PreviewCell value={o.metadata} onOpen={() => ctx.openContent && ctx.openContent(metadataPayload(o))} /> },
-  { key: 'status', label: 'Status', w: 110, render: (o) => <span title={o.statusMessage} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#64748B' }}>{o.statusMessage || '—'}</span> },
+  { key: 'type', label: 'Type', w: 90, hint: 'Step type: GENERATION (AI Model call), SPAN (logic step), or EVENT (system event).', render: (o) => <TypeBadge type={o.type} /> },
+  { key: 'level', label: 'Level', w: 75, hint: 'Status severity of this step (DEFAULT, WARNING, ERROR).', render: (o) => <LevelBadge level={o.level} /> },
+  { key: 'model', label: 'Model', w: 120, hint: 'AI provider model used for this generation step (e.g. gpt-4o, claude-3-5-sonnet).', render: (o) => <span title={o.modelId} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#475569' }}>{o.modelId || (o.type === 'GENERATION' ? o.name : '—')}</span> },
+  { key: 'latency', label: 'Duration', w: 85, align: 'center', hint: 'Execution time taken by this single step.', render: (o) => <span style={{ color: '#475569', textAlign: 'center', display: 'block' }}>{fmtTimeShortToSec(o.latencySec)}</span> },
+  { key: 'totalTokens', label: 'Tokens', w: 80, align: 'center', hint: 'Tokens consumed by this step.', render: (o) => <span style={{ color: '#475569', textAlign: 'center', display: 'block' }}>{fmtNumber(o.totalTokens)}</span> },
+  { key: 'inputTokens', label: 'In Tok', w: 80, align: 'center', hint: 'Prompt input tokens for this step.', render: (o) => <span style={{ color: '#475569', textAlign: 'center', display: 'block' }}>{fmtInt(o.inputTokens)}</span> },
+  { key: 'outputTokens', label: 'Out Tok', w: 80, align: 'center', hint: 'Generated output tokens for this step.', render: (o) => <span style={{ color: '#475569', textAlign: 'center', display: 'block' }}>{fmtInt(o.outputTokens)}</span> },
+  { key: 'totalCost', label: 'Cost', w: 80, align: 'center', hint: 'Estimated financial spend for this step.', render: (o) => <span style={{ color: '#475569', textAlign: 'center', display: 'block' }}>{fmtUsd(o.totalCost)}</span> },
+  { key: 'input', label: 'Input', w: 110, hint: 'Input text or JSON payload sent to this step. Click to inspect.', render: (o, depth, ctx) => <PreviewCell value={o.input} onOpen={() => ctx.openContent && ctx.openContent(ioPayload(o))} /> },
+  { key: 'output', label: 'Output', w: 110, hint: 'Output text or JSON response returned by this step. Click to inspect.', render: (o, depth, ctx) => <PreviewCell value={o.output} onOpen={() => ctx.openContent && ctx.openContent(ioPayload(o))} /> },
+  { key: 'metadata', label: 'Metadata', w: 100, hint: 'Custom metadata attributes for this step. Click to inspect.', render: (o, depth, ctx) => <PreviewCell value={o.metadata} onOpen={() => ctx.openContent && ctx.openContent(metadataPayload(o))} /> },
+  { key: 'status', label: 'Status', w: 110, hint: 'Status message or error explanation if any issue occurred.', render: (o) => <span title={o.statusMessage} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#64748B' }}>{o.statusMessage || '—'}</span> },
 ];
 
 const OBS_MINWIDTH = gridMinWidth(OBS_COLUMNS);

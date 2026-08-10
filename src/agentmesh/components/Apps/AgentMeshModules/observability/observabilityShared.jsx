@@ -20,11 +20,11 @@ export function InfoTooltip({ text, align = 'right' }) {
         style={{
           background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'help',
           display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none',
-          color: 'var(--text-muted)', transition: 'color 0.15s'
+          color: '#94A3B8', transition: 'color 0.15s'
         }}
       >
         <motion.div
-          animate={{ scale: isHovered ? 1.15 : 1, color: isHovered ? 'var(--theme-primary)' : 'var(--text-muted)' }}
+          animate={{ scale: isHovered ? 1.2 : 1, color: isHovered ? '#8E77BB' : '#94A3B8' }}
           transition={{ type: 'spring', stiffness: 300, damping: 20 }}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
@@ -43,14 +43,14 @@ export function InfoTooltip({ text, align = 'right' }) {
               position: 'absolute',
               top: 'calc(100% + 10px)',
               ...(align === 'right' ? { right: 0 } : { left: 0 }),
-              width: 260,
-              background: 'rgba(15, 23, 42, 0.93)',
+              width: 300,
+              background: 'rgba(15, 23, 42, 0.96)',
               backdropFilter: 'blur(12px)',
               WebkitBackdropFilter: 'blur(12px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
               borderRadius: 12,
               padding: '12px 14px',
-              boxShadow: '0 12px 30px -4px rgba(15, 23, 42, 0.3)',
+              boxShadow: '0 14px 35px -5px rgba(15, 23, 42, 0.4)',
               zIndex: 999,
               pointerEvents: 'none'
             }}
@@ -63,10 +63,10 @@ export function InfoTooltip({ text, align = 'right' }) {
                 width: 0, height: 0,
                 borderLeft: '5px solid transparent',
                 borderRight: '5px solid transparent',
-                borderBottom: '5px solid rgba(15, 23, 42, 0.93)'
+                borderBottom: '5px solid rgba(15, 23, 42, 0.96)'
               }}
             />
-            <p style={{ margin: 0, fontSize: 12, fontWeight: 500, lineHeight: 1.5, color: '#E2E8F0', textAlign: 'left' }}>
+            <p style={{ margin: 0, fontSize: 12, fontWeight: 500, lineHeight: 1.55, color: '#F1F5F9', textAlign: 'left' }}>
               {text}
             </p>
           </motion.div>

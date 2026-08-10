@@ -32,7 +32,7 @@ const SESSION_COLUMNS = [
       <FiChevronDown size={15} />
     </motion.div>
   ) },
-  { key: 'workflows', label: 'Workflows', w: '1fr', hint: 'The distinct workflows executed within this session (root chain names).', render: (s) => (
+  { key: 'workflows', label: 'Workflows', w: '1fr', hint: 'The distinct business workflows executed within this conversation session.', render: (s) => (
     <span
       title={(s.workflows || []).join(', ')}
       style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}
@@ -40,7 +40,7 @@ const SESSION_COLUMNS = [
       {(s.workflows && s.workflows.length > 0) ? s.workflows.join(', ') : '—'}
     </span>
   ) },
-  { key: 'session', label: 'Session', w: 210, hint: 'A session groups traces that share a session id. Click to filter traces.', render: (s, { onSelectSession }) => (
+  { key: 'session', label: 'Session', w: 210, hint: 'A Session groups continuous multi-turn chat interactions for a user. Click to view traces for this session.', render: (s, { onSelectSession }) => (
     <span
       onClick={(e) => {
         if (onSelectSession && s.sessionId) {
@@ -60,18 +60,18 @@ const SESSION_COLUMNS = [
       {s.sessionId || '(no session)'}
     </span>
   ) },
-  { key: 'user', label: 'User', w: 110, render: (s) => (
+  { key: 'user', label: 'User', w: 110, hint: 'The user account or identifier associated with this session.', render: (s) => (
     <span title={s.userId} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{s.userId || '—'}</span>
   ) },
-  { key: 'traces', label: 'Traces', w: 70, align: 'center', hint: 'Number of root traces belonging to this session.', render: (s) => (
+  { key: 'traces', label: 'Traces', w: 70, align: 'center', hint: 'Number of individual AI workflow runs executed inside this session.', render: (s) => (
     <span style={{ fontSize: 12, fontWeight: 600, color: '#475569', textAlign: 'center', display: 'block' }}>{s.traceCount}</span>
   ) },
-  { key: 'avgLatency', label: 'Avg Latency', w: 95, align: 'center', hint: "Average execution time across the session's traces.", render: (s) => <span style={{ color: '#475569', textAlign: 'center', display: 'block' }}>{fmtSec(s.avgLatencySec)}</span> },
-  { key: 'inputTokens', label: 'In Tokens', w: 85, align: 'center', hint: 'Total input (prompt) tokens consumed by LLM calls in this session.', render: (s) => <span style={{ color: '#475569', textAlign: 'center', display: 'block' }}>{fmtInt(s.inputTokens)}</span> },
-  { key: 'outputTokens', label: 'Out Tokens', w: 85, align: 'center', hint: 'Total output (generated) tokens produced by LLM calls in this session.', render: (s) => <span style={{ color: '#475569', textAlign: 'center', display: 'block' }}>{fmtInt(s.outputTokens)}</span> },
-  { key: 'totalTokens', label: 'Tokens', w: 80, align: 'center', hint: 'Total tokens consumed by the session across all LLM calls.', render: (s) => <span style={{ color: '#475569', textAlign: 'center', display: 'block' }}>{fmtNumber(s.totalTokens)}</span> },
-  { key: 'totalCost', label: 'Cost', w: 85, align: 'center', hint: 'Estimated LLM spend for the session. $0 until model pricing is configured.', render: (s) => <span style={{ color: '#475569', textAlign: 'center', display: 'block' }}>{fmtUsd(s.totalCost)}</span> },
-  { key: 'lastActivity', label: 'Last Activity', w: 130, render: (s) => <span style={{ color: 'var(--text-secondary)' }}>{fmtTime(s.lastActivity)}</span> },
+  { key: 'avgLatency', label: 'Avg Latency', w: 95, align: 'center', hint: "Average response speed per trace within this session.", render: (s) => <span style={{ color: '#475569', textAlign: 'center', display: 'block' }}>{fmtSec(s.avgLatencySec)}</span> },
+  { key: 'inputTokens', label: 'In Tokens', w: 85, align: 'center', hint: 'Total prompt & context tokens sent to AI models during this session.', render: (s) => <span style={{ color: '#475569', textAlign: 'center', display: 'block' }}>{fmtInt(s.inputTokens)}</span> },
+  { key: 'outputTokens', label: 'Out Tokens', w: 85, align: 'center', hint: 'Total generated answer tokens returned by AI models during this session.', render: (s) => <span style={{ color: '#475569', textAlign: 'center', display: 'block' }}>{fmtInt(s.outputTokens)}</span> },
+  { key: 'totalTokens', label: 'Tokens', w: 80, align: 'center', hint: 'Total text tokens processed across all LLM steps in this session.', render: (s) => <span style={{ color: '#475569', textAlign: 'center', display: 'block' }}>{fmtNumber(s.totalTokens)}</span> },
+  { key: 'totalCost', label: 'Cost', w: 85, align: 'center', hint: 'Total calculated API financial spend for this session in USD.', render: (s) => <span style={{ color: '#475569', textAlign: 'center', display: 'block' }}>{fmtUsd(s.totalCost)}</span> },
+  { key: 'lastActivity', label: 'Last Activity', w: 130, hint: 'Date and time of the most recent activity in this session.', render: (s) => <span style={{ color: 'var(--text-secondary)' }}>{fmtTime(s.lastActivity)}</span> },
 ];
 
 const SESSION_MINWIDTH = gridMinWidth(SESSION_COLUMNS);
@@ -135,12 +135,19 @@ export default function SessionsTab({ range, initialUserFilter = '', onSelectSes
       const details = await Promise.all(
         session.traces.map((t) => getObservabilityTraceDetail(t.traceId).catch(() => null))
       );
-      const allObs = [];
+      const obsMap = new Map();
       details.forEach((d) => {
         if (d && d.observations) {
-          allObs.push(...d.observations);
+          d.observations.forEach((o) => {
+            if (!o) return;
+            const key = o.id || `${o.name}-${o.type}-${o.startTime}-${o.endTime || ''}`;
+            if (!obsMap.has(key)) {
+              obsMap.set(key, o);
+            }
+          });
         }
       });
+      const allObs = Array.from(obsMap.values());
       setSessionGraphDetail({
         traceId: session.sessionId,
         name: `Session: ${session.sessionId}`,

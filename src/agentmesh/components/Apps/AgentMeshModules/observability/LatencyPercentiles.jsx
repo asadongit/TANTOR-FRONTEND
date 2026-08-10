@@ -9,19 +9,24 @@ const fmtLatency = (s) => (s == null ? '—' : s.toFixed(2) + 's');
 const CARD_META = {
   trace: {
     title: 'Trace Latency Percentiles',
-    hint: 'Total duration of each trace (earliest start to latest end across its observations), grouped by trace name. Traces are named after their newest root observation.',
+    hint: 'Measures total response time of entire AI workflows from start to finish. P50 is the median speed, P95 is the speed 95% of runs achieved, and P99 captures slow outlier runs.',
   },
   generation: {
     title: 'Generation Latency Percentiles',
-    hint: 'Latency of LLM generation calls grouped by generation name.',
+    hint: 'Response times specifically for AI Model prompt generations (e.g. OpenAI or Claude calls), grouped by generation name.',
   },
   observation: {
     title: 'Observation Latency Percentiles',
-    hint: 'Latency of every observation grouped by observation type and name.',
+    hint: 'Response times for all internal workflow steps (including tool calls, data retrievals, and model generations).',
   },
 };
 
-const PCOLUMNS = ['p50', 'p90', 'p95', 'p99'];
+const PCOLUMNS = [
+  { key: 'p50', label: 'P50', hint: 'Median speed (50% of runs were faster than this time)' },
+  { key: 'p90', label: 'P90', hint: '90% of runs finished within this time' },
+  { key: 'p95', label: 'P95', hint: '95% of runs finished within this time (standard performance SLA)' },
+  { key: 'p99', label: 'P99', hint: '99% of runs finished within this time (worst 1% tail latency)' },
+];
 
 function LatencyCard({ meta, rows, showType }) {
   const headerTemplate = showType ? '84px 1fr 52px 52px 52px 52px' : '1fr 52px 52px 52px 52px';
@@ -50,7 +55,12 @@ function LatencyCard({ meta, rows, showType }) {
         }}>
           {showType && <span>Type</span>}
           <span>Name</span>
-          {PCOLUMNS.map((c) => <span key={c} style={{ textAlign: 'right' }}>{c}</span>)}
+          {PCOLUMNS.map((c) => (
+            <span key={c.key} style={{ textAlign: 'right', display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3 }}>
+              {c.label}
+              <InfoTooltip text={c.hint} align="right" />
+            </span>
+          ))}
         </div>
 
         {rows.length === 0 ? (
@@ -75,7 +85,7 @@ function LatencyCard({ meta, rows, showType }) {
                   {row.name}
                 </span>
                 {PCOLUMNS.map((c) => (
-                  <span key={c} style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 500, color: '#475569' }}>{fmtLatency(row[c])}</span>
+                  <span key={c.key} style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 500, color: '#475569' }}>{fmtLatency(row[c.key])}</span>
                 ))}
               </div>
             ))}
@@ -122,9 +132,11 @@ export default function LatencyPercentiles({ data }) {
   if (!data) return null;
   const { trace = [], generation = [], observation = [] } = data;
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
-      <LatencyCard meta={CARD_META.trace} rows={trace} showType={false} />
-      <LatencyCard meta={CARD_META.generation} rows={generation} showType={false} />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <LatencyCard meta={CARD_META.trace} rows={trace} showType={false} />
+        <LatencyCard meta={CARD_META.generation} rows={generation} showType={false} />
+      </div>
       <LatencyCard meta={CARD_META.observation} rows={observation} showType />
     </div>
   );
