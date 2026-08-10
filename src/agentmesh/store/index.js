@@ -1083,7 +1083,7 @@ export const useWorkflowStore = create((set, get) => ({
     data_cleaning: ['data_cleaning_rules', 'data_cleaning_target', 'data_cleaning_input_key', 'data_cleaning_output_key'],
     graph_ingestion: ['graph_target_key', 'graph_neo4j_uri', 'graph_neo4j_user', 'graph_neo4j_password', 'graph_ingestion_mode', 'graph_cypher_query', 'graph_nodes_schema', 'graph_relations_schema', 'graph_collection', 'graph_sender_key', 'graph_receiver_key', 'graph_txn_id_key', 'graph_amount_key', 'graph_timestamp_key'],
     db_node: ['db_engine', 'db_connection_string', 'db_database', 'db_collection', 'db_operation', 'db_document', 'db_query', 'db_output_key', 'db_limit'],
-    ocr_node: ['ocr_input_key', 'ocr_prompt', 'ocr_engine', 'ocr_standard_model', 'llm', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail', 'docbot_url', 'docbot_method'],
+    ocr_node: ['ocr_input_key', 'ocr_prompt', 'ocr_engine', 'ocr_standard_model', 'llm', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail', 'docbot_url', 'docbot_method', 'ocr_fallback_engine', 'ocr_text_layer_min_chars', 'ocr_max_pages', 'ocr_on_max_pages'],
     multi_file_ingestion: ['allowed_extensions', 'max_file_size_mb', 'max_files_count', 'strategy_rules', 'interrupt_before', 'interrupt_after', 'hitl_actions', 'on_error'],
     signature_stamp_extractor: ['extractor_input_key', 'extractor_output_key', 'llm', 'interrupt_before', 'interrupt_after'],
     pattern_extract: ['extract_mode', 'extract_patterns', 'extract_input_key', 'extract_output_key', 'identifiers_input_key'],
