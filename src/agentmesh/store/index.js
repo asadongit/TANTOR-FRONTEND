@@ -1123,7 +1123,7 @@ export const useWorkflowStore = create((set, get) => ({
     data_cleaning: ['data_cleaning_rules', 'data_cleaning_target', 'data_cleaning_input_key', 'data_cleaning_output_key'],
     graph_ingestion: ['graph_target_key', 'graph_neo4j_uri', 'graph_neo4j_user', 'graph_neo4j_password', 'graph_ingestion_mode', 'graph_cypher_query', 'graph_nodes_schema', 'graph_relations_schema', 'graph_collection', 'graph_sender_key', 'graph_receiver_key', 'graph_txn_id_key', 'graph_amount_key', 'graph_timestamp_key'],
     db_node: ['db_engine', 'db_connection_string', 'db_database', 'db_collection', 'db_operation', 'db_document', 'db_query', 'db_output_key', 'db_limit'],
-    ocr_node: ['ocr_input_key', 'ocr_prompt', 'ocr_engine', 'ocr_standard_model', 'llm', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail', 'docbot_url', 'docbot_method'],
+    ocr_node: ['ocr_input_key', 'ocr_prompt', 'ocr_engine', 'ocr_standard_model', 'llm', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail', 'docbot_url', 'docbot_method', 'ocr_fallback_engine', 'ocr_text_layer_min_chars', 'ocr_max_pages', 'ocr_on_max_pages'],
     multi_file_ingestion: ['allowed_extensions', 'max_file_size_mb', 'max_files_count', 'strategy_rules', 'interrupt_before', 'interrupt_after', 'hitl_actions', 'on_error'],
     signature_stamp_extractor: ['extractor_input_key', 'extractor_output_key', 'llm', 'interrupt_before', 'interrupt_after'],
     api_node: ['api_method', 'api_url', 'api_headers', 'api_params', 'api_body', 'api_auth_type', 'api_auth_config', 'api_response_format', 'connection_id', 'api_protocol', 'graphql_query', 'use_curl', 'curl_command', 'on_error', 'continue_on_fail', 'api_description', 'api_enabled', 'api_execution_mode', 'additional_apis'],
@@ -1140,7 +1140,10 @@ export const useWorkflowStore = create((set, get) => ({
     button_trigger: ['button_label', 'button_input', 'button_category'],
     auto_trigger: ['button_input', 'task', 'llm'],
     textToAudio: ['tts_library', 'audio_voice', 'kittentts_model', 'audio_speed', 'mute_audio', 'audio_input_text'],
-    vision_intelligence: ['vision_mode', 'vision_enable_llm', 'vision_face_match_threshold', 'vision_quality_min_score', 'vision_quality_blur_threshold', 'vision_quality_min_contrast', 'vision_quality_max_contrast', 'vision_id_image_key', 'vision_selfie_image_key', 'vision_output_key', 'llm', 'interrupt_before', 'interrupt_after'],
+    // vision_mode: 'ocr' delegates to build_ocr_node with this same node config,
+    // so the ocr_* fields must be saved here too — without them the OCR mode
+    // silently falls back to its defaults and the engine choice is unreachable.
+    vision_intelligence: ['vision_mode', 'vision_enable_llm', 'vision_face_match_threshold', 'vision_quality_min_score', 'vision_quality_blur_threshold', 'vision_quality_min_contrast', 'vision_quality_max_contrast', 'vision_id_image_key', 'vision_selfie_image_key', 'vision_output_key', 'llm', 'interrupt_before', 'interrupt_after', 'ocr_engine', 'ocr_prompt', 'ocr_input_key', 'ocr_standard_model', 'ocr_fallback_engine', 'ocr_text_layer_min_chars', 'ocr_max_pages', 'ocr_on_max_pages'],
     group: ['name', 'description', 'internal_nodes', 'internal_edges', 'original_edges'],
     ingestion_adapter: ['source_format', 'target_serialization', 'validation_mode', 'flatten_depth', 'flatten_separator', 'field_aliases', 'default_values', 'source_key', 'external_integrations', 'internal_integrations', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
     payload_builder: ['payload_template', 'payload_destination_key'],
