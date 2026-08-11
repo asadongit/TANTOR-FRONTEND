@@ -45,7 +45,6 @@ import TemplateNodeConfig from './TemplateNodeConfig';
 import ReportGeneratorConfig from './ReportGeneratorConfig';
 import IngestionAdapterConfig from './IngestionAdapterConfig';
 import BankingEnrichmentConfig from './BankingEnrichmentConfig';
-import RuleEngineConfig from './RuleEngineConfig';
 import BeneficiaryRiskConfig from './BeneficiaryRiskConfig';
 import CardboardConfig from './CardboardConfig';
 import TriggerConfig from './TriggerConfig';
@@ -103,7 +102,6 @@ export {
   ReportGeneratorConfig,
   IngestionAdapterConfig,
   BankingEnrichmentConfig,
-  RuleEngineConfig,
   BeneficiaryRiskConfig,
   CardboardConfig,
   TriggerConfig,

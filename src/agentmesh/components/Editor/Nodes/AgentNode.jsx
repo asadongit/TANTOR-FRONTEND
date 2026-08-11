@@ -63,7 +63,6 @@ const NODE_CONFIGS = {
   db_node: { bg: '#D1FAE5', color: '#065F46', icon: FiDatabase, round: 14 },
   graph_ingestion: { bg: '#EFF6FF', color: '#1D4ED8', icon: FiDatabase, round: 14 },
   sensitivity_classifier: { bg: '#FEF3C7', color: '#B45309', icon: FiShield, round: 14 },
-  rule_engine: { bg: '#FEE2E2', color: '#DC2626', icon: FiShield, round: 14 },
   weightage: { bg: '#E0F2FE', color: '#0369A1', icon: FiSliders, round: 14 },
   aggregator: { bg: '#F0F9FF', color: '#0EA5E9', icon: FiLayers, round: 14 },
   webhook_response: { bg: '#E0F2FE', color: '#0369A1', icon: FiShare2, round: 14 },
