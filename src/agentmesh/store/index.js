@@ -1101,6 +1101,7 @@ export const useWorkflowStore = create((set, get) => ({
     router: ['routing_key', 'member_ids', 'branches', 'condition', 'custom_python_rules', 'python_rules'],
     switch: ['routing_key', 'branches', 'condition', 'custom_python_rules', 'python_rules'],
     condition: ['condition', 'custom_python_rules', 'python_rules'],
+    rule_engine: ['custom_python_rules', 'python_rules'],
     set_data: ['message'],
     wait: ['wait_seconds'],
     chat_model: ['llm'],
