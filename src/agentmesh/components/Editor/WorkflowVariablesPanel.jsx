@@ -194,7 +194,7 @@ export default function WorkflowVariablesPanel() {
                   margin: 0,
                 }}
               >
-                Workflow Variables
+                Variable Explorer
               </h2>
             </div>
           </div>
