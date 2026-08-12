@@ -207,12 +207,20 @@ export default function ClassificationConfig({ data, update }) {
           <Input
             type="number"
             value={data.classification_max_input_chars ?? ""}
-            onChange={(v) =>
+            onChange={(v) => {
+              // Tolerate whatever the input hands back — a raw string, a
+              // number, or a change event. The previous handler assumed a
+              // bare string and stored null for anything else, which is how
+              // the panel came to display a value the server never received.
+              const raw =
+                v && typeof v === "object" && "target" in v ? v.target.value : v;
+              const text = String(raw ?? "").trim();
+              const n = parseInt(text, 10);
               update({
                 classification_max_input_chars:
-                  v === "" || v === null ? null : Number(v),
-              })
-            }
+                  text === "" || Number.isNaN(n) || n <= 0 ? null : n,
+              });
+            }}
             placeholder="blank = no limit"
           />
           <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4 }}>
