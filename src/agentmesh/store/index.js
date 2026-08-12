@@ -1130,7 +1130,7 @@ export const useWorkflowStore = create((set, get) => ({
     signature_stamp_extractor: ['extractor_input_key', 'extractor_output_key', 'llm', 'interrupt_before', 'interrupt_after'],
     api_node: ['api_method', 'api_url', 'api_headers', 'api_params', 'api_body', 'api_auth_type', 'api_auth_config', 'api_response_format', 'connection_id', 'api_protocol', 'graphql_query', 'use_curl', 'curl_command', 'on_error', 'continue_on_fail', 'api_description', 'api_enabled', 'api_execution_mode', 'additional_apis'],
     vector_ingestion: ['vector_store', 'vector_collection', 'chunk_size', 'chunk_overlap', 'chunking_strategy', 'ingestion_source_key'],
-    classification: ['classification_classes', 'classification_summary', 'classification_engine', 'classification_input_field', 'classification_input_key', 'classification_output_key', 'classification_extract_identifiers', 'llm', 'interrupt_before', 'interrupt_after'],
+    classification: ['classification_classes', 'classification_summary', 'classification_engine', 'classification_input_field', 'classification_input_key', 'classification_output_key', 'classification_extract_identifiers', 'classification_max_input_chars', 'llm', 'interrupt_before', 'interrupt_after'],
     sensitivity_classifier: ['classification_input_key', 'classification_output_key', 'engine_mode', 'custom_entities', 'output_format', 'llm', 'interrupt_before', 'interrupt_after'],
     pii_gate_node: ['input_key', 'interrupt_after'],
     ingestion_router: ['scan_mode', 'file_filters', 'concurrency_limit', 'parent_folder_key', 'folder_identifier_key', 'curl_command_key', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
