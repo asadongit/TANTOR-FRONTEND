@@ -456,7 +456,6 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar, setIsSidebarCollap
         },
         { name: 'Workflows', agentMeshPage: 'workflows' },
         { name: 'Marketplace', agentMeshPage: 'marketplace' },
-        { name: 'Logs', agentMeshPage: 'logs' },
         { name: 'Observability', agentMeshPage: 'observability' },
         {
           name: 'Admin Panel',

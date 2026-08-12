@@ -140,7 +140,6 @@ const LAZY_CONFIGS = {
   banking_enrichment: lazy(
     () => import("./propertypanelModules/BankingEnrichmentConfig"),
   ),
-  rule_engine: lazy(() => import("./propertypanelModules/RuleEngineConfig")),
   beneficiary_risk: lazy(
     () => import("./propertypanelModules/BeneficiaryRiskConfig"),
   ),

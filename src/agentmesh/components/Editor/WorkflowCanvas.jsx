@@ -1242,7 +1242,7 @@ export default function WorkflowCanvas() {
               width: 44,
               height: 44,
             }}
-            title="Workflow Variables"
+            title="Variable Explorer"
           >
             <VscVariableGroup size={20} />
           </button>
