@@ -189,6 +189,42 @@ export default function ClassificationConfig({ data, update }) {
         </div>
       </div>
 
+      {data.classification_engine !== "regex" && (
+        <div style={{ marginTop: 16 }}>
+          <label
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: "var(--text-muted)",
+              textTransform: "uppercase",
+              letterSpacing: "0.8px",
+              display: "block",
+              marginBottom: 6,
+            }}
+          >
+            Max Input Chars (Optional)
+          </label>
+          <Input
+            type="number"
+            value={data.classification_max_input_chars ?? ""}
+            onChange={(v) =>
+              update({
+                classification_max_input_chars:
+                  v === "" || v === null ? null : Number(v),
+              })
+            }
+            placeholder="blank = no limit"
+          />
+          <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4 }}>
+            Caps how much text is sent to the model. Choosing a class needs a
+            sample, not the whole document, and reasoning models given very long
+            input can spend their whole output budget thinking and never answer.
+            Only the prompt is capped &mdash; the full text is still stored and
+            passed downstream. Try 4000.
+          </div>
+        </div>
+      )}
+
     </>
   );
 }
