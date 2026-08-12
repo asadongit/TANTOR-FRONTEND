@@ -515,6 +515,9 @@ Available operation schemas:
 - Unique: { "type": "unique", "source_path": "list.path", "key_field": "id", "destination": "dest_key" }
 - Pattern Extract (Identifiers): { "type": "pattern_extract_identifiers", "destination": "identifiers", "patterns": [ { "concept": "PAN", "display_label": "PAN Number", "search_keywords": ["pan"], "match_strategy": "contains", "is_required": true } ] }
 - Pattern Extract (Field Mappings): { "type": "pattern_extract_field_mappings", "destination": "field_mappings", "patterns": [ { "concept": "annual_income", "display_label": "Annual Income", "search_keywords": ["annual_income"], "match_strategy": "contains", "target_class": "Financial_Analysis" } ] }
+- Text Renderer: { "type": "text_renderer", "destination": "latest_ocr_output", "source_path": "", "separator": ": ", "indent": "  ", "source_name": "file.json" }
+
+Note on "destination": use "$" to return the operation's value on its own instead of adding it to the payload. It must be the LAST enabled operation, since every operation after it would receive that value instead of the data.
 
 Please respond ONLY with a raw JSON object (enclosed in a \`\`\`json block) following this exact format:
 \`\`\`json
@@ -636,6 +639,7 @@ Please respond ONLY with a raw JSON object (enclosed in a \`\`\`json block) foll
     { value: 'unique', label: 'Remove Duplicates', description: 'Removes duplicate items from a list by a key field or by full value (n8n Remove Duplicates parity).' },
     { value: 'pattern_extract_identifiers', label: 'Pattern Extract (Identifiers - PAN, Name, etc.)', description: 'Scans flattened data for key patterns (e.g. PAN, GST, Name) using keyword & regex rules.' },
     { value: 'pattern_extract_field_mappings', label: 'Pattern Extract (Field Mapper by Class)', description: 'Scans flattened data and groups matched fields into target classes (e.g. Financial_Analysis, Tax_GST).' },
+    { value: 'text_renderer', label: 'Text Renderer (Structured Data to Text)', description: 'Renders structured data as readable text so LLM nodes can consume it. Lists of uniform records become aligned tables. Defaults to the latest_ocr_output key, letting structured and document sources converge on one downstream shape.' },
   ];
 
   return (
@@ -988,6 +992,52 @@ Please respond ONLY with a raw JSON object (enclosed in a \`\`\`json block) foll
                   placeholder="e.g. new_name"
                   className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
                 />
+              </div>
+            </div>
+          )}
+
+          {op.type === 'text_renderer' && (
+            <div className="flex flex-col gap-2.5">
+              <div className="flex gap-2.5">
+                <div className="flex-1">
+                  <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">SOURCE PATH (BLANK = WHOLE PAYLOAD)</label>
+                  <input
+                    list="jt-context-keys"
+                    value={op.source_path ?? ''}
+                    onChange={(e) => updateOperation(idx, { source_path: e.target.value })}
+                    placeholder="e.g. taxpayerInformation"
+                    className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">DESTINATION ($ = VALUE ONLY)</label>
+                  <input
+                    value={op.destination ?? ''}
+                    onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                    placeholder="latest_ocr_output"
+                    className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2.5">
+                <div className="flex-1">
+                  <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">SOURCE NAME (OPTIONAL)</label>
+                  <input
+                    value={op.source_name ?? ''}
+                    onChange={(e) => updateOperation(idx, { source_name: e.target.value })}
+                    placeholder="e.g. {{ item.file_name }}"
+                    className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">SEPARATOR</label>
+                  <input
+                    value={op.separator ?? ''}
+                    onChange={(e) => updateOperation(idx, { separator: e.target.value })}
+                    placeholder=": "
+                    className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
+                  />
+                </div>
               </div>
             </div>
           )}
