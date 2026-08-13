@@ -126,6 +126,7 @@ export const FormFieldsEditor = memo(function FormFieldsEditor({ fields = [], on
                           { value: 'textarea', label: 'Long Text' },
                           { value: 'select', label: 'Dropdown Select' },
                           { value: 'multiselect', label: 'Multi-Select' },
+                          { value: 'radio', label: 'Radio Group' },
                           { value: 'date', label: 'Date Picker' },
                           { value: 'boolean', label: 'Checkbox/Toggle' },
                           { value: 'file', label: 'File Upload' },
@@ -149,7 +150,7 @@ export const FormFieldsEditor = memo(function FormFieldsEditor({ fields = [], on
                     </>
                   )}
 
-                  {(f.type === 'select' || f.type === 'multiselect') && (
+                  {(f.type === 'select' || f.type === 'multiselect' || f.type === 'radio') && (
                     <div className="mt-2">
                       <Field label="Options (One per line)" hint="Enter each option on a separate line. Use {{variable}} (e.g. {{techniques}}) to load a list from context.">
                         <textarea

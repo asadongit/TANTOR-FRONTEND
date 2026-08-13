@@ -165,7 +165,7 @@ export default function FormRenderer({ config, context, onSubmit, isLoading }) {
       if (f.default_value !== undefined && f.default_value !== null && f.default_value !== '') {
         initial[f.id] = resolveValue(f.default_value);
       } 
-      else if (f.type === 'select' && f.required) {
+      else if ((f.type === 'select' || f.type === 'radio') && f.required) {
         const options = resolveOptions(f.options);
         if (options.length > 0) {
           const firstOpt = options[0];
@@ -224,22 +224,120 @@ export default function FormRenderer({ config, context, onSubmit, isLoading }) {
                 hasError={!!errors[f.id]}
                 onChange={(val) => updateField(f.id, val)}
               />
+            ) : f.type === 'radio' ? (
+              <div 
+                className="modern-scrollbar"
+                style={{
+                  display: 'flex', flexDirection: 'column', gap: 10,
+                  maxHeight: '340px', overflowY: 'auto', paddingRight: 2
+                }}
+              >
+                {resolveOptions(f.options).map((opt, optIdx) => {
+                  const optValue = typeof opt === 'string' ? opt : (opt.value || opt);
+                  const optLabel = typeof opt === 'string' ? opt : (opt.label || optValue);
+                  const isSelected = formData[f.id] === optValue;
+                  return (
+                    <label 
+                      key={optIdx} 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'flex-start', 
+                        gap: 12, 
+                        padding: '14px 16px', 
+                        borderRadius: 12,
+                        border: `1.5px solid ${isSelected ? 'var(--theme-primary, #6366F1)' : errors[f.id] ? '#EF4444' : '#E2E8F0'}`,
+                        background: isSelected ? 'rgba(99, 102, 241, 0.06)' : '#F8FAFC',
+                        boxShadow: isSelected ? '0 2px 8px rgba(99, 102, 241, 0.12)' : 'none',
+                        cursor: isLoading ? 'not-allowed' : 'pointer', 
+                        transition: 'all 0.2s ease',
+                        position: 'relative'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isLoading && !isSelected) {
+                          e.currentTarget.style.borderColor = '#CBD5E1';
+                          e.currentTarget.style.background = '#FFFFFF';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isLoading && !isSelected) {
+                          e.currentTarget.style.borderColor = errors[f.id] ? '#EF4444' : '#E2E8F0';
+                          e.currentTarget.style.background = '#F8FAFC';
+                        }
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name={`radio_${f.id}`}
+                        value={optValue}
+                        checked={isSelected}
+                        onChange={() => updateField(f.id, optValue)}
+                        disabled={isLoading}
+                        style={{ 
+                          width: 18, 
+                          height: 18, 
+                          marginTop: 2, 
+                          accentColor: THEME_SECONDARY, 
+                          cursor: 'pointer',
+                          shrink: 0 
+                        }}
+                      />
+                      <span 
+                        style={{ 
+                          fontSize: 13, 
+                          lineHeight: 1.5, 
+                          color: isSelected ? '#1E293B' : '#475569', 
+                          fontWeight: isSelected ? 600 : 400,
+                          flex: 1,
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word'
+                        }}
+                      >
+                        {resolveValue(optLabel)}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
             ) : f.type === 'multiselect' ? (
               <div 
                 className="modern-scrollbar"
                 style={{
                   display: 'flex', flexDirection: 'column', gap: 10,
-                  background: '#FFFFFF', padding: '12px 14px', borderRadius: 10,
-                  border: `1px solid ${errors[f.id] ? '#EF4444' : '#E2E8F0'}`,
-                  maxHeight: '190px', overflowY: 'auto'
+                  maxHeight: '340px', overflowY: 'auto', paddingRight: 2
                 }}
               >
-                {resolveOptions(f.options).map(opt => {
+                {resolveOptions(f.options).map((opt, optIdx) => {
                   const optValue = typeof opt === 'string' ? opt : opt.value;
                   const optLabel = typeof opt === 'string' ? opt : opt.label;
                   const isChecked = (formData[f.id] || []).includes(optValue);
                   return (
-                    <label key={optValue} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', transition: 'all 0.2s' }}>
+                    <label 
+                      key={optIdx} 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'flex-start', 
+                        gap: 12, 
+                        padding: '14px 16px', 
+                        borderRadius: 12,
+                        border: `1.5px solid ${isChecked ? 'var(--theme-primary, #6366F1)' : errors[f.id] ? '#EF4444' : '#E2E8F0'}`,
+                        background: isChecked ? 'rgba(99, 102, 241, 0.06)' : '#F8FAFC',
+                        boxShadow: isChecked ? '0 2px 8px rgba(99, 102, 241, 0.12)' : 'none',
+                        cursor: isLoading ? 'not-allowed' : 'pointer', 
+                        transition: 'all 0.2s ease' 
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isLoading && !isChecked) {
+                          e.currentTarget.style.borderColor = '#CBD5E1';
+                          e.currentTarget.style.background = '#FFFFFF';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isLoading && !isChecked) {
+                          e.currentTarget.style.borderColor = errors[f.id] ? '#EF4444' : '#E2E8F0';
+                          e.currentTarget.style.background = '#F8FAFC';
+                        }
+                      }}
+                    >
                       <input
                         type="checkbox"
                         checked={isChecked}
@@ -251,9 +349,28 @@ export default function FormRenderer({ config, context, onSubmit, isLoading }) {
                           updateField(f.id, next);
                         }}
                         disabled={isLoading}
-                        style={{ width: 17, height: 17, accentColor: THEME_SECONDARY, cursor: 'pointer' }}
+                        style={{ 
+                          width: 18, 
+                          height: 18, 
+                          marginTop: 2, 
+                          accentColor: THEME_SECONDARY, 
+                          cursor: 'pointer',
+                          shrink: 0 
+                        }}
                       />
-                      <span style={{ fontSize: 13, color: isChecked ? THEME_TEXT : '#6B7280', fontWeight: isChecked ? 600 : 400 }}>{resolveValue(optLabel)}</span>
+                      <span 
+                        style={{ 
+                          fontSize: 13, 
+                          lineHeight: 1.5, 
+                          color: isChecked ? '#1E293B' : '#475569', 
+                          fontWeight: isChecked ? 600 : 400,
+                          flex: 1,
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word'
+                        }}
+                      >
+                        {resolveValue(optLabel)}
+                      </span>
                     </label>
                   );
                 })}
