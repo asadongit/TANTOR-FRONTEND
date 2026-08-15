@@ -71,6 +71,10 @@ const NODE_DEFAULTS = {
   api_node: { label: 'API Request', method: 'GET', url: '', headers: {}, params: {}, body: '', auth_method: 'none', api_auth_config: {}, use_curl: false, curl_command: '' },
   vector_ingestion: { label: 'Vector Ingestion', vector_store: 'chroma', vector_collection: 'default', chunk_size: 1000, chunk_overlap: 100, chunking_strategy: 'recursive', ingestion_source_key: 'latest_ocr_output' },
   derived_fields: { label: 'Derived Fields', df_fields: [], df_input_key: '', df_output_key: 'derived_fields', df_on_error: 'null' },
+  // Without an entry here a node falls back to showing its raw type on the
+  // canvas — 'report_generator' rather than 'Report Generator' — which is the
+  // one name a person cannot match against anything they were told.
+  report_generator: { label: 'Report Generator', report_format: 'docx' },
   classification: { label: 'Classification Agent', classification_classes: [{ class: 'Class A', description: 'Description for Class A' }], classification_summary: false, classification_engine: 'llm', classification_input_field: '', classification_input_key: '', classification_max_input_chars: null, llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 } },
   sensitivity_classifier: { label: 'Sensitivity Classifier', classification_input_key: 'latest_ocr_output', classification_output_key: '', engine_mode: 'both', custom_entities: '', output_format: 'markdown' },
   pii_gate_node: { label: 'PII Verification Gate', input_key: 'latest_ocr_output', interrupt_after: true },
