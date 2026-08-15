@@ -69,6 +69,7 @@ export const NODE_TYPES = [
 
   // Document Processing
   { type: 'template_node', icon: FiFileText,  label: 'Template Engine',   desc: 'Renders text/markdown templates using context variables.', detailedDesc: 'Takes a markdown or text template and uses Jinja2 formatting to render values dynamically (e.g. creating a personalized email body or document template).', bg: '#FDF2F8', color: '#DB2777', category: 'Document Processing' },
+  { type: 'derived_fields', icon: FiFileText, label: 'Derived Fields', desc: 'Calculates new values from existing ones using simple expressions.', detailedDesc: 'Define a table of named calculations - each row is a name and an expression over values already in your data. Rows run in order so one result can build on another. No code required.', bg: '#E0E7FF', color: '#4338CA', category: 'Data Processing' },
   { type: 'report_generator', icon: FiFileText,  label: 'Report Generator',   desc: 'Generates and exports data into PDF, Docx, or Excel reports.', detailedDesc: 'Populates predefined templates with workflow data to generate download-ready business documents, spreadsheets, or summaries.', bg: '#E0E7FF', color: '#4338CA', category: 'Document Processing' },
 
   // Data & Storage

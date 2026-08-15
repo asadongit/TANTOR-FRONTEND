@@ -134,6 +134,9 @@ const LAZY_CONFIGS = {
   report_generator: lazy(
     () => import("./propertypanelModules/ReportGeneratorConfig"),
   ),
+  derived_fields: lazy(
+    () => import("./propertypanelModules/DerivedFieldsConfig"),
+  ),
   ingestion_adapter: lazy(
     () => import("./propertypanelModules/IngestionAdapterConfig"),
   ),
