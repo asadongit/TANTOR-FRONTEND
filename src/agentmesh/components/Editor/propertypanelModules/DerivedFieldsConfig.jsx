@@ -1,3 +1,4 @@
+import { useState, useEffect, useMemo } from "react";
 import PropTypes from "prop-types";
 import { Select, Field, Input } from "./SharedComponents";
 
@@ -9,7 +10,49 @@ import { Select, Field, Input } from "./SharedComponents";
  * able to read what each value means without reading code.
  */
 export default function DerivedFieldsConfig({ data, update }) {
-  const rows = Array.isArray(data.df_fields) ? data.df_fields : [];
+  const rows = useMemo(
+    () => (Array.isArray(data.df_fields) ? data.df_fields : []),
+    [data.df_fields],
+  );
+  const [checks, setChecks] = useState({});
+
+  // Check the calculations as they are typed. Nothing is evaluated, so this is
+  // instant and cannot have side effects - it only reports whether each one is
+  // a valid calculation and whether the names it uses exist.
+  useEffect(() => {
+    const usable = rows.filter((r) => (r.expression || "").trim());
+    if (usable.length === 0) {
+      setChecks({});
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const BASE =
+          globalThis._env_?.VITE_AGENT_MESH ||
+          import.meta.env.VITE_AGENT_MESH ||
+          "http://localhost:8000/api/v1/agentmesh";
+        const res = await fetch(BASE + "/node/check-expressions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            expressions: rows.map((r) => ({
+              name: r.name || "",
+              expression: r.expression || "",
+            })),
+          }),
+        });
+        const out = await res.json();
+        const byIndex = {};
+        (out.results || []).forEach((r, i) => {
+          if (!r.ok) byIndex[i] = r.error;
+        });
+        setChecks(byIndex);
+      } catch {
+        setChecks({});
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [rows]);
 
   const setRows = (next) => update({ df_fields: next });
   const addRow = () =>
@@ -174,11 +217,20 @@ export default function DerivedFieldsConfig({ data, update }) {
               CALCULATION
             </label>
             <input
-              style={{ ...cellStyle, fontFamily: "ui-monospace, Menlo, monospace" }}
+              style={{
+                ...cellStyle,
+                fontFamily: "ui-monospace, Menlo, monospace",
+                borderColor: checks[i] ? "#a1302a" : "var(--border)",
+              }}
               value={row.expression || ""}
               onChange={(e) => editRow(i, { expression: e.target.value })}
               placeholder="e.g. profit / revenue * 100"
             />
+            {checks[i] && (
+              <div style={{ fontSize: 10, color: "#a1302a", marginTop: 3 }}>
+                {checks[i]}
+              </div>
+            )}
 
             <input
               style={{ ...cellStyle, marginTop: 6 }}

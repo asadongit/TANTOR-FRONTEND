@@ -53,6 +53,7 @@ import {
   HitlConfigSection,
   InfoBanner,
 } from "./propertypanelModules/SharedComponents";
+import NodeTestPanel from "./propertypanelModules/NodeTestPanel";
 
 // Lazy load configuration modules to optimize bundle size and page load speed.
 const LAZY_CONFIGS = {
@@ -787,6 +788,7 @@ export default function PropertiesPanel() {
                   setSkillGalleryOpen={setSkillGalleryOpen}
                   hitlSection={hitlSection}
                 />
+                <NodeTestPanel data={data} nodeId={selectedNodeId} />
               </Suspense>
             );
           } else if (isSystemNode) {

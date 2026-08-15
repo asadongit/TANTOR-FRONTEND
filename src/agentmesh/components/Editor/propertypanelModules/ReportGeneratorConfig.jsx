@@ -1,5 +1,6 @@
-import React from "react";
+import PropTypes from "prop-types";
 import { Select, Field, Input } from "./SharedComponents";
+import TemplateMarkerSuggest from "./TemplateMarkerSuggest";
 
 /**
  * Report Generator.
@@ -63,7 +64,7 @@ export default function ReportGeneratorConfig({ data, update }) {
         <Input
           value={data.template_file_path || ""}
           onChange={(v) => update({ template_file_path: v })}
-          placeholder="e.g. /templates/perfios_fsa.xlsx"
+          placeholder="e.g. /templates/my_template.xlsx"
         />
       </Field>
 
@@ -115,6 +116,8 @@ export default function ReportGeneratorConfig({ data, update }) {
         </Field>
       )}
 
+      {isTemplateMap && format === "xlsx" && <TemplateMarkerSuggest />}
+
       <Field
         label="Output Filename"
         hint="Base name for the generated file, without the extension. Supports variables."
@@ -122,7 +125,7 @@ export default function ReportGeneratorConfig({ data, update }) {
         <Input
           value={data.output_file_name || ""}
           onChange={(v) => update({ output_file_name: v })}
-          placeholder="e.g. fsa_report_{{ payload.txn_id }}"
+          placeholder="e.g. report_{{ payload.reference_id }}"
         />
       </Field>
 
@@ -143,3 +146,18 @@ export default function ReportGeneratorConfig({ data, update }) {
     </>
   );
 }
+
+ReportGeneratorConfig.propTypes = {
+  data: PropTypes.shape({
+    report_format: PropTypes.string,
+    report_mode: PropTypes.string,
+    report_on_missing_target: PropTypes.string,
+    input_data_key: PropTypes.string,
+    template_id: PropTypes.string,
+    template_file_path: PropTypes.string,
+    output_file_name: PropTypes.string,
+  }),
+  update: PropTypes.func.isRequired,
+};
+
+ReportGeneratorConfig.defaultProps = { data: {} };
