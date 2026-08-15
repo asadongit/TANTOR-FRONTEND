@@ -458,6 +458,9 @@ export const VisualOperationsEditor = memo(function VisualOperationsEditor({ val
   const [aiLoading, setAiLoading] = useState(false);
   const [aiAdvice, setAiAdvice] = useState('');
   const [suggestedOps, setSuggestedOps] = useState(null);
+  const [ioOpen, setIoOpen] = useState(false);
+  const [ioText, setIoText] = useState('');
+  const [ioError, setIoError] = useState('');
 
   const handleApplySuggestedOps = () => {
     if (suggestedOps && Array.isArray(suggestedOps)) {
@@ -643,6 +646,63 @@ Please respond ONLY with a raw JSON object (enclosed in a \`\`\`json block) foll
     { value: 'text_renderer', label: 'Text Renderer (Structured Data to Text)', description: 'Renders structured data as readable text so LLM nodes can consume it. Lists of uniform records become aligned tables. Defaults to the latest_ocr_output key, letting structured and document sources converge on one downstream shape.' },
   ];
 
+  // ── Import / Export ──────────────────────────────────────────────────────
+  // A long set of steps is usually prepared once, reviewed, and then reused —
+  // between environments, or across workflows targeting the same format.
+  // Retyping it is slow and a way to introduce a mistake nobody spots.
+  const handleExport = () => {
+    setIoError('');
+    setIoText(JSON.stringify(value, null, 2));
+    if (value.length === 0) toast('No steps to copy yet.');
+  };
+
+  // Report exactly what is wrong with pasted text, if anything. Steps are only
+  // handed over once every one is valid — a partial import would leave a
+  // half-configured node that looks complete.
+  const parseIncoming = () => {
+    let parsed;
+    try {
+      parsed = JSON.parse(ioText);
+    } catch (e) {
+      setIoError(`Not valid JSON: ${e.message}`);
+      return null;
+    }
+    if (!Array.isArray(parsed)) {
+      setIoError('Expected a list of steps — text starting with [ and ending with ].');
+      return null;
+    }
+    const known = new Set(opTypes.map(o => o.value));
+    for (let i = 0; i < parsed.length; i++) {
+      const op = parsed[i];
+      if (!op || typeof op !== 'object' || Array.isArray(op)) {
+        setIoError(`Step ${i + 1} is not a step — each one must be an object.`);
+        return null;
+      }
+      if (!op.type) {
+        setIoError(`Step ${i + 1} has no "type".`);
+        return null;
+      }
+      if (!known.has(op.type)) {
+        setIoError(`Step ${i + 1} uses an unknown type "${op.type}".`);
+        return null;
+      }
+    }
+    setIoError('');
+    return parsed;
+  };
+
+  const handleImport = (mode) => {
+    const parsed = parseIncoming();
+    if (!parsed) return;
+    onChange(mode === 'replace' ? parsed : [...value, ...parsed]);
+    toast.success(
+      mode === 'replace'
+        ? `Replaced with ${parsed.length} step(s).`
+        : `Added ${parsed.length} step(s).`
+    );
+    setIoText('');
+  };
+
   return (
     <div className="flex flex-col gap-3 mt-2.5 mb-4.5">
       <div className="bg-[#F5F3FF] border border-solid border-purple-200/50 rounded-xl p-3 flex flex-col gap-2.5">
@@ -689,6 +749,77 @@ Please respond ONLY with a raw JSON object (enclosed in a \`\`\`json block) foll
                 )}
               </div>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* Import / Export — for step sets prepared once and reused */}
+      <div className="bg-[var(--code,#F3F0EA)] border border-solid border-[var(--border)] rounded-xl p-3 flex flex-col gap-2.5">
+        <div
+          onClick={() => setIoOpen(!ioOpen)}
+          className="flex items-center justify-between cursor-pointer select-none"
+        >
+          <span className="text-[11px] font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+            <FiSliders size={12} /> Import / Export Steps
+            {value.length > 0 && (
+              <span className="text-[10px] font-normal text-[var(--text-muted)]">
+                ({value.length} configured)
+              </span>
+            )}
+          </span>
+          <span className="text-[10px] text-[var(--text-muted)]">{ioOpen ? 'Collapse' : 'Expand'}</span>
+        </div>
+
+        {ioOpen && (
+          <div className="flex flex-col gap-2.5 mt-1">
+            <div className="text-[10px] text-[var(--text-muted)] leading-relaxed">
+              Move a prepared set of steps in or out as text. Useful when the same mapping is
+              reused across environments, or when it was reviewed and approved elsewhere and
+              should arrive here exactly as approved.
+            </div>
+
+            <textarea
+              value={ioText}
+              onChange={(e) => { setIoText(e.target.value); setIoError(''); }}
+              placeholder='Paste steps here, e.g. [ { "type": "rename", "source_path": "old", "destination": "new" } ]'
+              rows={5}
+              spellCheck={false}
+              className="w-full p-2 py-2.5 text-[11px] font-mono border border-[var(--border)] rounded-lg outline-none resize-y bg-white text-[var(--text-primary)]"
+            />
+
+            {ioError && (
+              <div className="text-[11px] text-[#a1302a] bg-white border border-red-200 rounded-lg p-2">
+                {ioError}
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={handleExport}
+                className="py-1.5 px-3 bg-white text-[var(--text-primary)] border border-[var(--border)] rounded-md text-[11px] font-bold cursor-pointer hover:bg-slate-50 transition-colors"
+              >
+                Copy current steps out
+              </button>
+              <button
+                onClick={() => handleImport('append')}
+                disabled={!ioText.trim()}
+                className={`py-1.5 px-3 border-none rounded-md text-[11px] font-bold transition-colors ${!ioText.trim() ? 'bg-[var(--border)] text-white cursor-not-allowed opacity-60' : 'bg-[#5b4b8a] text-white cursor-pointer hover:bg-purple-800'}`}
+              >
+                Add to existing
+              </button>
+              <button
+                onClick={() => handleImport('replace')}
+                disabled={!ioText.trim()}
+                className={`py-1.5 px-3 border-none rounded-md text-[11px] font-bold transition-colors ${!ioText.trim() ? 'bg-[var(--border)] text-white cursor-not-allowed opacity-60' : 'bg-[#5b4b8a] text-white cursor-pointer hover:bg-purple-800'}`}
+              >
+                Replace all
+              </button>
+            </div>
+
+            <div className="text-[10px] text-[var(--text-muted)] leading-relaxed">
+              Nothing is applied until every step in the text is valid. If one is wrong, the
+              reason is shown above and the existing steps are left untouched.
+            </div>
           </div>
         )}
       </div>
