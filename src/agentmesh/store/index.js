@@ -1150,7 +1150,7 @@ export const useWorkflowStore = create((set, get) => ({
     ingestion_adapter: ['source_format', 'target_serialization', 'validation_mode', 'flatten_depth', 'flatten_separator', 'field_aliases', 'default_values', 'source_key', 'external_integrations', 'internal_integrations', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
     payload_builder: ['payload_template', 'payload_destination_key'],
     webhook_response: ['response_status', 'response_headers', 'response_body_key'],
-    report_generator: ['template_content', 'template_output_key', 'template_data_key', 'template_file_path', 'template_id', 'input_data_key', 'output_file_name', 'report_format', 'template_category', 'interrupt_before', 'interrupt_after'],
+    report_generator: ['template_content', 'template_output_key', 'template_data_key', 'template_file_path', 'template_id', 'input_data_key', 'output_file_name', 'report_format', 'report_mode', 'report_on_missing_target', 'template_category', 'interrupt_before', 'interrupt_after'],
     weightage: ['weightage_categories', 'weightage_output_key', 'weightage_approve_threshold', 'weightage_review_threshold', 'weightage_risk_bands', 'weightage_output_flags', 'weightage_cross_rules', 'interrupt_before', 'interrupt_after'],
     form_decisions: ['form_decisions'],
     debug: ['debug_scope', 'debug_key'],
