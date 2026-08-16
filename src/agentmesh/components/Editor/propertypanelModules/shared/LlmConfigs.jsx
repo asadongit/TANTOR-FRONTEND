@@ -55,6 +55,41 @@ export const LLMConfigSection = memo(function LLMConfigSection({ llm, onChange }
         />
       </Field>
 
+      {/* Reasoning models show their working unless told not to, and that
+          working arrives inside the answer. A step expecting only a JSON
+          object then receives prose wrapped around one. */}
+      <Field
+        label="Show Model's Reasoning"
+        hint="Some models explain their thinking. Choose Hidden when a later step needs the answer on its own — a JSON object, a single value — and nothing else."
+      >
+        <Select
+          value={llm?.reasoning_format || ''}
+          onChange={(v) => onChange({ ...llm, reasoning_format: v || null })}
+          options={[
+            { value: '', label: "Model's default" },
+            { value: 'hidden', label: 'Hidden — return only the answer' },
+            { value: 'parsed', label: 'Separate — kept apart from the answer' },
+            { value: 'raw', label: 'Included — inside the answer' },
+          ]}
+        />
+      </Field>
+
+      <Field
+        label="Reasoning Depth"
+        hint="How long a reasoning model thinks before answering. Deeper is slower and costs more. Ignored by models that do not reason."
+      >
+        <Select
+          value={llm?.reasoning_effort || ''}
+          onChange={(v) => onChange({ ...llm, reasoning_effort: v || null })}
+          options={[
+            { value: '', label: "Model's default" },
+            { value: 'low', label: 'Low — fastest' },
+            { value: 'medium', label: 'Medium' },
+            { value: 'high', label: 'High — slowest, most thorough' },
+          ]}
+        />
+      </Field>
+
       {isSelfHosted ? (
         <Field label={`${provider.toUpperCase()} Base URL`} hint={provider === 'sglang' ? "e.g., http://localhost:30000/v1" : "e.g., http://localhost:11434"}>
           <Input
