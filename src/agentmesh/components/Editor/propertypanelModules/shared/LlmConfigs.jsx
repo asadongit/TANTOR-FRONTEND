@@ -60,7 +60,7 @@ export const LLMConfigSection = memo(function LLMConfigSection({ llm, onChange }
           object then receives prose wrapped around one. */}
       <Field
         label="Show Model's Reasoning"
-        hint="Some models explain their thinking. Choose Hidden when a later step needs the answer on its own — a JSON object, a single value — and nothing else."
+        hint="Reasoning models only. Choose Hidden when a later step needs the answer on its own — a JSON object, a single value. Leave on Model's default for ordinary models: they reject this setting and the call fails."
       >
         <Select
           value={llm?.reasoning_format || ''}
