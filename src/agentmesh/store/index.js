@@ -1098,11 +1098,11 @@ export const useWorkflowStore = create((set, get) => ({
   // ─── Per-node-type field maps (only export what's relevant) ──────────────────
   PER_TYPE_FIELDS: {
     // Common agent fields shared by many node types
-    _agent: ['task', 'llm', 'memory', 'iteration_policy', 'tools', 'tool_configs', 'return_direct', 'skills', 'subagents', 'harness_profile', 'code_interpreter', 'max_iterations', 'timeout_seconds', 'context_schema', 'agent_input_prefix', 'output_key_prefix'],
+    _agent: ['agent_output_key', 'agent_context_include', 'agent_context_exclude', 'task', 'llm', 'memory', 'iteration_policy', 'tools', 'tool_configs', 'return_direct', 'skills', 'subagents', 'harness_profile', 'code_interpreter', 'max_iterations', 'timeout_seconds', 'context_schema', 'agent_input_prefix', 'output_key_prefix'],
     _common: ['interrupt_before', 'interrupt_after', 'hitl_actions', 'on_error', 'continue_on_fail', 'mute_chat_bubble', 'context_mode', 'max_context_chars'],
 
-    llm_agent: ['task', 'llm', 'memory', 'iteration_policy', 'tools', 'tool_configs', 'return_direct', 'skills', 'subagents', 'harness_profile', 'code_interpreter', 'max_iterations', 'timeout_seconds', 'context_schema', 'agent_input_prefix', 'output_key_prefix', 'interrupt_before', 'interrupt_after', 'hitl_actions', 'on_error', 'continue_on_fail', 'mute_chat_bubble', 'context_mode', 'max_context_chars', 'allowed_transitions'],
-    deep_agent: ['task', 'llm', 'tools', 'tool_configs', 'skills', 'subagents', 'max_iterations', 'timeout_seconds', 'deep_agent_backend', 'deep_agent_root_dir', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
+    llm_agent: ['agent_output_key', 'agent_context_include', 'agent_context_exclude', 'task', 'llm', 'memory', 'iteration_policy', 'tools', 'tool_configs', 'return_direct', 'skills', 'subagents', 'harness_profile', 'code_interpreter', 'max_iterations', 'timeout_seconds', 'context_schema', 'agent_input_prefix', 'output_key_prefix', 'interrupt_before', 'interrupt_after', 'hitl_actions', 'on_error', 'continue_on_fail', 'mute_chat_bubble', 'context_mode', 'max_context_chars', 'allowed_transitions'],
+    deep_agent: ['agent_output_key', 'agent_context_include', 'agent_context_exclude', 'task', 'llm', 'tools', 'tool_configs', 'skills', 'subagents', 'max_iterations', 'timeout_seconds', 'deep_agent_backend', 'deep_agent_root_dir', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
     tool_node: ['tools', 'tool_configs', 'return_direct', 'on_error', 'interrupt_before', 'interrupt_after'],
     direct_tool: ['direct_tool_name', 'tool_arguments', 'destination_key', 'return_direct', 'on_error', 'interrupt_before', 'interrupt_after'],
     router: ['routing_key', 'member_ids', 'branches', 'condition', 'custom_python_rules', 'python_rules'],
@@ -1114,8 +1114,8 @@ export const useWorkflowStore = create((set, get) => ({
     memory: ['type_name', 'scope', 'vector_db', 'search_type', 'top_k', 'window_size'],
     rag_node: ['task', 'llm', 'search_type', 'vector_store', 'vector_collection', 'embedding_model', 'k_results', 'threshold', 'chunking_strategy', 'show_citations', 'interrupt_before', 'interrupt_after', 'chunk_size', 'chunk_overlap', 'ingestion_source_key'],
     subgraph: ['workflow_id', 'return_direct', 'interrupt_before', 'interrupt_after'],
-    supervisor: ['member_ids', 'task', 'llm', 'iteration_policy', 'tools', 'tool_configs', 'allowed_transitions', 'on_error', 'interrupt_before', 'interrupt_after'],
-    swarm: ['member_ids', 'task', 'llm', 'iteration_policy', 'tools', 'tool_configs', 'allowed_transitions', 'on_error', 'interrupt_before', 'interrupt_after'],
+    supervisor: ['agent_output_key', 'agent_context_include', 'agent_context_exclude', 'member_ids', 'task', 'llm', 'iteration_policy', 'tools', 'tool_configs', 'allowed_transitions', 'on_error', 'interrupt_before', 'interrupt_after'],
+    swarm: ['agent_output_key', 'agent_context_include', 'agent_context_exclude', 'member_ids', 'task', 'llm', 'iteration_policy', 'tools', 'tool_configs', 'allowed_transitions', 'on_error', 'interrupt_before', 'interrupt_after'],
     webhook: ['enabled', 'path', 'secret', 'auth_method', 'response_mode', 'response_node'],
     webhook_response: ['response_status', 'response_headers', 'response_body_key'],
     cron: ['enabled', 'cron_expression', 'timezone'],
