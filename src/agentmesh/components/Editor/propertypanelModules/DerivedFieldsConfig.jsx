@@ -54,6 +54,65 @@ export default function DerivedFieldsConfig({ data, update }) {
     return () => clearTimeout(timer);
   }, [rows]);
 
+  // ── Import / Export ──────────────────────────────────────────────────────
+  // A long set of calculations is usually prepared once and reviewed once —
+  // derived from a specification, or carried between environments. Retyping a
+  // hundred rows is slow and is exactly where a wrong name creeps in unnoticed.
+  const [ioOpen, setIoOpen] = useState(false);
+  const [ioText, setIoText] = useState("");
+  const [ioError, setIoError] = useState("");
+
+  const handleExport = () => {
+    setIoError("");
+    setIoText(JSON.stringify(rows, null, 2));
+  };
+
+  // Only hand over rows once every one of them is valid. A partial import
+  // leaves a table that looks configured and quietly is not.
+  const parseIncoming = () => {
+    let parsed;
+    try {
+      parsed = JSON.parse(ioText);
+    } catch (e) {
+      setIoError(`Not valid JSON: ${e.message}`);
+      return null;
+    }
+    if (!Array.isArray(parsed)) {
+      setIoError("Expected a list of rows — text starting with [ and ending with ].");
+      return null;
+    }
+    const seen = new Set();
+    for (let i = 0; i < parsed.length; i++) {
+      const r = parsed[i];
+      if (!r || typeof r !== "object" || Array.isArray(r)) {
+        setIoError(`Row ${i + 1} is not a row — each one must be an object.`);
+        return null;
+      }
+      if (!String(r.name || "").trim()) {
+        setIoError(`Row ${i + 1} has no name.`);
+        return null;
+      }
+      if (!String(r.expression || "").trim()) {
+        setIoError(`Row ${i + 1} ("${r.name}") has no calculation.`);
+        return null;
+      }
+      if (seen.has(r.name)) {
+        setIoError(`Row ${i + 1}: "${r.name}" appears twice. The later one would silently replace the earlier.`);
+        return null;
+      }
+      seen.add(r.name);
+    }
+    setIoError("");
+    return parsed;
+  };
+
+  const handleImport = (mode) => {
+    const parsed = parseIncoming();
+    if (!parsed) return;
+    update({ df_fields: mode === "replace" ? parsed : [...rows, ...parsed] });
+    setIoText("");
+  };
+
   const setRows = (next) => update({ df_fields: next });
   const addRow = () =>
     setRows([...rows, { name: "", expression: "", group: "", enabled: true }]);
@@ -301,6 +360,116 @@ export default function DerivedFieldsConfig({ data, update }) {
         >
           + Add a value
         </button>
+
+        {/* Import / Export — for tables prepared once and reused */}
+        <div style={{ marginTop: 14 }}>
+          <button
+            type="button"
+            onClick={() => setIoOpen(!ioOpen)}
+            style={{
+              width: "100%",
+              padding: "8px 10px",
+              border: "1px dashed var(--border)",
+              borderRadius: 8,
+              background: "transparent",
+              color: "var(--text-primary)",
+              fontSize: 12,
+              cursor: "pointer",
+              textAlign: "left",
+            }}
+          >
+            Import / Export values{" "}
+            {rows.length > 0 && (
+              <span style={{ color: "var(--text-muted)" }}>({rows.length} configured)</span>
+            )}{" "}
+            {ioOpen ? "▾" : "▸"}
+          </button>
+
+          {ioOpen && (
+            <div style={{ marginTop: 10 }}>
+              <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 8, lineHeight: 1.55 }}>
+                Move a prepared set of values in or out as text. Useful when the same
+                calculations are reused elsewhere, or when they were worked out and
+                checked somewhere else and should arrive here exactly as checked.
+              </div>
+
+              <textarea
+                value={ioText}
+                onChange={(e) => { setIoText(e.target.value); setIoError(""); }}
+                placeholder={'[ { "name": "profit", "expression": "revenue - cost" } ]'}
+                rows={5}
+                spellCheck={false}
+                style={{
+                  ...cellStyle,
+                  fontFamily: "ui-monospace, Menlo, monospace",
+                  resize: "vertical",
+                }}
+              />
+
+              {ioError && (
+                <div style={{ fontSize: 10, color: "#a1302a", marginTop: 6 }}>{ioError}</div>
+              )}
+
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                <button
+                  type="button"
+                  onClick={handleExport}
+                  style={{
+                    padding: "6px 12px",
+                    border: "1px solid var(--border)",
+                    borderRadius: 6,
+                    background: "white",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Copy current values out
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleImport("append")}
+                  disabled={!ioText.trim()}
+                  style={{
+                    padding: "6px 12px",
+                    border: "none",
+                    borderRadius: 6,
+                    background: ioText.trim() ? "#5b4b8a" : "var(--border)",
+                    color: "white",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: ioText.trim() ? "pointer" : "default",
+                  }}
+                >
+                  Add to existing
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleImport("replace")}
+                  disabled={!ioText.trim()}
+                  style={{
+                    padding: "6px 12px",
+                    border: "none",
+                    borderRadius: 6,
+                    background: ioText.trim() ? "#5b4b8a" : "var(--border)",
+                    color: "white",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: ioText.trim() ? "pointer" : "default",
+                  }}
+                >
+                  Replace all
+                </button>
+              </div>
+
+              <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 8, lineHeight: 1.5 }}>
+                Nothing is applied until every row is valid — each needs a name and a
+                calculation, and two rows may not share a name. If one is wrong, the
+                reason is shown and your existing values are left untouched.
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <Field
