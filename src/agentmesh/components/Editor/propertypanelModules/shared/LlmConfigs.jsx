@@ -55,6 +55,41 @@ export const LLMConfigSection = memo(function LLMConfigSection({ llm, onChange }
         />
       </Field>
 
+      {/* Reasoning models show their working unless told not to, and that
+          working arrives inside the answer. A step expecting only a JSON
+          object then receives prose wrapped around one. */}
+      <Field
+        label="Show Model's Reasoning"
+        hint="Reasoning models only. Choose Hidden when a later step needs the answer on its own — a JSON object, a single value. Leave on Model's default for ordinary models: they reject this setting and the call fails."
+      >
+        <Select
+          value={llm?.reasoning_format || ''}
+          onChange={(v) => onChange({ ...llm, reasoning_format: v || null })}
+          options={[
+            { value: '', label: "Model's default" },
+            { value: 'hidden', label: 'Hidden — return only the answer' },
+            { value: 'parsed', label: 'Separate — kept apart from the answer' },
+            { value: 'raw', label: 'Included — inside the answer' },
+          ]}
+        />
+      </Field>
+
+      <Field
+        label="Reasoning Depth"
+        hint="How long a reasoning model thinks before answering. Deeper is slower and costs more. Ignored by models that do not reason."
+      >
+        <Select
+          value={llm?.reasoning_effort || ''}
+          onChange={(v) => onChange({ ...llm, reasoning_effort: v || null })}
+          options={[
+            { value: '', label: "Model's default" },
+            { value: 'low', label: 'Low — fastest' },
+            { value: 'medium', label: 'Medium' },
+            { value: 'high', label: 'High — slowest, most thorough' },
+          ]}
+        />
+      </Field>
+
       {isSelfHosted ? (
         <Field label={`${provider.toUpperCase()} Base URL`} hint={provider === 'sglang' ? "e.g., http://localhost:30000/v1" : "e.g., http://localhost:11434"}>
           <Input
@@ -132,7 +167,7 @@ export const IterationConfigSection = memo(function IterationConfigSection({ pol
   );
 });
 
-export const WizardButton = memo(function WizardButton({ onClick, loading, disabled }) {
+export const ArchitectButton = memo(function ArchitectButton({ onClick, loading, disabled }) {
   return (
     <button
       onClick={onClick}
@@ -140,7 +175,7 @@ export const WizardButton = memo(function WizardButton({ onClick, loading, disab
       className={`border-none bg-transparent cursor-pointer flex items-center gap-1 text-[11px] text-[#8B5CF6] font-semibold transition-all duration-200 px-1.5 py-0.5 rounded hover:bg-[#F5F3FF] disabled:opacity-50`}
     >
       {loading ? <FiLoader className="animate-spin" size={12} /> : <FiZap size={12} />}
-      {loading ? 'Generating...' : 'Wizard'}
+      {loading ? 'Generating...' : 'Architect'}
     </button>
   );
 });

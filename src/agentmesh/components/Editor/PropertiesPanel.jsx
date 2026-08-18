@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { useWorkflowStore, useUIStore } from "../../store";
 import { listTools, fixGrammar } from "../../api/agentmesh";
+import { getArchitectConfig } from "../../utils/architectConfig";
 import SkillGallery from "./SkillGallery";
 import { NODE_TYPES } from "./NodePalette";
 import SaveTemplateModal from "./SaveTemplateModal";
@@ -52,6 +53,7 @@ import {
   HitlConfigSection,
   InfoBanner,
 } from "./propertypanelModules/SharedComponents";
+import NodeTestPanel from "./propertypanelModules/NodeTestPanel";
 
 // Lazy load configuration modules to optimize bundle size and page load speed.
 const LAZY_CONFIGS = {
@@ -118,12 +120,6 @@ const LAZY_CONFIGS = {
   vision_intelligence: lazy(
     () => import("./propertypanelModules/VisionIntelligenceConfig")
   ),
-  json_transform_va: lazy(
-    () => import("./propertypanelModules/JsonTransformVaConfig"),
-  ),
-  pattern_extract: lazy(
-    () => import("./propertypanelModules/PatternExtractConfig"),
-  ),
   db_node: lazy(() => import("./propertypanelModules/DbNodeConfig")),
   pii_gate_node: lazy(() => import("./propertypanelModules/PiiGateNodeConfig")),
   ingestion_router: lazy(
@@ -139,13 +135,15 @@ const LAZY_CONFIGS = {
   report_generator: lazy(
     () => import("./propertypanelModules/ReportGeneratorConfig"),
   ),
+  derived_fields: lazy(
+    () => import("./propertypanelModules/DerivedFieldsConfig"),
+  ),
   ingestion_adapter: lazy(
     () => import("./propertypanelModules/IngestionAdapterConfig"),
   ),
   banking_enrichment: lazy(
     () => import("./propertypanelModules/BankingEnrichmentConfig"),
   ),
-  rule_engine: lazy(() => import("./propertypanelModules/RuleEngineConfig")),
   beneficiary_risk: lazy(
     () => import("./propertypanelModules/BeneficiaryRiskConfig"),
   ),
@@ -222,7 +220,7 @@ export default function PropertiesPanel() {
       if (!data || !data[targetKey]) return;
       try {
         setFixingGrammar(true);
-        const res = await fixGrammar(data[targetKey]);
+        const res = await fixGrammar(data[targetKey], getArchitectConfig());
         if (res.status === "success" && res.fixed !== res.original) {
           update({ [targetKey]: res.fixed });
         }
@@ -584,10 +582,8 @@ export default function PropertiesPanel() {
     file_store: FiFileText,
     webhook_response: FiShare2,
     error_router: FiAlertTriangle,
-    pattern_extract: FiSearch,
     db_node: FiBox,
     json_transform: FiCode,
-    json_transform_va: FiCode,
     condition: FiHelpCircle,
     group: FiLayers,
     signature_stamp_extractor: FiEdit,
@@ -792,6 +788,7 @@ export default function PropertiesPanel() {
                   setSkillGalleryOpen={setSkillGalleryOpen}
                   hitlSection={hitlSection}
                 />
+                <NodeTestPanel data={data} nodeId={selectedNodeId} />
               </Suspense>
             );
           } else if (isSystemNode) {

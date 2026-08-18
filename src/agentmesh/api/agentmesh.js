@@ -52,7 +52,7 @@ export const listMarketplaceUsecases = (params = {}, options = {}) => {
   if (category && category !== 'All') p.set('category', category);
   if (search) p.set('search', search);
   if (tag && tag !== 'All') p.set('tag', tag);
-  if (adminStatus && adminStatus !== 'All') p.set('admin_status', adminStatus);
+  if (adminStatus) p.set('admin_status', adminStatus);
   return request(`/marketplace/usecases?${p}`, options);
 };
 
@@ -160,14 +160,6 @@ export const uploadTempFile = (formData) => {
   });
 };
 
-// ─── Logs ─────────────────────────────────────────────────────────────────────
-export const getExecutionLogs = (params = {}) => {
-  const { workflowId, page = 1, limit = 100 } = params;
-  const p = new URLSearchParams({ page, limit });
-  if (workflowId) p.set('workflow_id', workflowId);
-  return request(`/execution-logs?${p}`);
-};
-
 // ─── Notes ────────────────────────────────────────────────────────────────────
 export const listWorkflowNotes = (workflowId) => 
   request(`/workflow/${workflowId}/notes/action`, { method: 'POST', body: JSON.stringify({ action: 'list' }) });
@@ -177,16 +169,16 @@ export const deleteWorkflowNote = (workflowId, noteId) =>
   request(`/workflow/${workflowId}/notes/action`, { method: 'POST', body: JSON.stringify({ action: 'delete', note_id: noteId }) });
 export const updateWorkflowNote = (workflowId, noteId, content, category) => 
   request(`/workflow/${workflowId}/notes/action`, { method: 'POST', body: JSON.stringify({ action: 'update', note_id: noteId, content, category }) });
-export const fixGrammar = (text) => 
-  request('/utils/action', { method: 'POST', body: JSON.stringify({ action: 'fix_grammar', payload: { text } }) });
+export const fixGrammar = (text, llm) => 
+  request('/utils/action', { method: 'POST', body: JSON.stringify({ action: 'fix_grammar', payload: { text, llm } }) });
 export const explainWorkflow = (workflow, llm) =>
   request('/utils/action', { method: 'POST', body: JSON.stringify({ action: 'explain_workflow', payload: { workflow, llm } }) });
 export const chatArchitect = (workflow, context, messages, llm) =>
   request('/utils/action', { method: 'POST', body: JSON.stringify({ action: 'chat_architect', payload: { workflow, context, messages, llm } }) });
 export const generateSkillSop = (payload) =>
   request('/utils/action', { method: 'POST', body: JSON.stringify({ action: 'generate_skill_sop', payload }) });
-export const generatePythonRule = (prompt) =>
-  request('/utils/action', { method: 'POST', body: JSON.stringify({ action: 'generate_python_rule', payload: { prompt, existing_code: "" } }) });
+export const generatePythonRule = (prompt, llm) =>
+  request('/utils/action', { method: 'POST', body: JSON.stringify({ action: 'generate_python_rule', payload: { prompt, existing_code: "", llm } }) });
 
 // ─── Notifications ────────────────────────────────────────────────────────────
 export const listNotifications = (params = {}) => {
@@ -224,6 +216,107 @@ export const sendWebhookTest = async (url, { method = 'POST', headers = {}, body
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 export const getDashboardStats = () => request('/dashboard/stats');
+
+// ─── Observability (Langfuse metrics proxy) ─────────────────────────────────
+export const getObservabilityOverview = (params = {}) => {
+  const p = new URLSearchParams({ fromTimestamp: params.fromTimestamp, toTimestamp: params.toTimestamp });
+  return request(`/observability/metrics/overview?${p}`);
+};
+export const getObservabilityTimeseries = (params = {}) => {
+  const p = new URLSearchParams({ fromTimestamp: params.fromTimestamp, toTimestamp: params.toTimestamp, granularity: params.granularity || 'day' });
+  return request(`/observability/metrics/timeseries?${p}`);
+};
+export const getObservabilityByModel = (params = {}) => {
+  const p = new URLSearchParams({ fromTimestamp: params.fromTimestamp, toTimestamp: params.toTimestamp, dimension: params.dimension || 'providedModelName', limit: params.limit || 20 });
+  return request(`/observability/metrics/by-model?${p}`);
+};
+export const getObservabilityScoreMetrics = (params = {}) => {
+  const p = new URLSearchParams({ fromTimestamp: params.fromTimestamp, toTimestamp: params.toTimestamp, limit: params.limit || 20 });
+  if (params.granularity) p.set('granularity', params.granularity);
+  if (params.name) p.set('name', params.name);
+  if (params.dataType) p.set('dataType', params.dataType);
+  if (params.source) p.set('source', params.source);
+  return request(`/observability/metrics/scores?${p}`);
+};
+export const getObservabilityToxicity = (params = {}) => {
+  const p = new URLSearchParams({ fromTimestamp: params.fromTimestamp, toTimestamp: params.toTimestamp });
+  if (params.userId) p.set('userId', params.userId);
+  if (params.sessionId) p.set('sessionId', params.sessionId);
+  if (params.traceName) p.set('traceName', params.traceName);
+  if (params.groupBy) p.set('groupBy', params.groupBy);
+  if (params.threshold != null && params.threshold !== '') p.set('threshold', params.threshold);
+  if (params.limit) p.set('limit', params.limit);
+  return request(`/observability/metrics/toxicity?${p}`);
+};
+export const getObservabilityTraces = (params = {}) => {
+  const p = new URLSearchParams({ fromTimestamp: params.fromTimestamp, toTimestamp: params.toTimestamp, limit: params.limit || 50 });
+  if (params.cursor) p.set('cursor', params.cursor);
+  if (params.level) p.set('level', params.level);
+  if (params.search) p.set('search', params.search);
+  if (params.kind) p.set('kind', params.kind);
+  if (params.environment) p.set('environment', params.environment);
+  if (params.userId) p.set('userId', params.userId);
+  if (params.sessionId) p.set('sessionId', params.sessionId);
+  if (params.tags) p.set('tags', params.tags);
+  // traceId: direct exact ID filter (Langfuse v2 observations API supports ?traceId=)
+  // Used when navigating from Scores → Traces to view a specific trace.
+  if (params.traceId) p.set('traceId', params.traceId);
+  return request(`/observability/traces?${p}`);
+};
+export const getObservabilityTraceDetail = (traceId) =>
+  request(`/observability/traces/${encodeURIComponent(traceId)}`);
+export const getObservabilityScores = (params = {}) => {
+  const p = new URLSearchParams({ fromTimestamp: params.fromTimestamp, toTimestamp: params.toTimestamp, limit: params.limit || 100 });
+  if (params.cursor) p.set('cursor', params.cursor);
+  if (params.name) p.set('name', params.name);
+  if (params.dataType) p.set('dataType', params.dataType);
+  if (params.source) p.set('source', params.source);
+  if (params.environment) p.set('environment', params.environment);
+  if (params.authorUserId) p.set('authorUserId', params.authorUserId);
+  if (params.configId) p.set('configId', params.configId);
+  if (params.queueId) p.set('queueId', params.queueId);
+  if (params.traceId) p.set('traceId', params.traceId);
+  if (params.traceName) p.set('traceName', params.traceName);
+  if (params.observationId) p.set('observationId', params.observationId);
+  if (params.sessionId) p.set('sessionId', params.sessionId);
+  if (params.value != null && params.value !== '') p.set('value', params.value);
+  if (params.valueMin != null && params.valueMin !== '') p.set('valueMin', params.valueMin);
+  if (params.valueMax != null && params.valueMax !== '') p.set('valueMax', params.valueMax);
+  return request(`/observability/scores?${p}`);
+};
+export const getObservabilitySessions = (params = {}) => {
+  const p = new URLSearchParams({ fromTimestamp: params.fromTimestamp, toTimestamp: params.toTimestamp, page: params.page || 1, limit: params.limit || 20 });
+  if (params.search) p.set('search', params.search);
+  if (params.environment) p.set('environment', params.environment);
+  if (params.userId) p.set('userId', params.userId);
+  if (params.sessionId) p.set('sessionId', params.sessionId);
+  if (params.tags) p.set('tags', params.tags);
+  const numKeys = ['durationSec', 'inputTokens', 'outputTokens', 'totalTokens', 'inputCost', 'outputCost', 'totalCost'];
+  numKeys.forEach((k) => {
+    if (params[`min${k[0].toUpperCase()}${k.slice(1)}`] != null && params[`min${k[0].toUpperCase()}${k.slice(1)}`] !== '') p.set(`min${k[0].toUpperCase()}${k.slice(1)}`, params[`min${k[0].toUpperCase()}${k.slice(1)}`]);
+    if (params[`max${k[0].toUpperCase()}${k.slice(1)}`] != null && params[`max${k[0].toUpperCase()}${k.slice(1)}`] !== '') p.set(`max${k[0].toUpperCase()}${k.slice(1)}`, params[`max${k[0].toUpperCase()}${k.slice(1)}`]);
+  });
+  return request(`/observability/sessions?${p}`);
+};
+export const getObservabilityFacets = (params = {}) => {
+  const p = new URLSearchParams({ fromTimestamp: params.fromTimestamp, toTimestamp: params.toTimestamp, entity: params.entity || 'traces' });
+  return request(`/observability/facets?${p}`);
+};
+export const getObservabilityWorkflows = (params = {}) => {
+  const p = new URLSearchParams({ fromTimestamp: params.fromTimestamp, toTimestamp: params.toTimestamp, limit: params.limit || 20 });
+  return request(`/observability/workflows?${p}`);
+};
+export const getObservabilityLatency = (params = {}) => {
+  const p = new URLSearchParams({ fromTimestamp: params.fromTimestamp, toTimestamp: params.toTimestamp, limit: params.limit || 10 });
+  return request(`/observability/latency?${p}`);
+};
+export const getObservabilityModelLatency = (params = {}) => {
+  const p = new URLSearchParams({ fromTimestamp: params.fromTimestamp, toTimestamp: params.toTimestamp, granularity: params.granularity || 'day', limit: params.limit || 20 });
+  if (params.models) p.set('models', params.models);
+  return request(`/observability/metrics/model-latency?${p}`);
+};
+export const getObservabilitySystemMetrics = () =>
+  request('/observability/system-metrics');
 
 // ─── 2026 Deep Agent Protocols ────────────────────────────────────────────────
 export const listVfsFiles = (rootDir, threadId) => {
@@ -287,7 +380,7 @@ export const listComponentTemplateFilters = (params) => {
   return request(`/component-templates/filters?${p}`);
 };
 
-export const listComponentTemplates = (params = {}, options = {}) => {
+export const listComponentTemplates = (params = {}) => {
   const { page = 1, limit = 50, group, category_id, category_name, type, search, exclude_type } = params;
   const p = new URLSearchParams({ page, limit });
   if (group) p.set('group', group);

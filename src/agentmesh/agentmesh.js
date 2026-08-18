@@ -110,14 +110,6 @@ export const ingestData = (formData) => {
   });
 };
 
-// ─── Logs ─────────────────────────────────────────────────────────────────────
-export const getExecutionLogs = (params = {}) => {
-  const { workflowId, page = 1, limit = 100 } = params;
-  const p = new URLSearchParams({ page, limit });
-  if (workflowId) p.set('workflow_id', workflowId);
-  return request(`/execution-logs?${p}`);
-};
-
 // ─── Notes ────────────────────────────────────────────────────────────────────
 export const listWorkflowNotes = (workflowId) => 
   request(`/workflow/${workflowId}/notes/action`, { method: 'POST', body: JSON.stringify({ action: 'list' }) });

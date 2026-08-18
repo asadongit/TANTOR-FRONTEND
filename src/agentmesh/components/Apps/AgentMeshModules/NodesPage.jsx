@@ -209,7 +209,7 @@ export default function NodesPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const pageSize = 12;
 
-  const instantiateGroupTemplate = (config, newPosition) => {
+  const instantiateGroupTemplate = (config, newPosition, existingIds = new Set()) => {
     const originalPos = config.position || { x: 0, y: 0 };
     const dx = newPosition.x - originalPos.x;
     const dy = newPosition.y - originalPos.y;
@@ -218,8 +218,12 @@ export default function NodesPage() {
     const internalNodes = (config.internal_nodes || []).map(n => {
       const oldId = n.id;
       const type = n.data?.type || 'node';
-      const newId = `${type}_${Math.random().toString(36).substring(2, 7)}`;
+      let newId;
+      do {
+        newId = `${type}_${Math.random().toString(36).substring(2, 7)}`;
+      } while (existingIds.has(newId));
       idMap[oldId] = newId;
+      existingIds.add(newId);
 
       return {
         ...n,
@@ -256,7 +260,12 @@ export default function NodesPage() {
   const handleUseTemplate = (template) => {
     let config = template.config || {};
     const type = template.type || 'llm_agent';
-    const id = `${type}_${Math.random().toString(36).substring(2, 7)}`;
+    const existingIds = new Set(nodes.map(n => n.id));
+    const existingNames = new Set(nodes.map(n => n.data?.label));
+    let id;
+    do {
+      id = `${type}_${Math.random().toString(36).substring(2, 7)}`;
+    } while (existingIds.has(id));
     
     const lastNode = nodes[nodes.length - 1];
     const position = lastNode 
@@ -264,9 +273,11 @@ export default function NodesPage() {
       : { x: 350, y: 250 };
 
     if (type === 'group') {
-      config = instantiateGroupTemplate(config, position);
+      config = instantiateGroupTemplate(config, position, new Set(nodes.map(n => n.id)));
     }
 
+    const baseName = template.name || config.label || type;
+    const label = existingNames.has(baseName) ? `${baseName} (Copy)` : baseName;
     const newNode = {
       id,
       type: 'agentNode',
@@ -275,7 +286,7 @@ export default function NodesPage() {
         ...config,
         id,
         type,
-        label: template.name || config.label || template.name
+        label
       }
     };
 

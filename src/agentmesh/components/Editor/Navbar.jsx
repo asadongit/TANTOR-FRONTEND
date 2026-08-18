@@ -2,7 +2,7 @@ import React from 'react';
 import toast from 'react-hot-toast';
 import { useWorkflowStore, useUIStore, useRunStore } from '../../store';
 import { useShallow } from 'zustand/react/shallow';
-import { compileWorkflow, saveWorkflow, listWorkflowCategories, deleteWorkflow, explainWorkflow, getWorkflow, cloneWorkflow, fixGrammar, publishWorkflow, getMarketplaceUsecase } from '../../api/agentmesh';
+import { compileWorkflow, saveWorkflow, listWorkflowCategories, deleteWorkflow, explainWorkflow, getWorkflow, cloneWorkflow, fixGrammar, publishWorkflow, getMarketplaceUsecase, chatArchitect } from '../../api/agentmesh';
 import { FiUpload, FiDownload, FiPlus, FiX, FiCheck, FiAlertTriangle, FiCopy, FiChevronDown, FiChevronUp, FiBookOpen, FiZap, FiLoader, FiTrash2, FiInfo, FiMaximize2, FiMinimize2, FiShare2, FiSave, FiCode, FiDatabase, FiSend, FiRotateCcw, FiCpu, FiCompass, FiGitCommit } from 'react-icons/fi';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { AiMagicIcon } from '@hugeicons/core-free-icons';
@@ -10,6 +10,7 @@ import { formatMessage } from '../Common/messageFormatting';
 import ConfirmationModal from '../Common/ConfirmationModal';
 import SaveWorkflowTemplateModal from './SaveWorkflowTemplateModal';
 import { copyToClipboard } from '../../utils/copyToClipboard';
+import { getArchitectConfig } from '../../utils/architectConfig';
 import ArchitectBot from './ArchitectBot';
 import ShortcutKeysCanvasModal from './shortcutKeysCanvasModal';
 import GuidedTour from './GuidedTour';
@@ -423,15 +424,50 @@ export default function Navbar() {
   };
 
   const handleFixDescription = async () => {
-    if (!workflowDescription) return;
     setFixingDesc(true);
     try {
-      const res = await fixGrammar(workflowDescription);
-      if (res.status === 'success') {
-        setWorkflowMeta(workflowId, workflowName, res.fixed, workflowGroup, workflowCategory, globalErrorNode, dynamicResumption, warmup, autoNewSession);
+      if (!workflowDescription || !workflowDescription.trim()) {
+        // No description → auto-scan workflow and generate one with the Architect
+        const workflowPayload = {
+          id: workflowId,
+          name: workflowName,
+          description: workflowDescription,
+          nodes: (nodes || []).map((n) => ({
+            id: n.id,
+            type: n.type,
+            data: {
+              type: n.data?.type,
+              label: n.data?.label,
+              task: n.data?.task,
+              description: n.data?.description,
+              tools: n.data?.tools,
+            },
+          })),
+          edges: (edges || []).map((e) => ({
+            source: e.source,
+            target: e.target,
+            data: { condition: e.data?.condition },
+          })),
+        };
+        const prompt =
+          "Analyze this AI agentic workflow and write a concise, professional description " +
+          "(2-3 sentences, no markdown) of what this workflow does, which nodes and agents " +
+          "are involved, and its main purpose.";
+        const res = await chatArchitect(workflowPayload, {}, [{ role: "user", content: prompt }], getArchitectConfig());
+        if (res.status === "success" && res.reply) {
+          const desc = res.reply.trim().replace(/["'`]/g, "");
+          setWorkflowMeta(workflowId, workflowName, desc, workflowGroup, workflowCategory, globalErrorNode, dynamicResumption, warmup, autoNewSession);
+        } else {
+          console.error("Architect description generation failed:", res.message);
+        }
+      } else {
+        const res = await fixGrammar(workflowDescription, getArchitectConfig());
+        if (res.status === 'success') {
+          setWorkflowMeta(workflowId, workflowName, res.fixed, workflowGroup, workflowCategory, globalErrorNode, dynamicResumption, warmup, autoNewSession);
+        }
       }
     } catch (e) {
-      console.error('Grammar fix failed:', e);
+      console.error('Architect description/fix failed:', e);
     } finally {
       setFixingDesc(false);
     }
@@ -440,7 +476,6 @@ export default function Navbar() {
   const pageTitles = {
     canvas: null,
     workflows: 'Workflows',
-    logs: 'Logs',
     library: 'Library',
     rag: 'Knowledge Base',
     observability: 'Observability',
@@ -1094,17 +1129,17 @@ export default function Navbar() {
                         />
                         <button
                           onClick={handleFixDescription}
-                          disabled={fixingDesc || !workflowDescription}
+                          disabled={fixingDesc}
                           style={{
                             position: 'absolute', right: 8, bottom: 8,
                             background: 'white', border: '1px solid var(--border)', cursor: 'pointer', color: 'var(--theme-primary)',
                             display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700,
                             padding: '4px 8px', borderRadius: 6, transition: 'all 0.2s',
-                            opacity: !workflowDescription ? 0.5 : 1, boxShadow: 'var(--shadow-sm)'
+                            opacity: fixingDesc ? 0.5 : 1, boxShadow: 'var(--shadow-sm)'
                           }}
                         >
                           {fixingDesc ? <FiLoader size={10} className="animate-spin" /> : <FiZap size={10} />}
-                          Wizard
+                          {workflowDescription ? "Fix Description" : "Generate Description"}
                         </button>
                       </div>
                     </div>

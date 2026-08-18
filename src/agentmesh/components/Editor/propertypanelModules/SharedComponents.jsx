@@ -28,7 +28,7 @@ export { KeyValueEditor } from "./shared/KeyValueEditor";
 export {
   LLMConfigSection,
   IterationConfigSection,
-  WizardButton,
+  ArchitectButton,
   NodeIdList,
   ErrorTargetField,
 } from "./shared/LlmConfigs";

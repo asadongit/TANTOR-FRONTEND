@@ -3,6 +3,7 @@ import { FiPlus, FiX, FiTrash2, FiChevronDown, FiEdit, FiTarget, FiZap, FiLoader
 import toast from 'react-hot-toast';
 import { useRunStore, useWorkflowStore } from '../../../../store';
 import { chatArchitect } from '../../../../api/agentmesh';
+import { getArchitectConfig } from '../../../../utils/architectConfig';
 import { Field, Input, Textarea, Select, Toggle, MiniatureToggle, CommaArrayEditor } from './primitives';
 import { VariableLinker, VariableDropdown } from './VariableLinker';
 import { ListAccordionItem } from './ListAccordionItem';
@@ -125,6 +126,7 @@ export const FormFieldsEditor = memo(function FormFieldsEditor({ fields = [], on
                           { value: 'textarea', label: 'Long Text' },
                           { value: 'select', label: 'Dropdown Select' },
                           { value: 'multiselect', label: 'Multi-Select' },
+                          { value: 'radio', label: 'Radio Group' },
                           { value: 'date', label: 'Date Picker' },
                           { value: 'boolean', label: 'Checkbox/Toggle' },
                           { value: 'file', label: 'File Upload' },
@@ -148,7 +150,7 @@ export const FormFieldsEditor = memo(function FormFieldsEditor({ fields = [], on
                     </>
                   )}
 
-                  {(f.type === 'select' || f.type === 'multiselect') && (
+                  {(f.type === 'select' || f.type === 'multiselect' || f.type === 'radio') && (
                     <div className="mt-2">
                       <Field label="Options (One per line)" hint="Enter each option on a separate line. Use {{variable}} (e.g. {{techniques}}) to load a list from context.">
                         <textarea
@@ -454,10 +456,29 @@ export const VisualOperationsEditor = memo(function VisualOperationsEditor({ val
   const [aiOpen, setAiOpen] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiAdvice, setAiAdvice] = useState('');
+  const [suggestedOps, setSuggestedOps] = useState(null);
+  const [ioOpen, setIoOpen] = useState(false);
+  const [ioText, setIoText] = useState('');
+  const [ioError, setIoError] = useState('');
+
+  const handleApplySuggestedOps = () => {
+    if (suggestedOps && Array.isArray(suggestedOps)) {
+      onChange([...value, ...suggestedOps]);
+      toast.success("Suggested operation(s) applied!");
+      setSuggestedOps(null);
+      setAiAdvice('');
+      setAiOpen(false);
+      setAiPrompt('');
+    }
+  };
 
   const handleAiGenerate = async () => {
     if (!aiPrompt.trim()) return;
     setAiLoading(true);
+    setAiAdvice('');
+    setSuggestedOps(null);
+
     try {
       const activeWorkflow = useWorkflowStore.getState();
       const currentWorkflow = {
@@ -467,44 +488,91 @@ export const VisualOperationsEditor = memo(function VisualOperationsEditor({ val
         edges: activeWorkflow.edges
       };
 
-      const systemPrompt = `You are the Workflow Architect AI. The user wants to configure a JSON Transform Visual Operations list.
-We have the following runtime context:
+      const systemPrompt = `You are the Workflow Architect AI assistant for AgentMesh JSON Transform.
+Analyze the user's prompt against the runtime context below and determine their true intent.
+
+Runtime Context:
 ${JSON.stringify(latestContext, null, 2)}
 
-And the user wants to perform this operation:
+User Prompt:
 "${aiPrompt}"
 
-Please respond with ONLY a raw JSON array (enclosed in a \`\`\`json block) representing the list of visual operations matching the user's request.
-Each operation in the array must follow the structure:
+INTENT RULES (DEFAULT TO "guide"):
+1. Set "intent": "guide" whenever the user asks a question, seeks recommendations, or asks which operation/mode is suitable (e.g. "Which operation is suitable to remove 2 keys?", "How do I filter active tasks?", "What is the best operation for..."). Provide clear reasoning in "explanation" and place suggested steps in "operations" so the user can review and click Apply.
+2. Set "intent": "apply" ONLY when the user gives a direct imperative command to modify their workflow without asking for advice (e.g. "Add omit step for ssn and password", "Filter active items now").
+
+Available operation schemas:
 - Extract Field: { "type": "extract_field", "source_path": "nested.path", "field": "field_name", "destination": "dest_key" }
 - Filter: { "type": "filter", "source_path": "list.path", "filter_field": "field_name", "filter_operator": "==", "filter_value": "value", "destination": "dest_key" }
 - Map List: { "type": "map", "source_path": "list.path", "field": "field_to_extract", "destination": "dest_key" }
 - Object Projection Map List: { "type": "map", "source_path": "list.path", "use_projection": true, "projections": [ { "target_path": "dest.path", "source_field": "relative.source.path" } ], "destination": "dest_key" }
 - Rename: { "type": "rename", "source_path": "old_key", "destination": "new_key" }
-- Set Value: { "type": "set_value", "destination": "dest.path", "static_value": "val" }
+- Set Value (typed): { "type": "set_value", "destination": "dest.path", "static_value": "val", "value_type": "auto|string|number|boolean|json|null" }
 - Delete Field: { "type": "delete_field", "field": "field_name" }
 - Flatten List: { "type": "flatten", "source_path": "list.path", "destination": "dest_key" }
+- Flatten Dict: { "type": "flatten_dict", "separator": "/" }
+- Pick: { "type": "pick", "fields": ["name", "age"] }
+- Omit: { "type": "omit", "keys": ["ssn", "password"] }
+- Rename Map: { "type": "rename_map", "rename_map": { "old_key": "new_key" } }
+- Limit: { "type": "limit", "source_path": "list.path", "limit": 10, "destination": "dest_key" }
+- Sort: { "type": "sort", "source_path": "list.path", "sort_field": "age", "sort_order": "asc|desc", "sort_type": "string|number", "destination": "dest_key" }
+- Unique: { "type": "unique", "source_path": "list.path", "key_field": "id", "destination": "dest_key" }
+- Pattern Extract (Identifiers): { "type": "pattern_extract_identifiers", "destination": "identifiers", "patterns": [ { "concept": "PAN", "display_label": "PAN Number", "search_keywords": ["pan"], "match_strategy": "contains", "is_required": true } ] }
+- Pattern Extract (Field Mappings): { "type": "pattern_extract_field_mappings", "destination": "field_mappings", "patterns": [ { "concept": "annual_income", "display_label": "Annual Income", "search_keywords": ["annual_income"], "match_strategy": "contains", "target_class": "Financial_Analysis" } ] }
+- Text Renderer: { "type": "text_renderer", "destination": "latest_ocr_output", "source_path": "", "separator": ": ", "indent": "  ", "source_name": "file.json" }
 
-Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
+Note on "destination": use "$" to return the operation's value on its own instead of adding it to the payload. It must be the LAST enabled operation, since every operation after it would receive that value instead of the data.
+
+Please respond ONLY with a raw JSON object (enclosed in a \`\`\`json block) following this exact format:
+\`\`\`json
+{
+  "intent": "apply" | "guide",
+  "explanation": "Clear guidance or reasoning...",
+  "operations": [ ... optional list of visual operations matching user intent ... ]
+}
+\`\`\``;
 
       const response = await chatArchitect(
         currentWorkflow,
         latestContext,
         [{ role: 'user', content: systemPrompt }],
-        { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0.1 }
+        getArchitectConfig()
       );
 
       if (response && response.status === 'success' && response.reply) {
-        const match = response.reply.match(/```json\s*([\s\S]*?)\s*```/) || response.reply.match(/\[\s*\{[\s\S]*?\}\s*\]/);
-        const jsonStr = match ? match[1] || match[0] : response.reply;
-        const parsed = JSON.parse(jsonStr.trim());
-        if (Array.isArray(parsed)) {
-          onChange([...value, ...parsed]);
-          toast.success("Operations configured by Architect Bot!");
-          setAiOpen(false);
-          setAiPrompt('');
+        const replyText = response.reply;
+        const match = replyText.match(/```json\s*([\s\S]*?)\s*```/) || replyText.match(/\{[\s\S]*?\}/);
+        
+        let resultObj = null;
+        if (match) {
+          try {
+            const jsonStr = match[1] || match[0];
+            resultObj = JSON.parse(jsonStr.trim());
+          } catch (e) {
+            // ignore JSON parse error
+          }
+        }
+
+        if (resultObj && typeof resultObj === 'object') {
+          const { intent = 'guide', explanation = '', operations = [] } = resultObj;
+
+          if (intent === 'apply' && Array.isArray(operations) && operations.length > 0) {
+            onChange([...value, ...operations]);
+            toast.success("Operations configured by Architect Bot!");
+            setAiOpen(false);
+            setAiPrompt('');
+          } else {
+            // Advisory / Guidance path
+            setAiAdvice(explanation || replyText);
+            if (Array.isArray(operations) && operations.length > 0) {
+              setSuggestedOps(operations);
+            }
+            toast("Architect Bot provided recommendations below.", { icon: '💡' });
+          }
         } else {
-          throw new Error("Response was not a list of operations.");
+          // Fallback if AI responded with raw text
+          setAiAdvice(replyText);
+          toast("Architect Bot provided recommendations below.", { icon: '💡' });
         }
       } else {
         throw new Error(response.message || "Failed to generate response.");
@@ -559,18 +627,81 @@ Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
   };
 
   const opTypes = [
-    { value: 'extract_field', label: 'Extract Field (Nested to Key)' },
-    { value: 'filter', label: 'Filter List (Condition)' },
-    { value: 'map', label: 'Map List (Extract from items)' },
-    { value: 'rename', label: 'Rename Key' },
-    { value: 'set_value', label: 'Set Static Value' },
-    { value: 'delete_field', label: 'Delete Key' },
-    { value: 'flatten', label: 'Flatten Nested Lists' },
-    { value: 'flatten_dict', label: 'Flatten Nested Dictionary (nested → flat keys)' },
-    { value: 'pick', label: 'Pick Fields (keep only listed fields)' },
-    { value: 'omit', label: 'Omit Keys (remove specific keys)' },
-    { value: 'rename_map', label: 'Rename Multiple Keys' }
+    { value: 'extract_field', label: 'Extract Field (Nested to Key)', description: 'Extracts a field from a nested dict/list and saves it to a target destination key.' },
+    { value: 'filter', label: 'Filter List (Condition)', description: 'Filters items in a list matching a specified condition (==, !=, contains, >, <, >=, <=).' },
+    { value: 'map', label: 'Map List (Extract from items)', description: 'Extracts a field or projects specific fields from every item in a list.' },
+    { value: 'rename', label: 'Rename Key', description: 'Renames a single top-level context key to a new key name.' },
+    { value: 'set_value', label: 'Set Static Value', description: 'Sets a static value (string, number, boolean) at a target key path.' },
+    { value: 'delete_field', label: 'Delete Key', description: 'Removes a key from the root dictionary.' },
+    { value: 'flatten', label: 'Flatten Nested Lists', description: 'Flattens a list of nested arrays into a single flat list.' },
+    { value: 'flatten_dict', label: 'Flatten Nested Dictionary (nested → flat keys)', description: 'Recursively flattens deeply nested objects into flat slash/dot key paths.' },
+    { value: 'pick', label: 'Pick Fields (keep only listed fields)', description: 'Keeps only specified key paths from the object and discards the rest.' },
+    { value: 'omit', label: 'Omit Keys (remove specific keys)', description: 'Removes specific key names from the dictionary while preserving all other keys.' },
+    { value: 'rename_map', label: 'Rename Multiple Keys', description: 'Renames multiple keys simultaneously using a key-value mapping dictionary.' },
+    { value: 'limit', label: 'Limit (keep first N items)', description: 'Keeps only the first N items of a list (n8n Limit parity).' },
+    { value: 'sort', label: 'Sort List (by field)', description: 'Sorts a list by a field, ascending or descending, numerically or alphabetically (n8n Sort parity).' },
+    { value: 'unique', label: 'Remove Duplicates', description: 'Removes duplicate items from a list by a key field or by full value (n8n Remove Duplicates parity).' },
+    { value: 'pattern_extract_identifiers', label: 'Pattern Extract (Identifiers - PAN, Name, etc.)', description: 'Scans flattened data for key patterns (e.g. PAN, GST, Name) using keyword & regex rules.' },
+    { value: 'pattern_extract_field_mappings', label: 'Pattern Extract (Field Mapper by Class)', description: 'Scans flattened data and groups matched fields into target classes (e.g. Financial_Analysis, Tax_GST).' },
+    { value: 'text_renderer', label: 'Text Renderer (Structured Data to Text)', description: 'Renders structured data as readable text so LLM nodes can consume it. Lists of uniform records become aligned tables. Defaults to the latest_ocr_output key, letting structured and document sources converge on one downstream shape.' },
   ];
+
+  // ── Import / Export ──────────────────────────────────────────────────────
+  // A long set of steps is usually prepared once, reviewed, and then reused —
+  // between environments, or across workflows targeting the same format.
+  // Retyping it is slow and a way to introduce a mistake nobody spots.
+  const handleExport = () => {
+    setIoError('');
+    setIoText(JSON.stringify(value, null, 2));
+    if (value.length === 0) toast('No steps to copy yet.');
+  };
+
+  // Report exactly what is wrong with pasted text, if anything. Steps are only
+  // handed over once every one is valid — a partial import would leave a
+  // half-configured node that looks complete.
+  const parseIncoming = () => {
+    let parsed;
+    try {
+      parsed = JSON.parse(ioText);
+    } catch (e) {
+      setIoError(`Not valid JSON: ${e.message}`);
+      return null;
+    }
+    if (!Array.isArray(parsed)) {
+      setIoError('Expected a list of steps — text starting with [ and ending with ].');
+      return null;
+    }
+    const known = new Set(opTypes.map(o => o.value));
+    for (let i = 0; i < parsed.length; i++) {
+      const op = parsed[i];
+      if (!op || typeof op !== 'object' || Array.isArray(op)) {
+        setIoError(`Step ${i + 1} is not a step — each one must be an object.`);
+        return null;
+      }
+      if (!op.type) {
+        setIoError(`Step ${i + 1} has no "type".`);
+        return null;
+      }
+      if (!known.has(op.type)) {
+        setIoError(`Step ${i + 1} uses an unknown type "${op.type}".`);
+        return null;
+      }
+    }
+    setIoError('');
+    return parsed;
+  };
+
+  const handleImport = (mode) => {
+    const parsed = parseIncoming();
+    if (!parsed) return;
+    onChange(mode === 'replace' ? parsed : [...value, ...parsed]);
+    toast.success(
+      mode === 'replace'
+        ? `Replaced with ${parsed.length} step(s).`
+        : `Added ${parsed.length} step(s).`
+    );
+    setIoText('');
+  };
 
   return (
     <div className="flex flex-col gap-3 mt-2.5 mb-4.5">
@@ -580,7 +711,7 @@ Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
           className="flex justify-between items-center cursor-pointer"
         >
           <span className="text-[11px] font-bold text-[#7C3AED] flex items-center gap-1.5">
-            <FiZap size={12} /> ASK ARCHITECT BOT (AI WIZARD)
+            <FiZap size={12} /> ASK ARCHITECT
           </span>
           <span className="text-[10px] text-[var(--text-muted)]">{aiOpen ? 'Collapse' : 'Expand'}</span>
         </div>
@@ -600,8 +731,95 @@ Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
               className={`py-2 px-3 bg-[#7C3AED] text-white border-none rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all duration-200 ${aiLoading || !aiPrompt.trim() ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-purple-700'}`}
             >
               {aiLoading ? <FiLoader className="animate-spin" size={12} /> : <FiZap size={12} />}
-              {aiLoading ? 'Architect Bot Thinking...' : 'Generate Steps'}
+              {aiLoading ? 'Architect Bot Thinking...' : 'Ask / Generate Steps'}
             </button>
+            {aiAdvice && (
+              <div className="text-[11px] text-slate-700 bg-white border border-purple-200 rounded-lg p-3 mt-1 font-normal leading-normal whitespace-pre-wrap flex flex-col gap-2">
+                <div>
+                  <span className="font-bold text-[#7C3AED] block mb-1">💡 Architect Advice:</span>
+                  {aiAdvice}
+                </div>
+                {suggestedOps && Array.isArray(suggestedOps) && suggestedOps.length > 0 && (
+                  <button
+                    onClick={handleApplySuggestedOps}
+                    className="py-1.5 px-3 bg-[#7C3AED] text-white border-none rounded-md text-[11px] font-bold cursor-pointer hover:bg-purple-700 transition-colors self-start flex items-center gap-1 mt-1"
+                  >
+                    <FiPlus size={12} /> Apply Suggested Step{suggestedOps.length > 1 ? 's' : ''} ({suggestedOps.length})
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Import / Export — for step sets prepared once and reused */}
+      <div className="bg-[var(--code,#F3F0EA)] border border-solid border-[var(--border)] rounded-xl p-3 flex flex-col gap-2.5">
+        <div
+          onClick={() => setIoOpen(!ioOpen)}
+          className="flex items-center justify-between cursor-pointer select-none"
+        >
+          <span className="text-[11px] font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+            <FiSliders size={12} /> Import / Export Steps
+            {value.length > 0 && (
+              <span className="text-[10px] font-normal text-[var(--text-muted)]">
+                ({value.length} configured)
+              </span>
+            )}
+          </span>
+          <span className="text-[10px] text-[var(--text-muted)]">{ioOpen ? 'Collapse' : 'Expand'}</span>
+        </div>
+
+        {ioOpen && (
+          <div className="flex flex-col gap-2.5 mt-1">
+            <div className="text-[10px] text-[var(--text-muted)] leading-relaxed">
+              Move a prepared set of steps in or out as text. Useful when the same mapping is
+              reused across environments, or when it was reviewed and approved elsewhere and
+              should arrive here exactly as approved.
+            </div>
+
+            <textarea
+              value={ioText}
+              onChange={(e) => { setIoText(e.target.value); setIoError(''); }}
+              placeholder='Paste steps here, e.g. [ { "type": "rename", "source_path": "old", "destination": "new" } ]'
+              rows={5}
+              spellCheck={false}
+              className="w-full p-2 py-2.5 text-[11px] font-mono border border-[var(--border)] rounded-lg outline-none resize-y bg-white text-[var(--text-primary)]"
+            />
+
+            {ioError && (
+              <div className="text-[11px] text-[#a1302a] bg-white border border-red-200 rounded-lg p-2">
+                {ioError}
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={handleExport}
+                className="py-1.5 px-3 bg-white text-[var(--text-primary)] border border-[var(--border)] rounded-md text-[11px] font-bold cursor-pointer hover:bg-slate-50 transition-colors"
+              >
+                Copy current steps out
+              </button>
+              <button
+                onClick={() => handleImport('append')}
+                disabled={!ioText.trim()}
+                className={`py-1.5 px-3 border-none rounded-md text-[11px] font-bold transition-colors ${!ioText.trim() ? 'bg-[var(--border)] text-white cursor-not-allowed opacity-60' : 'bg-[#5b4b8a] text-white cursor-pointer hover:bg-purple-800'}`}
+              >
+                Add to existing
+              </button>
+              <button
+                onClick={() => handleImport('replace')}
+                disabled={!ioText.trim()}
+                className={`py-1.5 px-3 border-none rounded-md text-[11px] font-bold transition-colors ${!ioText.trim() ? 'bg-[var(--border)] text-white cursor-not-allowed opacity-60' : 'bg-[#5b4b8a] text-white cursor-pointer hover:bg-purple-800'}`}
+              >
+                Replace all
+              </button>
+            </div>
+
+            <div className="text-[10px] text-[var(--text-muted)] leading-relaxed">
+              Nothing is applied until every step in the text is valid. If one is wrong, the
+              reason is shown above and the existing steps are left untouched.
+            </div>
           </div>
         )}
       </div>
@@ -660,10 +878,21 @@ Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
             <select
               value={op.type}
               onChange={(e) => updateOperation(idx, { type: e.target.value })}
+              title={opTypes.find(o => o.value === op.type)?.description || ''}
               className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
             >
-              {opTypes.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              {opTypes.map(o => (
+                <option key={o.value} value={o.value} title={o.description}>
+                  {o.label}
+                </option>
+              ))}
             </select>
+            {opTypes.find(o => o.value === op.type)?.description && (
+              <div className="text-[10px] text-slate-600 bg-purple-50/70 border border-purple-200/60 rounded-md p-2 mt-1.5 font-normal leading-normal flex items-start gap-1.5">
+                <span className="text-[#7C3AED] font-bold text-xs leading-none">ℹ</span>
+                <span>{opTypes.find(o => o.value === op.type)?.description}</span>
+              </div>
+            )}
           </div>
 
           {op.type === 'extract_field' && (
@@ -735,6 +964,8 @@ Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
                     <option value="contains">contains</option>
                     <option value=">">&gt;</option>
                     <option value="<">&lt;</option>
+                    <option value=">=">&gt;=</option>
+                    <option value="<=">&lt;=</option>
                   </select>
                 </div>
                 <div className="flex-[1.5]">
@@ -897,25 +1128,92 @@ Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
             </div>
           )}
 
-          {op.type === 'set_value' && (
-            <div className="flex gap-2.5">
-              <div className="flex-1">
-                <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">DESTINATION PATH</label>
-                <input
-                  value={op.destination ?? ''}
-                  onChange={(e) => updateOperation(idx, { destination: e.target.value })}
-                  placeholder="e.g. config.debug"
-                  className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
-                />
+          {op.type === 'text_renderer' && (
+            <div className="flex flex-col gap-2.5">
+              <div className="flex gap-2.5">
+                <div className="flex-1">
+                  <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">SOURCE PATH (BLANK = WHOLE PAYLOAD)</label>
+                  <input
+                    list="jt-context-keys"
+                    value={op.source_path ?? ''}
+                    onChange={(e) => updateOperation(idx, { source_path: e.target.value })}
+                    placeholder="e.g. taxpayerInformation"
+                    className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">DESTINATION ($ = VALUE ONLY)</label>
+                  <input
+                    value={op.destination ?? ''}
+                    onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                    placeholder="latest_ocr_output"
+                    className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
+                  />
+                </div>
               </div>
-              <div className="flex-1">
-                <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">STATIC VALUE</label>
+              <div className="flex gap-2.5">
+                <div className="flex-1">
+                  <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">SOURCE NAME (OPTIONAL)</label>
+                  <input
+                    value={op.source_name ?? ''}
+                    onChange={(e) => updateOperation(idx, { source_name: e.target.value })}
+                    placeholder="e.g. {{ item.file_name }}"
+                    className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">SEPARATOR</label>
+                  <input
+                    value={op.separator ?? ''}
+                    onChange={(e) => updateOperation(idx, { separator: e.target.value })}
+                    placeholder=": "
+                    className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {op.type === 'set_value' && (
+            <div className="flex flex-col gap-2.5">
+              <div className="flex gap-2.5">
+                <div className="flex-1">
+                  <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">DESTINATION PATH</label>
+                  <input
+                    value={op.destination ?? ''}
+                    onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                    placeholder="e.g. config.debug"
+                    className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">VALUE TYPE</label>
+                  <select
+                    value={op.value_type ?? 'auto'}
+                    onChange={(e) => updateOperation(idx, { value_type: e.target.value })}
+                    title="Controls how the static value is interpreted (n8n Set-node field type)."
+                    className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
+                  >
+                    <option value="auto">Auto</option>
+                    <option value="string">String</option>
+                    <option value="number">Number</option>
+                    <option value="boolean">Boolean</option>
+                    <option value="json">JSON (object/array)</option>
+                    <option value="null">Null</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                  <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">{'STATIC VALUE ({{ var }} interpolation supported)'}</label>
                 <input
                   value={op.static_value ?? ''}
                   onChange={(e) => updateOperation(idx, { static_value: e.target.value })}
-                  placeholder="e.g. true"
+                  placeholder={'e.g. true / 5 / {"key":"val"} / {{ status }}'}
                   className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
                 />
+              </div>
+              <div className="text-[10px] text-slate-600 bg-blue-50/70 border border-blue-200/60 rounded-md p-2 font-normal leading-normal">
+                <span className="font-bold">Auto</span> infers the type from the value (&quot;true&quot; → boolean, &quot;42&quot; → number, JSON → object). Use <span className="font-bold">VALUE TYPE</span> to force a type, and wrap <span className="font-bold">context keys</span> in <span className="font-bold">{`{{ }}`}</span> to copy values.
               </div>
             </div>
           )}
@@ -1003,6 +1301,291 @@ Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
                 label="Rename Map (Old Key → New Key)"
                 hint="Left = original key name, Right = new key name"
               />
+            </div>
+          )}
+
+          {op.type === 'limit' && (
+            <div className="flex flex-col gap-2.5">
+              <div>
+                <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">SOURCE LIST PATH</label>
+                <input
+                  list="jt-context-keys"
+                  value={op.source_path ?? ''}
+                  onChange={(e) => updateOperation(idx, { source_path: e.target.value })}
+                  placeholder="e.g. data.items"
+                  className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
+                />
+              </div>
+              <div className="flex gap-2.5">
+                <div className="flex-1">
+                  <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">KEEP FIRST (COUNT)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={op.limit ?? 1}
+                    onChange={(e) => updateOperation(idx, { limit: e.target.value })}
+                    placeholder="e.g. 10"
+                    className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">DESTINATION KEY</label>
+                  <input
+                    value={op.destination ?? ''}
+                    onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                    placeholder="e.g. top_items"
+                    className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {op.type === 'sort' && (
+            <div className="flex flex-col gap-2.5">
+              <div>
+                <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">SOURCE LIST PATH</label>
+                <input
+                  list="jt-context-keys"
+                  value={op.source_path ?? ''}
+                  onChange={(e) => updateOperation(idx, { source_path: e.target.value })}
+                  placeholder="e.g. data.items"
+                  className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
+                />
+              </div>
+              <div className="flex gap-2.5">
+                <div className="flex-1">
+                  <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">SORT FIELD</label>
+                  <input
+                    value={op.sort_field ?? ''}
+                    onChange={(e) => updateOperation(idx, { sort_field: e.target.value })}
+                    placeholder="e.g. age (blank = sort items directly)"
+                    className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">ORDER</label>
+                  <select
+                    value={op.sort_order ?? 'asc'}
+                    onChange={(e) => updateOperation(idx, { sort_order: e.target.value })}
+                    className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
+                  >
+                    <option value="asc">Ascending</option>
+                    <option value="desc">Descending</option>
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">TYPE</label>
+                  <select
+                    value={op.sort_type ?? 'string'}
+                    onChange={(e) => updateOperation(idx, { sort_type: e.target.value })}
+                    className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
+                  >
+                    <option value="string">Alphabetical</option>
+                    <option value="number">Numeric</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">DESTINATION KEY</label>
+                <input
+                  value={op.destination ?? ''}
+                  onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                  placeholder="e.g. sorted_items"
+                  className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
+                />
+              </div>
+            </div>
+          )}
+
+          {op.type === 'unique' && (
+            <div className="flex flex-col gap-2.5">
+              <div>
+                <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">SOURCE LIST PATH</label>
+                <input
+                  list="jt-context-keys"
+                  value={op.source_path ?? ''}
+                  onChange={(e) => updateOperation(idx, { source_path: e.target.value })}
+                  placeholder="e.g. data.items"
+                  className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
+                />
+              </div>
+              <div className="flex gap-2.5">
+                <div className="flex-1">
+                  <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">KEY FIELD (DEDUP ON)</label>
+                  <input
+                    value={op.key_field ?? ''}
+                    onChange={(e) => updateOperation(idx, { key_field: e.target.value })}
+                    placeholder="e.g. id (blank = full item)"
+                    className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">DESTINATION KEY</label>
+                  <input
+                    value={op.destination ?? ''}
+                    onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                    placeholder="e.g. unique_items"
+                    className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {(op.type === 'pattern_extract_identifiers' || op.type === 'pattern_extract_field_mappings') && (
+            <div className="flex flex-col gap-2.5">
+              <div>
+                <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">DESTINATION KEY (OUTPUT RESULT KEY)</label>
+                <input
+                  value={op.destination ?? ''}
+                  onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                  placeholder={op.type === 'pattern_extract_identifiers' ? "e.g. identifiers" : "e.g. field_mappings"}
+                  className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-[9px] font-bold text-[var(--text-muted)]">EXTRACTION PATTERNS ({ (op.patterns || []).length })</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newP = {
+                        concept: "",
+                        display_label: "",
+                        search_keywords: [],
+                        match_strategy: "contains",
+                        ...(op.type === 'pattern_extract_identifiers' ? { is_required: false } : { target_class: "DEFAULT" })
+                      };
+                      updateOperation(idx, { patterns: [...(op.patterns || []), newP] });
+                    }}
+                    className="text-[10px] font-bold text-[#7C3AED] bg-transparent border-none cursor-pointer flex items-center gap-1"
+                  >
+                    + Add Pattern
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  {(op.patterns || []).map((p, pIdx) => (
+                    <div key={pIdx} className="p-2.5 bg-white border border-[var(--border)] rounded-lg flex flex-col gap-2 relative">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextP = (op.patterns || []).filter((_, i) => i !== pIdx);
+                          updateOperation(idx, { patterns: nextP });
+                        }}
+                        className="absolute top-2 right-2 text-red-500 bg-transparent border-none cursor-pointer"
+                        title="Remove pattern"
+                      >
+                        <FiX size={12} />
+                      </button>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">CONCEPT</label>
+                          <input
+                            value={p.concept || ""}
+                            onChange={(e) => {
+                              const nextP = [...(op.patterns || [])];
+                              nextP[pIdx] = { ...nextP[pIdx], concept: e.target.value, display_label: nextP[pIdx].display_label || e.target.value };
+                              updateOperation(idx, { patterns: nextP });
+                            }}
+                            placeholder="e.g. PAN"
+                            className="w-full px-2 py-1 bg-white border border-[var(--border)] rounded text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">DISPLAY LABEL</label>
+                          <input
+                            value={p.display_label || ""}
+                            onChange={(e) => {
+                              const nextP = [...(op.patterns || [])];
+                              nextP[pIdx] = { ...nextP[pIdx], display_label: e.target.value };
+                              updateOperation(idx, { patterns: nextP });
+                            }}
+                            placeholder="e.g. PAN Number"
+                            className="w-full px-2 py-1 bg-white border border-[var(--border)] rounded text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">SEARCH KEYWORDS (COMMA-SEPARATED)</label>
+                          <input
+                            value={Array.isArray(p.search_keywords) ? p.search_keywords.join(", ") : (p.search_keywords || "")}
+                            onChange={(e) => {
+                              const nextP = [...(op.patterns || [])];
+                              const kwList = e.target.value.split(",").map(s => s.trim()).filter(Boolean);
+                              nextP[pIdx] = { ...nextP[pIdx], search_keywords: kwList };
+                              updateOperation(idx, { patterns: nextP });
+                            }}
+                            placeholder="pan, pan_number, pan_no"
+                            className="w-full px-2 py-1 bg-white border border-[var(--border)] rounded text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">MATCH STRATEGY</label>
+                          <select
+                            value={p.match_strategy || "contains"}
+                            onChange={(e) => {
+                              const nextP = [...(op.patterns || [])];
+                              nextP[pIdx] = { ...nextP[pIdx], match_strategy: e.target.value };
+                              updateOperation(idx, { patterns: nextP });
+                            }}
+                            className="w-full px-2 py-1 bg-white border border-[var(--border)] rounded text-xs"
+                          >
+                            <option value="contains">contains</option>
+                            <option value="exact">exact</option>
+                            <option value="starts_with">starts_with</option>
+                            <option value="ends_with">ends_with</option>
+                            <option value="regex">regex</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {op.type === 'pattern_extract_identifiers' ? (
+                        <div className="flex items-center gap-2 pt-1">
+                          <input
+                            type="checkbox"
+                            id={`req-${idx}-${pIdx}`}
+                            checked={!!p.is_required}
+                            onChange={(e) => {
+                              const nextP = [...(op.patterns || [])];
+                              nextP[pIdx] = { ...nextP[pIdx], is_required: e.target.checked };
+                              updateOperation(idx, { patterns: nextP });
+                            }}
+                          />
+                          <label htmlFor={`req-${idx}-${pIdx}`} className="text-[10px] text-[var(--text-primary)] font-semibold cursor-pointer">
+                            Is Required (Report missing if not found)
+                          </label>
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">TARGET CLASS (GROUPING)</label>
+                          <input
+                            value={p.target_class || ""}
+                            onChange={(e) => {
+                              const nextP = [...(op.patterns || [])];
+                              nextP[pIdx] = { ...nextP[pIdx], target_class: e.target.value };
+                              updateOperation(idx, { patterns: nextP });
+                            }}
+                            placeholder="e.g. Financial_Analysis"
+                            className="w-full px-2 py-1 bg-white border border-[var(--border)] rounded text-xs"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {(op.patterns || []).length === 0 && (
+                    <div className="text-[11px] text-[var(--text-muted)] italic p-2 border border-dashed border-[var(--border)] rounded text-center">
+                      No patterns configured yet. Click "+ Add Pattern" above.
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>

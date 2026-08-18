@@ -5,7 +5,7 @@ import tantorOldLogo from '../../assets/data/Tantor old logo.png';
 import {
   FiGrid, FiGitBranch, FiBarChart2, FiBox, FiBookOpen,
   FiSettings, FiLifeBuoy, FiChevronLeft, FiChevronRight, FiBell, FiMessageSquare,
-  FiList, FiLink, FiCpu, FiLayers
+  FiLink, FiCpu, FiLayers
 } from 'react-icons/fi';
 
 const NAV_ITEMS = [
@@ -14,7 +14,6 @@ const NAV_ITEMS = [
   { id: 'workflows', label: 'Workflows', icon: FiGitBranch },
   { id: 'library', label: 'Library', icon: FiBox },
   { id: 'marketplace', label: 'Marketplace', icon: FiMessageSquare },
-  { id: 'logs', label: 'Logs', icon: FiList },
   { id: 'observability', label: 'Observability', icon: FiBarChart2 },
   { id: 'connections', label: 'Connections', icon: FiLink },
 ];

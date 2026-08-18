@@ -396,8 +396,15 @@ export default function AgentsPage() {
         config = full?.config || {};
       } catch { config = {}; }
     }
-    const id = `${type}_${Math.random().toString(36).substring(2, 7)}`;
-    
+    const existingIds = new Set(nodes.map(n => n.id));
+    const existingNames = new Set(nodes.map(n => n.data?.label));
+    let id;
+    do {
+      id = `${type}_${Math.random().toString(36).substring(2, 7)}`;
+    } while (existingIds.has(id));
+    const baseName = templateToUse.name || config.label || type;
+    const label = existingNames.has(baseName) ? `${baseName} (Copy)` : baseName;
+
     // Position it intelligently
     const lastNode = nodes[nodes.length - 1];
     const position = lastNode 
@@ -412,7 +419,7 @@ export default function AgentsPage() {
         ...config,
         id,
         type, // Use the selected type
-        label: templateToUse.name || config.label || type
+        label
       }
     };
 

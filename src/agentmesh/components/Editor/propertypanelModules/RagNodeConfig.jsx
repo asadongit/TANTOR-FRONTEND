@@ -6,7 +6,7 @@ import {
   Input,
   Textarea,
   Toggle,
-  WizardButton,
+  ArchitectButton,
   LLMConfigSection,
 } from "./SharedComponents";
 
@@ -22,7 +22,7 @@ export default function RagNodeConfig({
         label="Task"
         hint="Additional instructions appended to the internal RAG logic. Use this to refine how the agent answers (e.g. 'Answer in bullet points')."
         action={
-          <WizardButton
+          <ArchitectButton
             onClick={() => handleFixGrammar("task")}
             loading={fixingGrammar}
             disabled={!data.task}

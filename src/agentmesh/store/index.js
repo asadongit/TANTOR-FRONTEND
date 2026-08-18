@@ -2,6 +2,31 @@ import { create } from 'zustand';
 // ─── Constants & Utils ──────────────────────────────────────────────────────────
 const genId = () => Math.random().toString(36).substring(2, 7);
 
+// Generate a node ID guaranteed not to collide with existing node IDs.
+const genUniqueNodeId = (type, existingIds) => {
+  let id;
+  do {
+    id = `${type}_${genId()}`;
+  } while (existingIds.has(id));
+  return id;
+};
+
+// Type-based unique name: set_data, set_data_1, set_data_2, ...
+const genUniqueTypeName = (type, existingNames) => {
+  if (!existingNames.has(type)) return type;
+  let n = 1;
+  while (existingNames.has(`${type}_${n}`)) n++;
+  return `${type}_${n}`;
+};
+
+// Ensure a duplicated node's label stays unique (X (Copy), X (Copy) 1, ...).
+const genUniqueCopyName = (baseCopy, existingNames) => {
+  if (!existingNames.has(baseCopy)) return baseCopy;
+  let n = 1;
+  while (existingNames.has(`${baseCopy} ${n}`)) n++;
+  return `${baseCopy} ${n}`;
+};
+
 // Native deep-clone for history snapshots — 3-5x faster than the legacy
 // JSON.parse(JSON.stringify(...)) double-encode path in modern engines (F5).
 // Falls back to the JSON technique where structuredClone is unavailable.
@@ -43,10 +68,14 @@ const NODE_DEFAULTS = {
   ocr_node: { label: 'OCR Node', ocr_input_key: '', ocr_prompt: 'Please perform OCR on this document and return the full text accurately.', llm: { provider: 'groq', model: 'llama-3.2-90b-vision-preview', temperature: 0 }, interrupt_before: false, interrupt_after: false },
   multi_file_ingestion: { label: 'Multi-File Ingestion', allowed_extensions: ['pdf', 'jpg', 'jpeg', 'png', 'webp'], max_file_size_mb: 25.0, max_files_count: 10, strategy_rules: [], interrupt_before: true, interrupt_after: false },
   signature_stamp_extractor: { label: 'Signature & Stamp Extractor', extractor_input_key: 'latest_file_path', extractor_output_key: 'extracted_elements', llm: { provider: 'groq', model: 'meta-llama/llama-4-scout-17b-16e-instruct', temperature: 0 }, interrupt_before: false, interrupt_after: false },
-  pattern_extract: { label: 'Pattern Extractor', extract_mode: 'identifier', extract_patterns: [], extract_input_key: 'flattened_json', extract_output_key: 'extracted_identifiers', identifiers_input_key: 'extracted_identifiers' },
   api_node: { label: 'API Request', method: 'GET', url: '', headers: {}, params: {}, body: '', auth_method: 'none', api_auth_config: {}, use_curl: false, curl_command: '' },
   vector_ingestion: { label: 'Vector Ingestion', vector_store: 'chroma', vector_collection: 'default', chunk_size: 1000, chunk_overlap: 100, chunking_strategy: 'recursive', ingestion_source_key: 'latest_ocr_output' },
-  classification: { label: 'Classification Agent', classification_classes: [{ class: 'Class A', description: 'Description for Class A' }], classification_summary: false, classification_engine: 'llm', classification_input_field: '', classification_input_key: '', llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 } },
+  derived_fields: { label: 'Derived Fields', df_fields: [], df_input_key: '', df_output_key: 'derived_fields', df_on_error: 'null' },
+  // Without an entry here a node falls back to showing its raw type on the
+  // canvas — 'report_generator' rather than 'Report Generator' — which is the
+  // one name a person cannot match against anything they were told.
+  report_generator: { label: 'Report Generator', report_format: 'docx' },
+  classification: { label: 'Classification Agent', classification_classes: [{ class: 'Class A', description: 'Description for Class A' }], classification_summary: false, classification_engine: 'llm', classification_input_field: '', classification_input_key: '', classification_max_input_chars: null, llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 } },
   sensitivity_classifier: { label: 'Sensitivity Classifier', classification_input_key: 'latest_ocr_output', classification_output_key: '', engine_mode: 'both', custom_entities: '', output_format: 'markdown' },
   pii_gate_node: { label: 'PII Verification Gate', input_key: 'latest_ocr_output', interrupt_after: true },
   ingestion_router: { label: 'Ingestion Router', scan_mode: 'auto', file_filters: ['.pdf', '.jpg', '.png', '.jpeg'], concurrency_limit: 5, parent_folder_key: 'parent_folder_path', folder_identifier_key: 'customer_folder_name', curl_command_key: 'curl_command' },
@@ -54,7 +83,6 @@ const NODE_DEFAULTS = {
   cardboard: { label: 'Sticky Note', color: 'slate' },
   json_transform: {
     label: 'JSON Transform',
-    transform_operation: 'flatten', transform_separator: '_', transform_pick_fields: [], transform_rename_map: {}, transform_omit_keys: [], transform_input_key: 'api_response', transform_output_key: 'flattened_json',
     jt_input_key: '',
     jt_output_key: 'transformed_data',
     jt_mode: 'jmespath',
@@ -63,10 +91,6 @@ const NODE_DEFAULTS = {
     jt_expression: '',
     jt_pass_through: false
   },
-  json_transform_va: {
-    label: 'Flatten JSON (VA)',
-    transform_operation: 'flatten', transform_separator: '/', transform_pick_fields: [], transform_rename_map: {}, transform_omit_keys: [], transform_input_key: 'payload', transform_output_key: 'transformed_json'
-  },
   code_execution: {
     label: 'Code',
     ce_language: 'python',
@@ -74,6 +98,8 @@ const NODE_DEFAULTS = {
     ce_input_key: 'latest_api_result',
     ce_output_key: 'code_result',
     ce_mode: 'run_once',
+    ce_block_mode: 'single',
+    ce_code_blocks: [],
   },
   email_node: {
     label: 'Email Sender',
@@ -573,20 +599,27 @@ export const useWorkflowStore = create((set, get) => ({
   },
 
   addNode: (type, position) => {
-    let id = `${type}_${genId()}`;
+    const existingNodes = get().nodes;
+    const existingIds = new Set(existingNodes.map(n => n.id));
+    const existingNames = new Set(existingNodes.map(n => n.data?.label));
+
+    let id;
     if (type === 'start') id = '__start__';
-    if (type === 'end') id = '__end__';
+    else if (type === 'end') id = '__end__';
+    else id = genUniqueNodeId(type, existingIds);
 
     // Prevent duplicates of start/end (check by ID and by Type)
     const isSystemNode = type === 'start' || type === 'end';
-    if (get().nodes.some(n => n.id === id || (isSystemNode && n.data?.type === type))) return id;
+    if (existingNodes.some(n => n.id === id || (isSystemNode && n.data?.type === type))) return id;
 
     const isCardboard = type === 'cardboard';
+    const defaults = NODE_DEFAULTS[type] || { label: type };
+    const label = isSystemNode ? (defaults.label || type) : genUniqueTypeName(type, existingNames);
     const newNode = {
       id,
       type: isCardboard ? 'cardboardNode' : 'agentNode',
       position,
-      data: { id, type, ...(NODE_DEFAULTS[type] || { label: type }) },
+      data: { id, type, ...defaults, label },
       ...(isCardboard ? {
         style: { width: 400, height: 300 },
         zIndex: -10
@@ -612,12 +645,16 @@ export const useWorkflowStore = create((set, get) => ({
     if (!node || node.id === '__start__' || node.id === '__end__' || node.data?.type === 'group') return;
 
     const type = node.data?.type || 'node';
-    const newId = `${type}_${genId()}`;
+    const existingNodes = get().nodes;
+    const existingIds = new Set(existingNodes.map(n => n.id));
+    const existingNames = new Set(existingNodes.map(n => n.data?.label));
+    const newId = genUniqueNodeId(type, existingIds);
+    const label = genUniqueCopyName(`${node.data.label || type} (Copy)`, existingNames);
     const newNode = {
       ...node,
       id: newId,
       position: { x: node.position.x + 40, y: node.position.y + 40 },
-      data: { ...node.data, id: newId, label: `${node.data.label} (Copy)` },
+      data: { ...node.data, id: newId, label },
       selected: false,
     };
 
@@ -646,19 +683,24 @@ export const useWorkflowStore = create((set, get) => ({
     get().takeHistorySnapshot();
     set((s) => {
       const newNodes = [];
-      
+      const usedIds = new Set(s.nodes.map(n => n.id));
+      const usedNames = new Set(s.nodes.map(n => n.data?.label));
+
       idsToDuplicate.forEach((nodeId) => {
         const node = s.nodes.find((n) => n.id === nodeId);
         if (!node) return;
         
         const type = node.data?.type || 'node';
-        const newId = `${type}_${genId()}`;
+        const newId = genUniqueNodeId(type, usedIds);
+        const label = genUniqueCopyName(`${node.data.label || type} (Copy)`, usedNames);
+        usedIds.add(newId);
+        usedNames.add(label);
         
         const newNode = {
           ...node,
           id: newId,
           position: { x: node.position.x + 40, y: node.position.y + 40 },
-          data: { ...node.data, id: newId, label: `${node.data.label || node.id} (Copy)` },
+          data: { ...node.data, id: newId, label },
           selected: false,
         };
         newNodes.push(newNode);
@@ -1056,30 +1098,31 @@ export const useWorkflowStore = create((set, get) => ({
   // ─── Per-node-type field maps (only export what's relevant) ──────────────────
   PER_TYPE_FIELDS: {
     // Common agent fields shared by many node types
-    _agent: ['task', 'llm', 'memory', 'iteration_policy', 'tools', 'tool_configs', 'return_direct', 'skills', 'subagents', 'harness_profile', 'code_interpreter', 'max_iterations', 'timeout_seconds', 'context_schema', 'agent_input_prefix', 'output_key_prefix'],
+    _agent: ['agent_output_key', 'agent_context_include', 'agent_context_exclude', 'task', 'llm', 'memory', 'iteration_policy', 'tools', 'tool_configs', 'return_direct', 'skills', 'subagents', 'harness_profile', 'code_interpreter', 'max_iterations', 'timeout_seconds', 'context_schema', 'agent_input_prefix', 'output_key_prefix'],
     _common: ['interrupt_before', 'interrupt_after', 'hitl_actions', 'on_error', 'continue_on_fail', 'mute_chat_bubble', 'context_mode', 'max_context_chars'],
 
-    llm_agent: ['task', 'llm', 'memory', 'iteration_policy', 'tools', 'tool_configs', 'return_direct', 'skills', 'subagents', 'harness_profile', 'code_interpreter', 'max_iterations', 'timeout_seconds', 'context_schema', 'agent_input_prefix', 'output_key_prefix', 'interrupt_before', 'interrupt_after', 'hitl_actions', 'on_error', 'continue_on_fail', 'mute_chat_bubble', 'context_mode', 'max_context_chars', 'allowed_transitions'],
-    deep_agent: ['task', 'llm', 'tools', 'tool_configs', 'skills', 'deep_agent_backend', 'deep_agent_root_dir', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
-    tool_node: ['tools', 'tool_configs', 'return_direct', 'interrupt_before', 'interrupt_after'],
-    direct_tool: ['direct_tool_name', 'tool_arguments', 'destination_key', 'return_direct', 'interrupt_before', 'interrupt_after'],
+    llm_agent: ['agent_output_key', 'agent_context_include', 'agent_context_exclude', 'task', 'llm', 'memory', 'iteration_policy', 'tools', 'tool_configs', 'return_direct', 'skills', 'subagents', 'harness_profile', 'code_interpreter', 'max_iterations', 'timeout_seconds', 'context_schema', 'agent_input_prefix', 'output_key_prefix', 'interrupt_before', 'interrupt_after', 'hitl_actions', 'on_error', 'continue_on_fail', 'mute_chat_bubble', 'context_mode', 'max_context_chars', 'allowed_transitions'],
+    deep_agent: ['agent_output_key', 'agent_context_include', 'agent_context_exclude', 'task', 'llm', 'tools', 'tool_configs', 'skills', 'subagents', 'max_iterations', 'timeout_seconds', 'deep_agent_backend', 'deep_agent_root_dir', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
+    tool_node: ['tools', 'tool_configs', 'return_direct', 'on_error', 'interrupt_before', 'interrupt_after'],
+    direct_tool: ['direct_tool_name', 'tool_arguments', 'destination_key', 'return_direct', 'on_error', 'interrupt_before', 'interrupt_after'],
     router: ['routing_key', 'member_ids', 'branches', 'condition', 'custom_python_rules', 'python_rules'],
     switch: ['routing_key', 'branches', 'condition', 'custom_python_rules', 'python_rules'],
     condition: ['condition', 'custom_python_rules', 'python_rules'],
     set_data: ['message'],
     wait: ['wait_seconds'],
     chat_model: ['llm'],
+    memory: ['type_name', 'scope', 'vector_db', 'search_type', 'top_k', 'window_size'],
     rag_node: ['task', 'llm', 'search_type', 'vector_store', 'vector_collection', 'embedding_model', 'k_results', 'threshold', 'chunking_strategy', 'show_citations', 'interrupt_before', 'interrupt_after', 'chunk_size', 'chunk_overlap', 'ingestion_source_key'],
-    subgraph: ['workflow_id', 'interrupt_before', 'interrupt_after'],
-    supervisor: ['member_ids', 'llm', 'iteration_policy', 'tools', 'tool_configs', 'allowed_transitions', 'interrupt_before', 'interrupt_after'],
-    swarm: ['member_ids', 'llm', 'iteration_policy', 'tools', 'tool_configs', 'allowed_transitions', 'interrupt_before', 'interrupt_after'],
+    subgraph: ['workflow_id', 'return_direct', 'interrupt_before', 'interrupt_after'],
+    supervisor: ['agent_output_key', 'agent_context_include', 'agent_context_exclude', 'member_ids', 'task', 'llm', 'iteration_policy', 'tools', 'tool_configs', 'allowed_transitions', 'on_error', 'interrupt_before', 'interrupt_after'],
+    swarm: ['agent_output_key', 'agent_context_include', 'agent_context_exclude', 'member_ids', 'task', 'llm', 'iteration_policy', 'tools', 'tool_configs', 'allowed_transitions', 'on_error', 'interrupt_before', 'interrupt_after'],
     webhook: ['enabled', 'path', 'secret', 'auth_method', 'response_mode', 'response_node'],
     webhook_response: ['response_status', 'response_headers', 'response_body_key'],
     cron: ['enabled', 'cron_expression', 'timezone'],
     polling: ['enabled', 'poller_tool', 'tool_arguments', 'destination_key', 'cron_expression', 'timezone'],
     splitter: ['split_field', 'batch_size', 'destination_field', 'discovery_keys', 'interrupt_before', 'interrupt_after'],
     aggregator: ['action', 'field_to_aggregate', 'destination_field', 'separator', 'group_by'],
-    form_node: ['form_title', 'form_description', 'form_fields', 'form_submit_label', 'form_use_context_schema', 'interrupt_before', 'interrupt_after'],
+    form_node: ['form_title', 'form_description', 'form_fields', 'form_submit_label', 'form_use_context_schema', 'form_decisions', 'interrupt_before', 'interrupt_after'],
     camera: ['form_title', 'form_description', 'form_fields', 'form_submit_label', 'interrupt_before', 'interrupt_after'],
     notification: ['notification_title', 'notification_message', 'notification_type', 'mute_notification_message', 'show_chat_button'],
     error_router: ['llm', 'on_error'],
@@ -1088,32 +1131,44 @@ export const useWorkflowStore = create((set, get) => ({
     data_cleaning: ['data_cleaning_rules', 'data_cleaning_target', 'data_cleaning_input_key', 'data_cleaning_output_key'],
     graph_ingestion: ['graph_target_key', 'graph_neo4j_uri', 'graph_neo4j_user', 'graph_neo4j_password', 'graph_ingestion_mode', 'graph_cypher_query', 'graph_nodes_schema', 'graph_relations_schema', 'graph_collection', 'graph_sender_key', 'graph_receiver_key', 'graph_txn_id_key', 'graph_amount_key', 'graph_timestamp_key'],
     db_node: ['db_engine', 'db_connection_string', 'db_database', 'db_collection', 'db_operation', 'db_document', 'db_query', 'db_output_key', 'db_limit'],
-    ocr_node: ['ocr_input_key', 'ocr_prompt', 'ocr_engine', 'ocr_standard_model', 'llm', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail', 'docbot_url', 'docbot_method'],
+    ocr_node: ['ocr_input_key', 'ocr_prompt', 'ocr_engine', 'ocr_standard_model', 'llm', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail', 'docbot_url', 'docbot_method', 'ocr_fallback_engine', 'ocr_text_layer_min_chars', 'ocr_max_pages', 'ocr_on_max_pages', 'destination_key', 'allowed_file_types', 'ocr_multi_file_key', 'ocr_service_url', 'ocr_service_response_type', 'ocr_service_file_field', 'ocr_service_headers', 'ocr_service_params', 'ocr_service_text_path'],
     multi_file_ingestion: ['allowed_extensions', 'max_file_size_mb', 'max_files_count', 'strategy_rules', 'interrupt_before', 'interrupt_after', 'hitl_actions', 'on_error'],
     signature_stamp_extractor: ['extractor_input_key', 'extractor_output_key', 'llm', 'interrupt_before', 'interrupt_after'],
-    pattern_extract: ['extract_mode', 'extract_patterns', 'extract_input_key', 'extract_output_key', 'identifiers_input_key'],
-    api_node: ['api_method', 'api_url', 'api_headers', 'api_params', 'api_body', 'api_auth_type', 'api_auth_config', 'api_response_format', 'connection_id', 'api_protocol', 'graphql_query', 'use_curl', 'curl_command', 'on_error', 'continue_on_fail', 'api_description', 'api_enabled', 'api_execution_mode', 'additional_apis'],
+    api_node: ['api_method', 'api_url', 'api_headers', 'api_params', 'api_body', 'api_auth_type', 'api_auth_config', 'api_response_format', 'connection_id', 'api_protocol', 'graphql_query', 'use_curl', 'curl_command', 'on_error', 'continue_on_fail', 'api_description', 'api_enabled', 'api_execution_mode', 'additional_apis', 'api_max_retries', 'api_retry_delay', 'api_name'],
     vector_ingestion: ['vector_store', 'vector_collection', 'chunk_size', 'chunk_overlap', 'chunking_strategy', 'ingestion_source_key'],
-    classification: ['classification_classes', 'classification_summary', 'classification_engine', 'classification_input_field', 'classification_input_key', 'classification_output_key', 'classification_extract_identifiers', 'llm', 'interrupt_before', 'interrupt_after'],
+    classification: ['classification_classes', 'classification_summary', 'classification_engine', 'classification_input_field', 'classification_input_key', 'classification_output_key', 'classification_extract_identifiers', 'classification_max_input_chars', 'llm', 'interrupt_before', 'interrupt_after'],
     sensitivity_classifier: ['classification_input_key', 'classification_output_key', 'engine_mode', 'custom_entities', 'output_format', 'llm', 'interrupt_before', 'interrupt_after'],
     pii_gate_node: ['input_key', 'interrupt_after'],
     ingestion_router: ['scan_mode', 'file_filters', 'concurrency_limit', 'parent_folder_key', 'folder_identifier_key', 'curl_command_key', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
     event_emitter: ['webhook_url', 'emit_status', 'interrupt_before', 'interrupt_after'],
-    json_transform: ['transform_operation', 'transform_separator', 'transform_pick_fields', 'transform_rename_map', 'transform_omit_keys', 'transform_input_key', 'transform_output_key', 'jt_input_key', 'jt_output_key', 'jt_mode', 'jt_query', 'jt_operations', 'jt_expression', 'jt_pass_through'],
-    json_transform_va: ['transform_operation', 'transform_separator', 'transform_pick_fields', 'transform_rename_map', 'transform_omit_keys', 'transform_input_key', 'transform_output_key'],
-    code_execution: ['ce_language', 'ce_code', 'ce_input_key', 'ce_output_key', 'ce_mode'],
+    json_transform: ['jt_input_key', 'jt_output_key', 'jt_mode', 'jt_query', 'jt_operations', 'jt_expression', 'jt_pass_through'],
+    code_execution: ['ce_language', 'ce_code', 'ce_input_key', 'ce_output_key', 'ce_mode', 'ce_block_mode', 'ce_code_blocks'],
     email_node: ['email_provider', 'email_to', 'email_cc', 'email_bcc', 'email_subject', 'email_body', 'email_html', 'email_smtp_server', 'email_smtp_port', 'email_user', 'email_password', 'email_attachments', 'email_headers', 'email_smtp_timeout', 'email_auth_method', 'email_tenant_id', 'email_client_id', 'email_client_secret', 'email_google_service_account_json', 'email_google_delegated_user'],
     stt_trigger: ['auto_start', 'auto_stop', 'silence_delay', 'stt_lang'],
     button_trigger: ['button_label', 'button_input', 'button_category'],
-    auto_trigger: ['button_input', 'task', 'llm'],
-    textToAudio: ['tts_library', 'audio_voice', 'kittentts_model', 'audio_speed', 'mute_audio', 'audio_input_text'],
-    vision_intelligence: ['vision_mode', 'vision_enable_llm', 'vision_face_match_threshold', 'vision_quality_min_score', 'vision_quality_blur_threshold', 'vision_quality_min_contrast', 'vision_quality_max_contrast', 'vision_id_image_key', 'vision_selfie_image_key', 'vision_output_key', 'llm', 'interrupt_before', 'interrupt_after'],
+    auto_trigger: ['button_input', 'button_label', 'button_category', 'task', 'llm'],
+    textToAudio: ['tts_library', 'audio_voice', 'kittentts_model', 'audio_speed', 'mute_audio', 'audio_input_text', 'on_error'],
+    // vision_mode: 'ocr' delegates to build_ocr_node with this same node config,
+    // so the ocr_* fields must be saved here too — without them the OCR mode
+    // silently falls back to its defaults and the engine choice is unreachable.
+    vision_intelligence: ['vision_mode', 'vision_enable_llm', 'vision_face_match_threshold', 'vision_quality_min_score', 'vision_quality_blur_threshold', 'vision_quality_min_contrast', 'vision_quality_max_contrast', 'vision_quality_min_brightness', 'vision_quality_max_brightness', 'vision_quality_min_shortest_side', 'vision_id_image_key', 'vision_selfie_image_key', 'vision_output_key', 'extractor_input_key', 'llm', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail', 'ocr_engine', 'ocr_prompt', 'ocr_input_key', 'ocr_standard_model', 'ocr_fallback_engine', 'ocr_text_layer_min_chars', 'ocr_max_pages', 'ocr_on_max_pages', 'ocr_service_url', 'ocr_service_response_type'],
     group: ['name', 'description', 'internal_nodes', 'internal_edges', 'original_edges'],
-    ingestion_adapter: ['source_format', 'target_serialization', 'validation_mode', 'flatten_depth', 'flatten_separator', 'field_aliases', 'default_values', 'source_key', 'external_integrations', 'internal_integrations', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
-    payload_builder: ['payload_template', 'payload_destination_key'],
-    webhook_response: ['response_status', 'response_headers', 'response_body_key'],
-    report_generator: ['template_content', 'template_output_key', 'template_data_key', 'template_file_path', 'template_id', 'input_data_key', 'output_file_name', 'report_format', 'template_category', 'interrupt_before', 'interrupt_after'],
+    ingestion_adapter: ['source_format', 'target_serialization', 'validation_mode', 'flatten_depth', 'flatten_separator', 'field_aliases', 'default_values', 'source_key', 'destination_key', 'external_integrations', 'internal_integrations', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
+    payload_builder: ['payload_template', 'payload_destination_key', 'auto_collect_prefix', 'clean_binary_from'],
+    derived_fields: ['df_fields', 'df_input_key', 'df_output_key', 'df_on_error', 'interrupt_before', 'interrupt_after'],
+    report_generator: ['template_content', 'template_output_key', 'template_data_key', 'template_file_path', 'template_id', 'input_data_key', 'output_file_name', 'report_format', 'report_mode', 'report_on_missing_target', 'template_category', 'interrupt_before', 'interrupt_after'],
     weightage: ['weightage_categories', 'weightage_output_key', 'weightage_approve_threshold', 'weightage_review_threshold', 'weightage_risk_bands', 'weightage_output_flags', 'weightage_cross_rules', 'interrupt_before', 'interrupt_after'],
+    // These five had no entry at all, which meant every setting made in their
+    // panels was discarded the moment the workflow was saved — silently, because
+    // an unknown key is dropped rather than rejected.
+    template_node: ['template_content', 'template_output_key', 'template_data_key', 'template_file_path', 'interrupt_before', 'interrupt_after'],
+    debug_node: ['debug_scope', 'debug_key'],
+    file_store: ['file_data_key', 'file_format', 'file_name', 'file_overwrite', 'interrupt_before', 'interrupt_after'],
+    banking_enrichment: ['source_key', 'destination_key', 'custom_external_apis', 'custom_internal_apis', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
+    beneficiary_risk: ['context_key', 'beneficiary_field', 'risk_checks', 'new_beneficiary_rule', 'fraud_additional_apis', 'fraud_alert_level', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
+
+    // Keyed by names that are not node types, so they never matched anything.
+    // Kept only so an older saved workflow referencing them is not disturbed.
     form_decisions: ['form_decisions'],
     debug: ['debug_scope', 'debug_key'],
     ingestion: ['scan_mode', 'file_filters', 'concurrency_limit', 'webhook_url', 'emit_status'],
@@ -1365,7 +1420,7 @@ export const useWorkflowStore = create((set, get) => ({
 
 // ─── UI Store ─────────────────────────────────────────────────────────────────
 export const useUIStore = create((set) => ({
-  activePage: 'dashboard',   // dashboard | canvas | workflows | logs | tools | rag
+  activePage: 'dashboard',   // dashboard | canvas | workflows | tools | rag
   selectedNodeId: null,
   selectedEdgeId: null,
   panelOpen: false,

@@ -116,7 +116,7 @@ const findClosestEdge = (
   return closestEdgeId;
 };
 
-const instantiateGroupTemplate = (config, newPosition) => {
+const instantiateGroupTemplate = (config, newPosition, existingIds = new Set()) => {
   const originalPos = config.position || { x: 0, y: 0 };
   const dx = newPosition.x - originalPos.x;
   const dy = newPosition.y - originalPos.y;
@@ -125,8 +125,12 @@ const instantiateGroupTemplate = (config, newPosition) => {
   const internalNodes = (config.internal_nodes || []).map(n => {
     const oldId = n.id;
     const type = n.data?.type || 'node';
-    const newId = `${type}_${Math.random().toString(36).substring(2, 7)}`;
+    let newId;
+    do {
+      newId = `${type}_${Math.random().toString(36).substring(2, 7)}`;
+    } while (existingIds.has(newId) || idMap[oldId]);
     idMap[oldId] = newId;
+    existingIds.add(newId);
 
     return {
       ...n,
@@ -563,7 +567,7 @@ export default function WorkflowCanvas() {
         try {
           let config = JSON.parse(configStr);
           if (type === 'group') {
-            config = instantiateGroupTemplate(config, position);
+            config = instantiateGroupTemplate(config, position, new Set(nodes.map(n => n.id)));
           }
           setNodeData(id, config);
         } catch (err) {
@@ -1238,7 +1242,7 @@ export default function WorkflowCanvas() {
               width: 44,
               height: 44,
             }}
-            title="Workflow Variables"
+            title="Variable Explorer"
           >
             <VscVariableGroup size={20} />
           </button>

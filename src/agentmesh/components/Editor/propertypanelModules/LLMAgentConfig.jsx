@@ -8,7 +8,7 @@ import {
   Select,
   LLMConfigSection,
   IterationConfigSection,
-  WizardButton,
+  ArchitectButton,
   NodeIdList,
   AdvancedSection,
   InfoBanner
@@ -34,7 +34,7 @@ const LLMAgentConfig = memo(function LLMAgentConfig({
         label="System Instructions"
         hint="Define the agent's core role, persona, and behavior rules. This is the 'soul' of the agent."
         action={
-          <WizardButton
+          <ArchitectButton
             onClick={() => handleFixGrammar("task")}
             loading={fixingGrammar}
             disabled={!data.task}
@@ -284,6 +284,54 @@ const LLMAgentConfig = memo(function LLMAgentConfig({
                 })
               }
               placeholder="20000"
+            />
+          </Field>
+
+          {/* Without this, an answer is only stored when it happens to contain
+              particular field names, and otherwise vanishes without a word. */}
+          <Field
+            label="Save Answer To"
+            hint="Where to store this agent's answer when it replies with structured data. Set this whenever a later step needs the answer — leave blank and it may not be stored at all."
+          >
+            <Input
+              stripBraces
+              value={data.agent_output_key || ""}
+              onChange={(v) => update({ agent_output_key: v || null })}
+              placeholder="e.g. extracted_data"
+            />
+          </Field>
+
+          <Field
+            label="Always Include These Values"
+            hint="Comma-separated. Some large values are held back from the prompt by default. Name any this agent must receive — for example the text a previous step extracted."
+          >
+            <Input
+              value={(data.agent_context_include || []).join(", ")}
+              onChange={(v) =>
+                update({
+                  agent_context_include: v
+                    ? v.split(",").map((s) => s.trim()).filter(Boolean)
+                    : null,
+                })
+              }
+              placeholder="e.g. vision_result"
+            />
+          </Field>
+
+          <Field
+            label="Never Include These Values"
+            hint="Comma-separated. Keeps large values out of this agent's prompt when it does not need them but a later step does."
+          >
+            <Input
+              value={(data.agent_context_exclude || []).join(", ")}
+              onChange={(v) =>
+                update({
+                  agent_context_exclude: v
+                    ? v.split(",").map((s) => s.trim()).filter(Boolean)
+                    : null,
+                })
+              }
+              placeholder="e.g. raw_payload"
             />
           </Field>
         </div>

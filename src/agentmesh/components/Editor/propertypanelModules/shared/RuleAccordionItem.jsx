@@ -2,6 +2,7 @@ import React, { useState, memo } from 'react';
 import { FiTrash2, FiChevronDown, FiLoader } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { generatePythonRule } from '../../../../api/agentmesh';
+import { getArchitectConfig } from '../../../../utils/architectConfig';
 
 export const RuleAccordionItem = memo(function RuleAccordionItem({ rule, idx, totalRules, updateRule, removeRule, moveRule }) {
   const [isExpanded, setIsExpanded] = useState(true);
@@ -11,7 +12,7 @@ export const RuleAccordionItem = memo(function RuleAccordionItem({ rule, idx, to
     if (!rule.code || !rule.code.trim()) return;
     setIsGenerating(true);
     try {
-      const data = await generatePythonRule(rule.code);
+      const data = await generatePythonRule(rule.code, getArchitectConfig());
       if (data.status === 'success') {
         updateRule(idx, 'code', data.code);
       } else {
@@ -86,7 +87,7 @@ export const RuleAccordionItem = memo(function RuleAccordionItem({ rule, idx, to
               className="bg-slate-100 text-[#64748B] border border-slate-200 p-1 px-2.5 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-60 transition-all duration-200 hover:bg-slate-200"
             >
               {isGenerating ? <FiLoader className="animate-spin" size={12} /> : <span className="text-xs">✨</span>} 
-              {isGenerating ? 'Generating...' : 'AI Wizard'}
+              {isGenerating ? 'Generating...' : 'Architect'}
             </button>
           </div>
 

@@ -21,7 +21,6 @@ const NotificationsModal = lazyWithRetry(() => import('../../Editor/Notification
 const DashboardPage      = lazyWithRetry(() => import('./DashboardPage'));
 const WorkflowsPage      = lazyWithRetry(() => import('./WorkflowsPage'));
 const LibraryPage        = lazyWithRetry(() => import('./LibraryPage'));
-const LogsPage           = lazyWithRetry(() => import('./LogsPage'));
 const RAGPage            = lazyWithRetry(() => import('./RAGPage'));
 const Observability      = lazyWithRetry(() => import('./observability'));
 const MarketplacePage    = lazyWithRetry(() => import('./MarketplacePage'));
@@ -122,7 +121,6 @@ export default function MainComponent() {
           {activePage === 'canvas'        && <WorkflowCanvas />}
           {activePage === 'workflows'     && <WorkflowsPage />}
           {activePage === 'library'       && <LibraryPage />}
-          {activePage === 'logs'          && <LogsPage />}
           {activePage === 'rag'           && <RAGPage />}
           {activePage === 'marketplace'   && <MarketplacePage />}
           {activePage === 'observability' && <Observability />}

@@ -269,12 +269,13 @@ export default function VisionIntelligenceConfig({
         <div style={{ marginTop: 10 }}>
           <Field
             label="OCR Mode"
-            hint="Vision uses Cloud LLMs; Standard uses local engines; External sends files to an API service (e.g., DocBot)."
+            hint="Hybrid reads a PDF's built-in text layer page by page and only calls the AI for pages that are scans — faster, cheaper and exact on digital pages. Vision sends everything to a Cloud LLM; Standard uses local engines; External sends files to an API service."
           >
             <Select
               value={data.ocr_engine || "vision"}
               onChange={(v) => update({ ocr_engine: v })}
               options={[
+                { value: "hybrid", label: "Hybrid — text layer first, AI for scans" },
                 { value: "vision", label: "Vision OCR (AI/LLM)" },
                 { value: "standard", label: "Standard OCR (Local)" },
                 { value: "external", label: "External Service (API)" },
@@ -282,7 +283,85 @@ export default function VisionIntelligenceConfig({
             />
           </Field>
 
-          {(data.ocr_engine || "vision") === "vision" && (
+          {data.ocr_engine === "hybrid" && (
+            <div
+              style={{
+                marginTop: 14,
+                marginBottom: 14,
+                padding: "12px 14px",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                background: "var(--bg-hover)",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: "var(--text-muted)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.8px",
+                  marginBottom: 10,
+                }}
+              >
+                Hybrid Settings
+              </div>
+
+              <Field
+                label="Fallback Engine"
+                hint="Used for pages with no readable text — scans and photographs."
+              >
+                <Select
+                  value={data.ocr_fallback_engine || "vision"}
+                  onChange={(v) => update({ ocr_fallback_engine: v })}
+                  options={[
+                    { value: "vision", label: "Vision OCR (AI/LLM)" },
+                    { value: "standard", label: "Standard OCR (Local)" },
+                  ]}
+                />
+              </Field>
+
+              <Field
+                label="Minimum Text Characters (per page)"
+                hint="How much embedded text makes a page count as digital. A scanned page has almost none; a real page has hundreds or thousands. Default 100."
+              >
+                <Input
+                  type="number"
+                  value={data.ocr_text_layer_min_chars ?? 100}
+                  onChange={(v) => update({ ocr_text_layer_min_chars: Number(v) })}
+                  placeholder="100"
+                />
+              </Field>
+
+              <Field
+                label="Max Pages"
+                hint="Guard against one enormous file. 0 = no limit."
+              >
+                <Input
+                  type="number"
+                  value={data.ocr_max_pages ?? 0}
+                  onChange={(v) => update({ ocr_max_pages: Number(v) })}
+                  placeholder="0"
+                />
+              </Field>
+
+              <Field
+                label="When Max Pages Is Exceeded"
+                hint="Truncate processes the first N pages; Fail stops the run."
+              >
+                <Select
+                  value={data.ocr_on_max_pages || "truncate"}
+                  onChange={(v) => update({ ocr_on_max_pages: v })}
+                  options={[
+                    { value: "truncate", label: "Truncate — process the first N pages" },
+                    { value: "fail", label: "Fail — stop the run" },
+                  ]}
+                />
+              </Field>
+            </div>
+          )}
+
+          {["vision", "hybrid"].includes(data.ocr_engine || "vision") && (
             <>
               <Field
                 label="OCR Instruction / Prompt"
