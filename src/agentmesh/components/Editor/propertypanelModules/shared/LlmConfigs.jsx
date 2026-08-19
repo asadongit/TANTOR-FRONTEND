@@ -95,13 +95,14 @@ export const LLMConfigSection = memo(function LLMConfigSection({ llm, onChange }
 
       <Field
         label="Reasoning Depth"
-        hint="How long a reasoning model thinks before answering. Deeper is slower and costs more. Ignored by models that do not reason."
+        hint="How long a reasoning model thinks before answering. Deeper is slower and costs more. Which depths a model accepts varies by provider — one that rejects the depth you pick fails the call, so leave it on Model's default unless you know the model takes it."
       >
         <Select
           value={llm?.reasoning_effort || ''}
           onChange={(v) => onChange({ ...llm, reasoning_effort: v || null })}
           options={[
             { value: '', label: "Model's default" },
+            { value: 'none', label: 'None — answer without thinking' },
             { value: 'low', label: 'Low — fastest' },
             { value: 'medium', label: 'Medium' },
             { value: 'high', label: 'High — slowest, most thorough' },
