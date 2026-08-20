@@ -5,6 +5,7 @@ import {
   Field,
   Input,
   Textarea,
+  Toggle,
   KeyValueEditor,
   LLMConfigSection,
 } from "./SharedComponents";
@@ -108,6 +109,16 @@ export default function OcrNodeConfig({ data, update }) {
 
       {["vision", "hybrid"].includes(data.ocr_engine || "vision") && (
         <>
+          <Field
+            label="Straighten Pages Before Reading"
+            hint="A page scanned sideways or upside down carries nothing in the file to say so, and a model will read it plausibly while losing much of it. This checks each page and turns it upright first. A page it is unsure about is left exactly as it is."
+          >
+            <Toggle
+              checked={!!data.ocr_auto_orient}
+              onChange={(v) => update({ ocr_auto_orient: v })}
+            />
+          </Field>
+
           <Field
             label="OCR Instruction / Prompt"
             hint="Instruction for the vision model. Be specific about what data to extract."
