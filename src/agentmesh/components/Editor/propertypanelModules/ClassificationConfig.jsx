@@ -189,6 +189,32 @@ export default function ClassificationConfig({ data, update }) {
         </div>
       </div>
 
+      <div style={{ marginTop: 16 }}>
+        <label
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: "var(--text-secondary)",
+            display: "block",
+            marginBottom: 6,
+          }}
+        >
+          Save Result As (Optional)
+        </label>
+        <Input
+          stripBraces
+          value={data.classification_output_key || ""}
+          onChange={(v) => update({ classification_output_key: v })}
+          placeholder="e.g. doc_class"
+        />
+        <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4 }}>
+          Name to file this result under, so later steps can refer to it. Give
+          each classifier its own name when a workflow has more than one,
+          otherwise the second overwrites the first. Left empty, the result is
+          still available as latest_classification.
+        </div>
+      </div>
+
       {data.classification_engine !== "regex" && (
         <div style={{ marginTop: 16 }}>
           <label
