@@ -4,14 +4,15 @@ import { Select, Field, Input, Toggle } from './SharedComponents';
 export default function FileStoreConfig({ data, update }) {
   return (
     <>
-      <Field label="File Format" hint="Choose the output format. Excel is best for visual reading, CSV for data processing.">
+      <Field label="File Format" hint="Excel is best for visual reading, CSV for data processing, Markdown for text that was laid out — a table stays a table instead of being flattened into one line.">
         <Select
           value={data.file_format || 'csv'}
           onChange={(v) => update({ file_format: v })}
           options={[
             { value: 'csv', label: 'CSV (Comma Separated)' },
             { value: 'excel', label: 'Excel (.xlsx)' },
-            { value: 'txt', label: 'Plain Text (.txt)' }
+            { value: 'txt', label: 'Plain Text (.txt)' },
+            { value: 'md', label: 'Markdown (.md) — keeps layout' }
           ]}
         />
       </Field>
