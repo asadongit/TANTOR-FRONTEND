@@ -147,6 +147,23 @@ export default function ClassificationConfig({ data, update }) {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 13, color: "var(--text-secondary, #475569)", fontWeight: 600 }}>
+                Sort Each Page Separately
+              </span>
+              <FiInfo
+                size={12}
+                style={{ color: "var(--text-muted)", opacity: 0.5, cursor: "help" }}
+                title="Turn this on when one file can contain more than one kind of document. Each page is sorted on its own and the result says which pages hold which class, instead of the whole file taking the class of its first page. Uses one model call per page."
+              />
+            </div>
+            <MiniatureToggle
+              checked={data.classification_per_page === true}
+              onChange={(v) => update({ classification_per_page: v })}
+            />
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 13, color: "var(--text-secondary, #475569)", fontWeight: 600 }}>
                 Extract Identifiers (NER)
               </span>
               <FiInfo
