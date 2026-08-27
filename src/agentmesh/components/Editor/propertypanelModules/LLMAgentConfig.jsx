@@ -1,16 +1,18 @@
 import React, { memo } from "react";
-import { FiCpu, FiBookOpen } from "react-icons/fi";
+import { FiCpu, FiBookOpen, FiLayers } from "react-icons/fi";
 import {
   Field,
   Input,
   Textarea,
   ToolTagInput,
   Select,
+  Toggle,
   LLMConfigSection,
   IterationConfigSection,
   ArchitectButton,
   NodeIdList,
   AdvancedSection,
+  CollapsibleSection,
   InfoBanner
 } from "./SharedComponents";
 
@@ -300,6 +302,150 @@ const LLMAgentConfig = memo(function LLMAgentConfig({
               placeholder="e.g. extracted_data"
             />
           </Field>
+
+          {/* A model occasionally returns a fraction of what it should, with no
+              error and valid output — which reads downstream as a thin document
+              rather than a thin answer. This states what "too short" looks like
+              and asks again. */}
+          <Field
+            label="Ask Again If The Answer Is Too Short"
+            hint="A description of an answer worth rejecting, written as a test — for example: len(answer.lines) < 20. When it is true the agent is asked again. Leave empty to accept whatever comes back first. Use this when the same input sometimes returns much less than it should."
+          >
+            <Input
+              value={data.agent_retry_when || ""}
+              onChange={(v) => update({ agent_retry_when: v || null })}
+              placeholder="e.g. len(answer.lines) < 20"
+            />
+          </Field>
+
+          {data.agent_retry_when && (
+            <Field
+              label="How Many Extra Tries"
+              hint="How many more times to ask when the answer is rejected. The first acceptable answer is used. If every try is rejected the fullest one is kept, and that is recorded alongside it so nobody mistakes it for a good answer."
+            >
+              <Input
+                type="number"
+                min={0}
+                value={data.agent_retry_max ?? 2}
+                onChange={(v) =>
+                  update({ agent_retry_max: Math.max(0, Number(v) || 0) })
+                }
+              />
+            </Field>
+          )}
+
+          {/* Asking for hundreds of fields in one answer costs accuracy — the
+              model drops entries or abandons the shape part way through. This
+              asks for them a batch at a time and joins the answers up. */}
+          <Field
+            label="Ask In Batches"
+            hint="Ask this agent for a long list a handful at a time instead of all at once, then join the answers into one. Use it when the list is long enough that the agent starts missing things. Off means one ordinary call, exactly as before."
+          >
+            <Toggle
+              checked={!!data.agent_batch_enabled}
+              onChange={(v) => update({ agent_batch_enabled: v })}
+            />
+          </Field>
+
+          {data.agent_batch_enabled && (
+            <CollapsibleSection
+              title="Batch Settings"
+              defaultOpen={true}
+              icon={FiLayers}
+            >
+              <Field
+                label="The Full List"
+                hint="The whole list of things to ask for, kept somewhere outside the prompt. The agent never sees all of it at once — this is just where it lives. Keeping it here means adding more later is a change to a list, not to the instructions."
+              >
+                <Input
+                  value={data.agent_batch_items || ""}
+                  onChange={(v) => update({ agent_batch_items: v || null })}
+                  placeholder="e.g. {{ balance_sheet_fields }}"
+                />
+              </Field>
+
+              <Field
+                label="How Many At A Time"
+                hint="How much of the list to ask for in one go. Ask for too much at once and the answer starts dropping things. Smaller is usually more accurate but means more calls: a list of 615 asked 50 at a time is 13 calls."
+              >
+                <Input
+                  type="number"
+                  min={1}
+                  value={data.agent_batch_size ?? 50}
+                  onChange={(v) =>
+                    update({ agent_batch_size: Math.max(1, Number(v) || 50) })
+                  }
+                />
+              </Field>
+
+              <Field
+                label="What To Call It In The Instructions"
+                hint="The name the current handful goes by inside your instructions. Write {{ batch_items }} in the prompt and each call quietly swaps in that call's share of the list. Only change this if that name clashes with something else."
+              >
+                <Input
+                  stripBraces
+                  value={data.agent_batch_var || ""}
+                  onChange={(v) => update({ agent_batch_var: v || "batch_items" })}
+                  placeholder="batch_items"
+                />
+              </Field>
+
+              <Field
+                label="What Makes Two Entries The Same One"
+                hint="If every answer comes back with a list — one entry per year, say — this says how to tell which entries are really the same entry. Put 'slot' here and year 1 from every call becomes one year 1. Leave it blank and you get one entry per call instead, which for three years and thirteen calls means 39 entries rather than 3."
+              >
+                <Input
+                  stripBraces
+                  value={data.agent_batch_merge_key || ""}
+                  onChange={(v) => update({ agent_batch_merge_key: v || null })}
+                  placeholder="e.g. slot"
+                />
+              </Field>
+
+              <Field
+                label="How The Answers Are Put Together"
+                hint="Deep is the normal choice: it fits all the answers into one, however deeply nested. Shallow only joins the outermost level and ignores what is inside. Keep separate does not join them at all and hands back one answer per call, for when you want to look at them yourself."
+              >
+                <Select
+                  value={data.agent_batch_merge || "deep_merge"}
+                  onChange={(v) => update({ agent_batch_merge: v })}
+                  options={[
+                    { value: "deep_merge", label: "Deep (join everything)" },
+                    { value: "shallow_merge", label: "Shallow (outer level only)" },
+                    { value: "list_concat", label: "Keep separate" },
+                  ]}
+                />
+              </Field>
+
+              <Field
+                label="How Many Calls At Once"
+                hint="Whether to ask several times at once or wait for each answer before asking again. One at a time is slowest and safest. Raising it is faster but asks the model provider for more at once, and they may refuse if you go too fast."
+              >
+                <Input
+                  type="number"
+                  min={1}
+                  value={data.agent_batch_max_parallel ?? 1}
+                  onChange={(v) =>
+                    update({ agent_batch_max_parallel: Math.max(1, Number(v) || 1) })
+                  }
+                />
+              </Field>
+
+              <Field
+                label="If One Call Goes Wrong"
+                hint="Carry on means the rest still run; only that handful comes back empty, and you are told which one failed so nobody mistakes empty for zero. Stop means one bad call throws the whole thing away, including the parts that worked."
+              >
+                <Select
+                  value={data.agent_batch_on_error || "continue"}
+                  onChange={(v) => update({ agent_batch_on_error: v })}
+                  options={[
+                    { value: "continue", label: "Carry on and tell me" },
+                    { value: "fail", label: "Stop everything" },
+                  ]}
+                />
+              </Field>
+            </CollapsibleSection>
+          )}
 
           <Field
             label="Always Include These Values"

@@ -1101,7 +1101,7 @@ export const useWorkflowStore = create((set, get) => ({
     _agent: ['agent_output_key', 'agent_context_include', 'agent_context_exclude', 'task', 'llm', 'memory', 'iteration_policy', 'tools', 'tool_configs', 'return_direct', 'skills', 'subagents', 'harness_profile', 'code_interpreter', 'max_iterations', 'timeout_seconds', 'context_schema', 'agent_input_prefix', 'output_key_prefix'],
     _common: ['interrupt_before', 'interrupt_after', 'hitl_actions', 'on_error', 'continue_on_fail', 'mute_chat_bubble', 'context_mode', 'max_context_chars'],
 
-    llm_agent: ['agent_output_key', 'agent_context_include', 'agent_context_exclude', 'task', 'llm', 'memory', 'iteration_policy', 'tools', 'tool_configs', 'return_direct', 'skills', 'subagents', 'harness_profile', 'code_interpreter', 'max_iterations', 'timeout_seconds', 'context_schema', 'agent_input_prefix', 'output_key_prefix', 'interrupt_before', 'interrupt_after', 'hitl_actions', 'on_error', 'continue_on_fail', 'mute_chat_bubble', 'context_mode', 'max_context_chars', 'allowed_transitions'],
+    llm_agent: ['agent_output_key', 'agent_context_include', 'agent_context_exclude', 'task', 'llm', 'memory', 'iteration_policy', 'tools', 'tool_configs', 'return_direct', 'skills', 'subagents', 'harness_profile', 'code_interpreter', 'max_iterations', 'timeout_seconds', 'context_schema', 'agent_input_prefix', 'output_key_prefix', 'interrupt_before', 'interrupt_after', 'hitl_actions', 'on_error', 'continue_on_fail', 'mute_chat_bubble', 'context_mode', 'max_context_chars', 'allowed_transitions', 'agent_batch_enabled', 'agent_batch_items', 'agent_batch_size', 'agent_batch_var', 'agent_batch_merge', 'agent_batch_merge_key', 'agent_batch_max_parallel', 'agent_batch_on_error', 'agent_retry_when', 'agent_retry_max'],
     deep_agent: ['agent_output_key', 'agent_context_include', 'agent_context_exclude', 'task', 'llm', 'tools', 'tool_configs', 'skills', 'subagents', 'max_iterations', 'timeout_seconds', 'deep_agent_backend', 'deep_agent_root_dir', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
     tool_node: ['tools', 'tool_configs', 'return_direct', 'on_error', 'interrupt_before', 'interrupt_after'],
     direct_tool: ['direct_tool_name', 'tool_arguments', 'destination_key', 'return_direct', 'on_error', 'interrupt_before', 'interrupt_after'],
@@ -1689,9 +1689,13 @@ export const useVariablesStore = create((set, get) => ({
     }
     throw new Error(res.message || 'Failed to delete variable');
   },
-  uploadJsonFile: async (workflowId, file) => {
+  uploadJsonFile: async (workflowId, file, opts = {}) => {
     const formData = new FormData();
     formData.append('file', file);
+    // A fixed variable name means a second upload destroys the first, so two
+    // samples can never be held side by side and compared.
+    if (opts.variableKey) formData.append('variable_key', opts.variableKey);
+    if (opts.collapseRepeats) formData.append('collapse_repeats', 'true');
     const api = await import('../api/agentmesh');
     const res = await api.uploadJsonVariable(workflowId, formData);
     if (res.status === 'success') {
@@ -1699,5 +1703,38 @@ export const useVariablesStore = create((set, get) => ({
       return res;
     }
     throw new Error(res.message || 'Failed to upload JSON');
+  },
+  uploadSheetFile: async (workflowId, file, opts = {}) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (opts.variableKey) formData.append('variable_key', opts.variableKey);
+    if (opts.sheetName) formData.append('sheet_name', opts.sheetName);
+    const api = await import('../api/agentmesh');
+    const res = await api.uploadSheetVariable(workflowId, formData);
+    if (res.status === 'success') {
+      await get().fetchVariables(workflowId);
+      return res;
+    }
+    throw new Error(res.message || 'Failed to read the spreadsheet');
+  },
+  compareSources: async (workflowId, payload) => {
+    const api = await import('../api/agentmesh');
+    const res = await api.compareVariableSources(workflowId, payload);
+    if (res.status === 'success') {
+      if (payload.save_as) await get().fetchVariables(workflowId);
+      return res;
+    }
+    throw new Error(res.message || 'Failed to compare');
+  },
+  classifyKeys: async (workflowId, payload) => {
+    const api = await import('../api/agentmesh');
+    const res = await api.classifyVariableKeys(workflowId, payload);
+    if (res.status === 'success') {
+      if (payload.save_matched_as || payload.save_rest_as) {
+        await get().fetchVariables(workflowId);
+      }
+      return res;
+    }
+    throw new Error(res.message || 'Failed to split the list');
   }
 }));
