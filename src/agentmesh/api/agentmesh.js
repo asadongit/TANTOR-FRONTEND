@@ -429,13 +429,28 @@ export const listWorkflowVariables = (workflowId) => request(`/workflow/${workfl
 export const getWorkflowVariable = (workflowId, key) => request(`/workflow/${workflowId}/variables/${key}`);
 export const setWorkflowVariable = (workflowId, payload) => request(`/workflow/${workflowId}/variables`, { method: 'POST', body: JSON.stringify(payload) });
 export const deleteWorkflowVariable = (workflowId, key) => request(`/workflow/${workflowId}/variables/${key}`, { method: 'DELETE' });
-export const uploadJsonVariable = (workflowId, formData) => fetch(`${BASE}/workflow/${workflowId}/variables/extract-json-keys`, { method: 'POST', body: formData }).then(async (res) => {
+const upload = (url, formData) => fetch(url, { method: 'POST', body: formData }).then(async (res) => {
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || 'Upload failed');
   }
   return res.json();
 });
+
+export const uploadJsonVariable = (workflowId, formData) =>
+  upload(`${BASE}/workflow/${workflowId}/variables/extract-json-keys`, formData);
+
+// Working out what a document type contains. Each of these stands alone: it
+// takes a name and writes a name the caller chooses, so none assumes another
+// has been run, and someone who would rather type a list still can.
+export const uploadSheetVariable = (workflowId, formData) =>
+  upload(`${BASE}/workflow/${workflowId}/variables/extract-sheet-rows`, formData);
+
+export const compareVariableSources = (workflowId, payload) =>
+  request(`/workflow/${workflowId}/variables/compare-sources`, { method: 'POST', body: JSON.stringify(payload) });
+
+export const classifyVariableKeys = (workflowId, payload) =>
+  request(`/workflow/${workflowId}/variables/classify-keys`, { method: 'POST', body: JSON.stringify(payload) });
 
 // ─── Blackboard / Tasks ──────────────────────────────────────────────────────
 export const getBlackboardTasks = (threadId) =>
