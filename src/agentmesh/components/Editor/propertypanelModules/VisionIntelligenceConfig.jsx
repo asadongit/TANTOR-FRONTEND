@@ -5,6 +5,7 @@ import {
   Field,
   Input,
   Textarea,
+  Toggle,
   Slider,
   InfoBanner,
   AdvancedSection,
@@ -363,6 +364,46 @@ export default function VisionIntelligenceConfig({
 
           {["vision", "hybrid"].includes(data.ocr_engine || "vision") && (
             <>
+              <Field
+                label="Straighten Pages Before Reading"
+                hint="A page scanned sideways or upside down carries nothing in the file to say so, and a model will read it plausibly while losing much of it. This checks each page and turns it upright first. A page it is unsure about is left exactly as it is. Leave off when the pages are known to be the right way up."
+              >
+                <Toggle
+                  checked={!!data.ocr_auto_orient}
+                  onChange={(v) => update({ ocr_auto_orient: v })}
+                />
+              </Field>
+
+              <Field
+                label="Read Each Page Twice"
+                hint="Read every page more than once and report which pages the readings disagreed about. The first reading is always the one returned — a second reading is used to raise a hand, never to pick a different answer, because where a figure is hard to read the wrong readings tend to agree with each other. Costs one extra call per page. 1 = off, and behaves exactly as before."
+              >
+                <Input
+                  type="number"
+                  min={1}
+                  value={data.ocr_passes ?? 1}
+                  onChange={(v) => update({ ocr_passes: Math.max(1, Number(v) || 1) })}
+                  placeholder="1"
+                />
+              </Field>
+
+              {Number(data.ocr_passes ?? 1) > 1 && (
+                <Field
+                  label="Agreement Required"
+                  hint="Share of figures every reading must agree on before a page counts as trustworthy, between 0 and 1. The default of 1 demands exact agreement, which is what pages that read well actually produce. Lower it only if clean pages are being reported as doubtful."
+                >
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    max={1}
+                    value={data.ocr_stability_threshold ?? 1}
+                    onChange={(v) => update({ ocr_stability_threshold: Number(v) })}
+                    placeholder="1"
+                  />
+                </Field>
+              )}
+
               <Field
                 label="OCR Instruction / Prompt"
                 hint="Instruction for the vision model. Be specific about what data to extract."

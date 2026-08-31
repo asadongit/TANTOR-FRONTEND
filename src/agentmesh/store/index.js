@@ -1101,7 +1101,7 @@ export const useWorkflowStore = create((set, get) => ({
     _agent: ['agent_output_key', 'agent_context_include', 'agent_context_exclude', 'task', 'llm', 'memory', 'iteration_policy', 'tools', 'tool_configs', 'return_direct', 'skills', 'subagents', 'harness_profile', 'code_interpreter', 'max_iterations', 'timeout_seconds', 'context_schema', 'agent_input_prefix', 'output_key_prefix'],
     _common: ['interrupt_before', 'interrupt_after', 'hitl_actions', 'on_error', 'continue_on_fail', 'mute_chat_bubble', 'context_mode', 'max_context_chars'],
 
-    llm_agent: ['agent_output_key', 'agent_context_include', 'agent_context_exclude', 'task', 'llm', 'memory', 'iteration_policy', 'tools', 'tool_configs', 'return_direct', 'skills', 'subagents', 'harness_profile', 'code_interpreter', 'max_iterations', 'timeout_seconds', 'context_schema', 'agent_input_prefix', 'output_key_prefix', 'interrupt_before', 'interrupt_after', 'hitl_actions', 'on_error', 'continue_on_fail', 'mute_chat_bubble', 'context_mode', 'max_context_chars', 'allowed_transitions'],
+    llm_agent: ['agent_output_key', 'agent_context_include', 'agent_context_exclude', 'task', 'llm', 'memory', 'iteration_policy', 'tools', 'tool_configs', 'return_direct', 'skills', 'subagents', 'harness_profile', 'code_interpreter', 'max_iterations', 'timeout_seconds', 'context_schema', 'agent_input_prefix', 'output_key_prefix', 'interrupt_before', 'interrupt_after', 'hitl_actions', 'on_error', 'continue_on_fail', 'mute_chat_bubble', 'context_mode', 'max_context_chars', 'allowed_transitions', 'agent_batch_enabled', 'agent_batch_items', 'agent_batch_size', 'agent_batch_var', 'agent_batch_merge', 'agent_batch_merge_key', 'agent_batch_max_parallel', 'agent_batch_on_error', 'agent_retry_when', 'agent_retry_max'],
     deep_agent: ['agent_output_key', 'agent_context_include', 'agent_context_exclude', 'task', 'llm', 'tools', 'tool_configs', 'skills', 'subagents', 'max_iterations', 'timeout_seconds', 'deep_agent_backend', 'deep_agent_root_dir', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
     tool_node: ['tools', 'tool_configs', 'return_direct', 'on_error', 'interrupt_before', 'interrupt_after'],
     direct_tool: ['direct_tool_name', 'tool_arguments', 'destination_key', 'return_direct', 'on_error', 'interrupt_before', 'interrupt_after'],
@@ -1131,12 +1131,12 @@ export const useWorkflowStore = create((set, get) => ({
     data_cleaning: ['data_cleaning_rules', 'data_cleaning_target', 'data_cleaning_input_key', 'data_cleaning_output_key'],
     graph_ingestion: ['graph_target_key', 'graph_neo4j_uri', 'graph_neo4j_user', 'graph_neo4j_password', 'graph_ingestion_mode', 'graph_cypher_query', 'graph_nodes_schema', 'graph_relations_schema', 'graph_collection', 'graph_sender_key', 'graph_receiver_key', 'graph_txn_id_key', 'graph_amount_key', 'graph_timestamp_key'],
     db_node: ['db_engine', 'db_connection_string', 'db_database', 'db_collection', 'db_operation', 'db_document', 'db_query', 'db_output_key', 'db_limit'],
-    ocr_node: ['ocr_input_key', 'ocr_prompt', 'ocr_engine', 'ocr_standard_model', 'llm', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail', 'docbot_url', 'docbot_method', 'ocr_fallback_engine', 'ocr_text_layer_min_chars', 'ocr_max_pages', 'ocr_on_max_pages', 'destination_key', 'allowed_file_types', 'ocr_multi_file_key', 'ocr_service_url', 'ocr_service_response_type', 'ocr_service_file_field', 'ocr_service_headers', 'ocr_service_params', 'ocr_service_text_path'],
+    ocr_node: ['ocr_input_key', 'ocr_prompt', 'ocr_engine', 'ocr_auto_orient', 'ocr_passes', 'ocr_stability_threshold', 'ocr_standard_model', 'llm', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail', 'docbot_url', 'docbot_method', 'ocr_fallback_engine', 'ocr_text_layer_min_chars', 'ocr_max_pages', 'ocr_on_max_pages', 'destination_key', 'allowed_file_types', 'ocr_multi_file_key', 'ocr_service_url', 'ocr_service_response_type', 'ocr_service_file_field', 'ocr_service_headers', 'ocr_service_params', 'ocr_service_text_path'],
     multi_file_ingestion: ['allowed_extensions', 'max_file_size_mb', 'max_files_count', 'strategy_rules', 'interrupt_before', 'interrupt_after', 'hitl_actions', 'on_error'],
     signature_stamp_extractor: ['extractor_input_key', 'extractor_output_key', 'llm', 'interrupt_before', 'interrupt_after'],
     api_node: ['api_method', 'api_url', 'api_headers', 'api_params', 'api_body', 'api_auth_type', 'api_auth_config', 'api_response_format', 'connection_id', 'api_protocol', 'graphql_query', 'use_curl', 'curl_command', 'on_error', 'continue_on_fail', 'api_description', 'api_enabled', 'api_execution_mode', 'additional_apis', 'api_max_retries', 'api_retry_delay', 'api_name'],
     vector_ingestion: ['vector_store', 'vector_collection', 'chunk_size', 'chunk_overlap', 'chunking_strategy', 'ingestion_source_key'],
-    classification: ['classification_classes', 'classification_summary', 'classification_engine', 'classification_input_field', 'classification_input_key', 'classification_output_key', 'classification_extract_identifiers', 'classification_max_input_chars', 'llm', 'interrupt_before', 'interrupt_after'],
+    classification: ['classification_classes', 'classification_summary', 'classification_engine', 'classification_input_field', 'classification_input_key', 'classification_output_key', 'classification_extract_identifiers', 'classification_per_page', 'classification_max_input_chars', 'llm', 'interrupt_before', 'interrupt_after'],
     sensitivity_classifier: ['classification_input_key', 'classification_output_key', 'engine_mode', 'custom_entities', 'output_format', 'llm', 'interrupt_before', 'interrupt_after'],
     pii_gate_node: ['input_key', 'interrupt_after'],
     ingestion_router: ['scan_mode', 'file_filters', 'concurrency_limit', 'parent_folder_key', 'folder_identifier_key', 'curl_command_key', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
@@ -1151,11 +1151,11 @@ export const useWorkflowStore = create((set, get) => ({
     // vision_mode: 'ocr' delegates to build_ocr_node with this same node config,
     // so the ocr_* fields must be saved here too — without them the OCR mode
     // silently falls back to its defaults and the engine choice is unreachable.
-    vision_intelligence: ['vision_mode', 'vision_enable_llm', 'vision_face_match_threshold', 'vision_quality_min_score', 'vision_quality_blur_threshold', 'vision_quality_min_contrast', 'vision_quality_max_contrast', 'vision_quality_min_brightness', 'vision_quality_max_brightness', 'vision_quality_min_shortest_side', 'vision_id_image_key', 'vision_selfie_image_key', 'vision_output_key', 'extractor_input_key', 'llm', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail', 'ocr_engine', 'ocr_prompt', 'ocr_input_key', 'ocr_standard_model', 'ocr_fallback_engine', 'ocr_text_layer_min_chars', 'ocr_max_pages', 'ocr_on_max_pages', 'ocr_service_url', 'ocr_service_response_type'],
+    vision_intelligence: ['vision_mode', 'vision_enable_llm', 'vision_face_match_threshold', 'vision_quality_min_score', 'vision_quality_blur_threshold', 'vision_quality_min_contrast', 'vision_quality_max_contrast', 'vision_quality_min_brightness', 'vision_quality_max_brightness', 'vision_quality_min_shortest_side', 'vision_id_image_key', 'vision_selfie_image_key', 'vision_output_key', 'extractor_input_key', 'llm', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail', 'ocr_engine', 'ocr_auto_orient', 'ocr_passes', 'ocr_stability_threshold', 'ocr_prompt', 'ocr_input_key', 'ocr_standard_model', 'ocr_fallback_engine', 'ocr_text_layer_min_chars', 'ocr_max_pages', 'ocr_on_max_pages', 'ocr_service_url', 'ocr_service_response_type'],
     group: ['name', 'description', 'internal_nodes', 'internal_edges', 'original_edges'],
     ingestion_adapter: ['source_format', 'target_serialization', 'validation_mode', 'flatten_depth', 'flatten_separator', 'field_aliases', 'default_values', 'source_key', 'destination_key', 'external_integrations', 'internal_integrations', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
     payload_builder: ['payload_template', 'payload_destination_key', 'auto_collect_prefix', 'clean_binary_from'],
-    derived_fields: ['df_fields', 'df_input_key', 'df_output_key', 'df_on_error', 'interrupt_before', 'interrupt_after'],
+    derived_fields: ['df_fields', 'df_input_key', 'df_output_key', 'df_on_error', 'df_confidence_key', 'interrupt_before', 'interrupt_after'],
     report_generator: ['template_content', 'template_output_key', 'template_data_key', 'template_file_path', 'template_id', 'input_data_key', 'output_file_name', 'report_format', 'report_mode', 'report_on_missing_target', 'template_category', 'interrupt_before', 'interrupt_after'],
     weightage: ['weightage_categories', 'weightage_output_key', 'weightage_approve_threshold', 'weightage_review_threshold', 'weightage_risk_bands', 'weightage_output_flags', 'weightage_cross_rules', 'interrupt_before', 'interrupt_after'],
     // These five had no entry at all, which meant every setting made in their
@@ -1689,9 +1689,13 @@ export const useVariablesStore = create((set, get) => ({
     }
     throw new Error(res.message || 'Failed to delete variable');
   },
-  uploadJsonFile: async (workflowId, file) => {
+  uploadJsonFile: async (workflowId, file, opts = {}) => {
     const formData = new FormData();
     formData.append('file', file);
+    // A fixed variable name means a second upload destroys the first, so two
+    // samples can never be held side by side and compared.
+    if (opts.variableKey) formData.append('variable_key', opts.variableKey);
+    if (opts.collapseRepeats) formData.append('collapse_repeats', 'true');
     const api = await import('../api/agentmesh');
     const res = await api.uploadJsonVariable(workflowId, formData);
     if (res.status === 'success') {
@@ -1699,5 +1703,38 @@ export const useVariablesStore = create((set, get) => ({
       return res;
     }
     throw new Error(res.message || 'Failed to upload JSON');
+  },
+  uploadSheetFile: async (workflowId, file, opts = {}) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (opts.variableKey) formData.append('variable_key', opts.variableKey);
+    if (opts.sheetName) formData.append('sheet_name', opts.sheetName);
+    const api = await import('../api/agentmesh');
+    const res = await api.uploadSheetVariable(workflowId, formData);
+    if (res.status === 'success') {
+      await get().fetchVariables(workflowId);
+      return res;
+    }
+    throw new Error(res.message || 'Failed to read the spreadsheet');
+  },
+  compareSources: async (workflowId, payload) => {
+    const api = await import('../api/agentmesh');
+    const res = await api.compareVariableSources(workflowId, payload);
+    if (res.status === 'success') {
+      if (payload.save_as) await get().fetchVariables(workflowId);
+      return res;
+    }
+    throw new Error(res.message || 'Failed to compare');
+  },
+  classifyKeys: async (workflowId, payload) => {
+    const api = await import('../api/agentmesh');
+    const res = await api.classifyVariableKeys(workflowId, payload);
+    if (res.status === 'success') {
+      if (payload.save_matched_as || payload.save_rest_as) {
+        await get().fetchVariables(workflowId);
+      }
+      return res;
+    }
+    throw new Error(res.message || 'Failed to split the list');
   }
 }));

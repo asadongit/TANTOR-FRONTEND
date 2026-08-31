@@ -15,7 +15,9 @@ import {
   FiKey,
   FiEdit2,
   FiArrowLeft,
+  FiTool,
 } from "react-icons/fi";
+import FieldListBuilder from "./FieldListBuilder";
 
 /**
  * WORKFLOW VARIABLES PANEL v2.0
@@ -96,6 +98,7 @@ export default function WorkflowVariablesPanel() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [saveMsg, setSaveMsg] = useState(null);
+  const [showBuilder, setShowBuilder] = useState(false);
   const fileInputRef = useRef(null);
 
   // Load variables when panel opens
@@ -256,6 +259,35 @@ export default function WorkflowVariablesPanel() {
               </button>
             )}
 
+            {/* Field list tools — optional helpers for working out which
+                fields a workflow must produce, from a real sample. Nothing
+                else on this screen depends on them. */}
+            <button
+              onClick={() => {
+                setShowBuilder((v) => !v);
+                setSelectedKey(null);
+                setShowAddForm(false);
+              }}
+              title="Build a field list from a sample file"
+              style={{
+                padding: "8px 14px",
+                background: showBuilder ? "#D8D2E7" : "var(--bg-secondary, #fff)",
+                border: showBuilder ? "none" : "1px solid var(--border, #e2e8f0)",
+                borderRadius: 10,
+                cursor: "pointer",
+                fontSize: 12,
+                fontWeight: 600,
+                color: showBuilder ? "#3B1F70" : "var(--text-secondary, #64748b)",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                transition: "all 0.2s",
+              }}
+            >
+              <FiTool size={15} />
+              {showBuilder ? "Back to Variables" : "Build Field List"}
+            </button>
+
             {/* Upload JSON Button */}
             <input
               type="file"
@@ -339,7 +371,13 @@ export default function WorkflowVariablesPanel() {
         </div>
 
         {/* ─── Body Content ─── */}
-        {!isEditingOrAdding ? (
+        {showBuilder ? (
+          <FieldListBuilder
+            workflowId={workflowId}
+            variables={variables}
+            onClose={() => setShowBuilder(false)}
+          />
+        ) : !isEditingOrAdding ? (
           /* ─── MODE 1: Initial Full-Width List View (No Sidebar) ─── */
           <div style={{ flex: 1, padding: "28px 36px", overflowY: "auto", display: "flex", flexDirection: "column" }}>
             {/* Search Bar */}

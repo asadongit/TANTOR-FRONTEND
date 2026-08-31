@@ -211,6 +211,14 @@ export const Input = memo(function Input({ value, onChange, placeholder, type = 
 
   return (
     <div className="relative w-full flex items-center">
+      {/* A password box invites the browser to paste a saved credential into it.
+          It reappears every time the field is cleared, and if the node is then
+          saved that value becomes the node's API key - which the backend
+          prefers over the configured one, silently. "new-password" is what
+          browsers actually honour here; "off" is widely ignored on password
+          fields. The name is deliberately not password-like so a stored entry
+          is never matched to this field, and the data- attributes tell the
+          common password managers to leave it alone. */}
       <input
         type={type}
         value={localValue}
@@ -220,6 +228,10 @@ export const Input = memo(function Input({ value, onChange, placeholder, type = 
         onDragOver={onDragOver}
         onDrop={onDrop}
         disabled={disabled}
+        autoComplete={type === 'password' ? 'new-password' : 'off'}
+        name={type === 'password' ? 'am-node-secret' : undefined}
+        data-lpignore="true"
+        data-1p-ignore="true"
         className={`w-full pl-3 pr-8 py-2 bg-white border border-[var(--border)] rounded-lg text-[13px] outline-none text-[var(--text-primary)] transition-colors duration-150 box-border disabled:opacity-60 focus:border-[var(--accent-btn)]`}
         style={{ fontFamily: FONT, ...extra }}
       />

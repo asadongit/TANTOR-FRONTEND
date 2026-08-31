@@ -55,6 +55,25 @@ export const LLMConfigSection = memo(function LLMConfigSection({ llm, onChange }
         />
       </Field>
 
+      {/* Every model is capped on how much it may write, and a reasoning model
+          spends that same allowance thinking first. Asked for a large result
+          from a dense document, it can use the whole budget before writing a
+          word and return nothing — with no error anywhere. */}
+      <Field
+        label="Maximum Answer Length"
+        hint="Roughly how much the step may write, in tokens (about ¾ of a word each). Leave empty for the default. Raise it when a step must return a long or highly detailed answer — if answers come back empty or cut off mid-way, this is usually why."
+      >
+        <Input
+          type="number"
+          value={llm?.max_tokens ?? ''}
+          onChange={(v) =>
+            onChange({ ...llm, max_tokens: v ? Number.parseInt(v, 10) || null : null })
+          }
+          placeholder="Default"
+          className="w-full"
+        />
+      </Field>
+
       {/* Reasoning models show their working unless told not to, and that
           working arrives inside the answer. A step expecting only a JSON
           object then receives prose wrapped around one. */}
@@ -76,13 +95,14 @@ export const LLMConfigSection = memo(function LLMConfigSection({ llm, onChange }
 
       <Field
         label="Reasoning Depth"
-        hint="How long a reasoning model thinks before answering. Deeper is slower and costs more. Ignored by models that do not reason."
+        hint="How long a reasoning model thinks before answering. Deeper is slower and costs more. Which depths a model accepts varies by provider — one that rejects the depth you pick fails the call, so leave it on Model's default unless you know the model takes it."
       >
         <Select
           value={llm?.reasoning_effort || ''}
           onChange={(v) => onChange({ ...llm, reasoning_effort: v || null })}
           options={[
             { value: '', label: "Model's default" },
+            { value: 'none', label: 'None — answer without thinking' },
             { value: 'low', label: 'Low — fastest' },
             { value: 'medium', label: 'Medium' },
             { value: 'high', label: 'High — slowest, most thorough' },

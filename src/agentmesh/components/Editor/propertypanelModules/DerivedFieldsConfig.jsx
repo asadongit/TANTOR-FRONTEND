@@ -473,6 +473,17 @@ export default function DerivedFieldsConfig({ data, update }) {
       </div>
 
       <Field
+        label="Carry Doubt Forward From"
+        hint="Optional. Where to find a note of which incoming values are trustworthy — for example the '_confidence' value an OCR node writes beside its text. Any row that reads a doubtful value is marked doubtful too, so a ratio built on a figure nobody could read cannot present itself as fact. A value the note says nothing about counts as sound. Leave blank and nothing is marked."
+      >
+        <Input
+          value={data.df_confidence_key || ""}
+          onChange={(v) => update({ df_confidence_key: v })}
+          placeholder="e.g. vision_result_confidence"
+        />
+      </Field>
+
+      <Field
         label="If a Calculation Fails"
         hint="Each row is calculated on its own, so one failure never affects the others."
       >
@@ -520,6 +531,7 @@ DerivedFieldsConfig.propTypes = {
     df_input_key: PropTypes.string,
     df_output_key: PropTypes.string,
     df_on_error: PropTypes.string,
+    df_confidence_key: PropTypes.string,
   }),
   update: PropTypes.func.isRequired,
 };
