@@ -333,16 +333,20 @@ export default function VisionIntelligenceConfig({
                   placeholder="100"
                 />
               </Field>
+            </div>
+          )}
 
+          {["vision", "hybrid"].includes(data.ocr_engine || "vision") && (
+            <>
               <Field
                 label="Max Pages"
-                hint="Guard against one enormous file. 0 = no limit."
+                hint="A document longer than this is CUT OFF, and everything past the limit is missing from the text. Raise it for long packs; 0 = no limit."
               >
                 <Input
                   type="number"
-                  value={data.ocr_max_pages ?? 0}
+                  value={data.ocr_max_pages ?? 20}
                   onChange={(v) => update({ ocr_max_pages: Number(v) })}
-                  placeholder="0"
+                  placeholder="20"
                 />
               </Field>
 
@@ -359,11 +363,6 @@ export default function VisionIntelligenceConfig({
                   ]}
                 />
               </Field>
-            </div>
-          )}
-
-          {["vision", "hybrid"].includes(data.ocr_engine || "vision") && (
-            <>
               <Field
                 label="Straighten Pages Before Reading"
                 hint="A page scanned sideways or upside down carries nothing in the file to say so, and a model will read it plausibly while losing much of it. This checks each page and turns it upright first. A page it is unsure about is left exactly as it is. Leave off when the pages are known to be the right way up."
