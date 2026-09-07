@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { agentMeshFetch } from "../../../api/authenticatedFetch";
 
 const BASE =
   globalThis._env_?.VITE_AGENT_MESH ||
@@ -38,7 +39,7 @@ export default function TemplateMarkerSuggest() {
 
     setBusy(true);
     try {
-      const res = await fetch(BASE + "/node/suggest-template-markers", {
+      const res = await agentMeshFetch(BASE + "/node/suggest-template-markers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

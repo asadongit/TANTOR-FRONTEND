@@ -67,7 +67,8 @@ export const AuthProvider = ({ children }) => {
   const triggerSessionCleanup = async (accessToken) => {
     console.log("[Auth] Triggering session cleanup...");
     try {
-      const res = await fetch(`${hostnameV1}/auth/session/cleanup`, {
+      const cleanupUrl = `${hostnameV1}/auth/session/cleanup`;
+      const res = await fetch(cleanupUrl, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,

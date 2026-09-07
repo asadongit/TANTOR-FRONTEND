@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { getBackendUrl } from '../api/agentmesh';
+import { agentMeshFetch, getAgentMeshAccessToken } from '../api/authenticatedFetch';
 import { useRunStatusStore } from '../store/runStatusStore';
 
 /**
@@ -38,7 +39,7 @@ export const useRunStatusWS = ({ workflowId, clientId = 'agent_mesh_ui' }) => {
     const fetchSnapshot = useCallback(async () => {
         try {
             const backend = getBackendUrl();
-            const res = await fetch(
+            const res = await agentMeshFetch(
                 `${backend}/api/v1/agentmesh/active-runs?since=${lastRevRef.current}`,
             );
             const data = await res.json();
@@ -60,11 +61,16 @@ export const useRunStatusWS = ({ workflowId, clientId = 'agent_mesh_ui' }) => {
         const backend = getBackendUrl();
         const wsUrl = `${backend.replace(/^http/, 'ws')}/api/v1/agentmesh/ws/notifications?client_id=${encodeURIComponent(clientId)}&workflow_id=${encodeURIComponent(workflowId)}`;
 
-        const connect = () => {
+        const connect = async () => {
             if (disposedRef.current) return;
             let socket;
             try {
-                socket = new WebSocket(wsUrl);
+                const token = await getAgentMeshAccessToken();
+                if (!token || disposedRef.current) {
+                    reconnectRef.current = setTimeout(connect, 5000);
+                    return;
+                }
+                socket = new WebSocket(wsUrl, ['agentmesh', token]);
             } catch {
                 reconnectRef.current = setTimeout(connect, 5000);
                 return;

@@ -35,7 +35,8 @@ export function PlatformProvider({ children }) {
           ...(body && { body: JSON.stringify(body) }),
         };
 
-        const response = await fetch(`${hostname}${endpoint}`, options);
+        const requestUrl = `${hostname}${endpoint}`;
+        const response = await fetch(requestUrl, options);
         if (!response.ok) {
           throw new Error(
             `API Error: ${response.status} ${response.statusText}`

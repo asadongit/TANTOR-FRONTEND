@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useUIStore } from '../store';
+import { getBackendUrl } from '../api/agentmesh';
+import { getAgentMeshAccessToken } from '../api/authenticatedFetch';
 
 /**
  * Industry-standard WebSocket hook for real-time notifications.
@@ -9,15 +11,27 @@ export const useNotificationsWS = () => {
     const socketRef = useRef(null);
     const setUnreadCount = useUIStore(s => s.setUnreadCount);
     const reconnectTimeoutRef = useRef(null);
+    const disposedRef = useRef(false);
 
-    const connect = () => {
-        // Construct WS URL from current window location (supports dev and prod)
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = 'localhost:8000'; // Hardcoded for local dev parity with agentmesh.js BASE
-        const wsUrl = `${protocol}//${host}/api/v1/agentmesh/ws/notifications?client_id=agent_mesh_ui`;
+    const connect = async () => {
+        if (disposedRef.current) return;
+        const backend = getBackendUrl();
+        const wsUrl = `${backend.replace(/^http/, 'ws')}/api/v1/agentmesh/ws/notifications?client_id=agent_mesh_ui`;
 
         console.log('[WS] Connecting to:', wsUrl);
-        const socket = new WebSocket(wsUrl);
+        let token;
+        try {
+            token = await getAgentMeshAccessToken();
+        } catch (err) {
+            console.error('[WS] Unable to refresh the access token:', err);
+        }
+        if (!token || disposedRef.current) {
+            if (disposedRef.current) return;
+            reconnectTimeoutRef.current = setTimeout(connect, 5000);
+            return;
+        }
+
+        const socket = new WebSocket(wsUrl, ['agentmesh', token]);
 
         socket.onopen = () => {
             console.log('[WS] Connected to notification hub');
@@ -60,7 +74,8 @@ export const useNotificationsWS = () => {
         socket.onclose = (event) => {
             console.warn(`[WS] Disconnected (code: ${event.code}). Retrying in 5s...`);
             if (socket.heartbeat) clearInterval(socket.heartbeat);
-            
+            if (disposedRef.current) return;
+
             // Exponential backoff or simple retry
             reconnectTimeoutRef.current = setTimeout(connect, 5000);
         };
@@ -74,6 +89,7 @@ export const useNotificationsWS = () => {
     };
 
     useEffect(() => {
+        disposedRef.current = false;
         // Request notification permission on mount
         if (typeof window !== 'undefined' && 'Notification' in window) {
             Notification.requestPermission();
@@ -82,6 +98,7 @@ export const useNotificationsWS = () => {
         connect();
 
         return () => {
+            disposedRef.current = true;
             if (socketRef.current) {
                 socketRef.current.close();
             }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import PropTypes from "prop-types";
+import { agentMeshFetch } from "../../../api/authenticatedFetch";
 
 const BASE =
   globalThis._env_?.VITE_AGENT_MESH ||
@@ -32,7 +33,7 @@ export default function NodeTestPanel({ data, nodeId }) {
 
     setBusy(true);
     try {
-      const res = await fetch(`${BASE}/node/test`, {
+      const res = await agentMeshFetch(`${BASE}/node/test`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

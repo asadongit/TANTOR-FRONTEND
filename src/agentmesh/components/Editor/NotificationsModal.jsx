@@ -10,6 +10,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { AiMagicIcon } from '@hugeicons/core-free-icons';
 import { listNotifications, processNotifications, getWorkflow, chatArchitect } from '../../api/agentmesh';
 import { formatMessage } from '../Common/messageFormatting';
+import { getArchitectSecret } from '../../utils/architectSecretStore';
 
 const STYLES = {
   overlay: {
@@ -168,7 +169,7 @@ export default function NotificationsModal() {
       const cachedProvider = localStorage.getItem('architect_provider') || 'groq';
       const cachedModel = localStorage.getItem('architect_model') || 'llama-3.3-70b-versatile';
       const cachedTemp = localStorage.getItem('architect_temperature') || '0.2';
-      const cachedKey = localStorage.getItem('architect_api_key') || '';
+      const cachedKey = getArchitectSecret();
       
       const activeLlm = {
         provider: cachedProvider,
