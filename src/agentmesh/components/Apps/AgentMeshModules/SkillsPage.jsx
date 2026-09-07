@@ -12,6 +12,7 @@ import LibraryHeader from '../../Common/LibraryHeader';
 import LibraryCard from '../../Common/LibraryCard';
 import LibraryListRow from '../../Common/LibraryListRow';
 import Pagination from '../../Common/Pagination';
+import { getArchitectSecret } from '../../../utils/architectSecretStore';
 
 function SkillCard({ skill, onDetails, onEdit, onDelete, onAddToCanvas, idx }) {
   const moreActions = [
@@ -325,7 +326,7 @@ export default function SkillsPage() {
       const cachedProvider = localStorage.getItem('architect_provider') || 'groq';
       const cachedModel = localStorage.getItem('architect_model') || 'llama-3.3-70b-versatile';
       const cachedTemp = localStorage.getItem('architect_temperature') || '0.2';
-      const cachedKey = localStorage.getItem('architect_api_key') || '';
+      const cachedKey = getArchitectSecret();
       const payload = {
         name: formData.name,
         description: formData.description,

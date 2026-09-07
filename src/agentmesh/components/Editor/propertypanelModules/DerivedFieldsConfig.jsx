@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import PropTypes from "prop-types";
 import { Select, Field, Input } from "./SharedComponents";
+import { agentMeshFetch } from "../../../api/authenticatedFetch";
 
 /**
  * Derived Fields — calculate values from other values.
@@ -31,7 +32,7 @@ export default function DerivedFieldsConfig({ data, update }) {
           globalThis._env_?.VITE_AGENT_MESH ||
           import.meta.env.VITE_AGENT_MESH ||
           "http://localhost:8000/api/v1/agentmesh";
-        const res = await fetch(BASE + "/node/check-expressions", {
+        const res = await agentMeshFetch(BASE + "/node/check-expressions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

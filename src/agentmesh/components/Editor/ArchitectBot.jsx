@@ -1,6 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { useWorkflowStore, useRunStore, useUIStore } from "../../store";
+import { getArchitectSecret } from "../../utils/architectSecretStore";
 import {
   explainWorkflow,
   chatArchitect,
@@ -131,7 +132,7 @@ export default function ArchitectBot({ isOpen, onClose }) {
       const cachedModel =
         localStorage.getItem("architect_model") || "llama-3.3-70b-versatile";
       const cachedTemp = localStorage.getItem("architect_temperature") || "0.2";
-      const cachedKey = localStorage.getItem("architect_api_key") || "";
+      const cachedKey = getArchitectSecret();
       const activeLlm = {
         provider: cachedProvider,
         model: cachedModel,
@@ -212,7 +213,7 @@ export default function ArchitectBot({ isOpen, onClose }) {
       const cachedModel =
         localStorage.getItem("architect_model") || "llama-3.3-70b-versatile";
       const cachedTemp = localStorage.getItem("architect_temperature") || "0.2";
-      const cachedKey = localStorage.getItem("architect_api_key") || "";
+      const cachedKey = getArchitectSecret();
       const activeLlm = {
         provider: cachedProvider,
         model: cachedModel,
@@ -515,7 +516,7 @@ Include clear guidelines, input/output structures, and agent behavior constraint
       const cachedModel =
         localStorage.getItem("architect_model") || "llama-3.3-70b-versatile";
       const cachedTemp = localStorage.getItem("architect_temperature") || "0.2";
-      const cachedKey = localStorage.getItem("architect_api_key") || "";
+      const cachedKey = getArchitectSecret();
       const activeLlm = {
         provider: cachedProvider,
         model: cachedModel,

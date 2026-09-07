@@ -1,4 +1,5 @@
 import React from 'react';
+import { agentMeshFetch } from '../../../api/authenticatedFetch';
 
 export default function FileUploadField({ field, value, onChange, isLoading, threadId }) {
   const [uploading, setUploading] = React.useState(false);
@@ -34,7 +35,7 @@ export default function FileUploadField({ field, value, onChange, isLoading, thr
     if (allowedFormats.length > 0) {
       const ext = '.' + file.name.split('.').pop().toLowerCase();
       const type = file.type;
-      
+
       const isMatch = allowedFormats.some(k => {
         if (k === 'pdf' && (ext === '.pdf' || type === 'application/pdf')) return true;
         if (k === 'csv' && (ext === '.csv' || type === 'text/csv')) return true;
@@ -74,10 +75,10 @@ export default function FileUploadField({ field, value, onChange, isLoading, thr
 
     try {
       const results = [];
-      
+
       for (let i = 0; i < filesToUpload.length; i++) {
         const file = filesToUpload[i];
-        
+
         if (storageMode === 'binary') {
           const base64 = await new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -85,7 +86,7 @@ export default function FileUploadField({ field, value, onChange, isLoading, thr
             reader.onload = () => resolve(reader.result);
             reader.onerror = (e) => reject(e);
           });
-          
+
           results.push({
             filename: file.name,
             size_bytes: file.size,
@@ -98,8 +99,8 @@ export default function FileUploadField({ field, value, onChange, isLoading, thr
           formData.append('thread_id', threadId);
 
           const BASE_URL = window._env_?.VITE_AGENT_MESH || import.meta.env.VITE_AGENT_MESH || 'http://localhost:8000/api/v1/agentmesh';
-          
-          const response = await fetch(`${BASE_URL}/execution/upload-temp`, {
+
+          const response = await agentMeshFetch(`${BASE_URL}/execution/upload-artifact`, {
             method: 'POST',
             body: formData
           });
@@ -121,7 +122,7 @@ export default function FileUploadField({ field, value, onChange, isLoading, thr
       } else {
         onChange(results[0]);
       }
-      
+
     } catch (e) {
       setError(e.message || 'An error occurred during file upload');
     } finally {
@@ -233,7 +234,7 @@ export default function FileUploadField({ field, value, onChange, isLoading, thr
           style={{ display: 'none' }}
           disabled={isLoading || uploading}
         />
-        
+
         <div className="upload-icon" style={{ transition: 'transform 0.3s cubic-bezier(0.19, 1, 0.22, 1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={error ? '#EF4444' : '#8E77BB'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -324,8 +325,8 @@ export default function FileUploadField({ field, value, onChange, isLoading, thr
                     </span>
                     {file.size_bytes && (
                       <span style={{ color: '#9CA3AF', fontSize: 10, fontWeight: 500 }}>
-                        {file.size_bytes > 1024 * 1024 
-                          ? `${(file.size_bytes / (1024 * 1024)).toFixed(2)} MB` 
+                        {file.size_bytes > 1024 * 1024
+                          ? `${(file.size_bytes / (1024 * 1024)).toFixed(2)} MB`
                           : `${Math.round(file.size_bytes / 1024)} KB`}
                       </span>
                     )}

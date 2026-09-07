@@ -7,6 +7,7 @@ import {
 import { motion } from 'framer-motion';
 import { useUIStore } from '../../../store';
 import PageHeader from '../../Common/PageHeader';
+import { getArchitectSecret, setArchitectSecret } from '../../../utils/architectSecretStore';
 
 function Tooltip({ text }) {
   const [visible, setVisible] = useState(false);
@@ -115,7 +116,7 @@ export default function SettingsPage() {
     const cachedProvider = localStorage.getItem('architect_provider') || 'groq';
     const cachedModel = localStorage.getItem('architect_model') || 'llama-3.3-70b-versatile';
     const cachedTemp = localStorage.getItem('architect_temperature') || '0.2';
-    const cachedKey = localStorage.getItem('architect_api_key') || '';
+    const cachedKey = getArchitectSecret();
     const cachedWire = localStorage.getItem('canvas_wire_style') || 'square';
     const cachedBg = localStorage.getItem('canvas_background_style') || 'dots';
     const cachedTheme = localStorage.getItem('canvas_node_theme') || 'modern';
@@ -173,7 +174,7 @@ export default function SettingsPage() {
       localStorage.setItem('architect_provider', provider);
       localStorage.setItem('architect_model', model);
       localStorage.setItem('architect_temperature', temperature.toString());
-      localStorage.setItem('architect_api_key', apiKeyOverride);
+      setArchitectSecret(apiKeyOverride);
  
       localStorage.setItem('canvas_wire_style', wireStyle);
       localStorage.setItem('canvas_background_style', backgroundStyle);
