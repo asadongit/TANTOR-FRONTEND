@@ -5,6 +5,10 @@ import { FiAlertCircle } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNotificationsWS } from '../../../utils/useNotificationsWS';
 import { lazyWithRetry } from '../../../utils/lazyWithRetry';
+import { useAuth } from '../../../../context/AuthContext';
+import { AGENTMESH_ROLES, hasAgentMeshRole } from '../../../auth/roles';
+
+const ADMIN_PAGES = new Set(['publish-approval', 'template-approval', 'connections']);
 
 // ─── Lazy-loaded pages (P2 optimisation: retry wrapper) ──────────────────────
 // Each page chunk only downloads when first visited.
@@ -51,13 +55,25 @@ function PageLoader() {
  *     The accordion calls useUIStore.setActivePage() to switch content here.
  */
 export default function MainComponent() {
+  const { decodedToken } = useAuth();
   const activePage        = useUIStore((s) => s.activePage);
+  const setActivePage     = useUIStore((s) => s.setActivePage);
   const runOpen           = useUIStore((s) => s.runOpen);
   const setRunOpen        = useUIStore((s) => s.setRunOpen);
   const showTemplates     = useUIStore((s) => s.showTemplates);
   const meshInitialized   = useUIStore((s) => s.meshInitialized);
   const setMeshInitialized = useUIStore((s) => s.setMeshInitialized);
   const [healthStatus, setHealthStatus] = React.useState(null);
+  const isAdmin = hasAgentMeshRole(decodedToken, AGENTMESH_ROLES.ADMIN);
+  const visiblePage = !isAdmin && ADMIN_PAGES.has(activePage) ? 'dashboard' : activePage;
+
+  // A non-admin may retain an admin page in the store from an older session.
+  // Reset it as well as hiding the sidebar, so the page cannot render indirectly.
+  useEffect(() => {
+    if (!isAdmin && ADMIN_PAGES.has(activePage)) {
+      setActivePage('dashboard');
+    }
+  }, [activePage, isAdmin, setActivePage]);
 
   // Real-time notification badge via WebSocket
   useNotificationsWS();
@@ -107,7 +123,7 @@ export default function MainComponent() {
 
       {/* Canvas Navbar — only shown when on canvas page */}
       <Suspense fallback={null}>
-        {activePage === 'canvas' && !showTemplates && (
+        {visiblePage === 'canvas' && !showTemplates && (
           <div style={{ flexShrink: 0 }}>
             <Navbar />
           </div>
@@ -117,24 +133,24 @@ export default function MainComponent() {
       {/* Main page content area */}
       <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <Suspense fallback={<PageLoader />}>
-          {activePage === 'dashboard'     && <DashboardPage />}
-          {activePage === 'canvas'        && <WorkflowCanvas />}
-          {activePage === 'workflows'     && <WorkflowsPage />}
-          {activePage === 'library'       && <LibraryPage />}
-          {activePage === 'rag'           && <RAGPage />}
-          {activePage === 'marketplace'   && <MarketplacePage />}
-          {activePage === 'observability' && <Observability />}
-          {activePage === 'connections'   && <ConnectionsPage />}
-          {activePage === 'settings'      && <SettingsPage />}
-          {activePage === 'templates'     && <TemplatesPage />}
-          {activePage === 'publish-approval'  && <WorkflowPublishController />}
-          {activePage === 'template-approval' && <WorkflowTemplateController />}
+          {visiblePage === 'dashboard'     && <DashboardPage />}
+          {visiblePage === 'canvas'        && <WorkflowCanvas />}
+          {visiblePage === 'workflows'     && <WorkflowsPage />}
+          {visiblePage === 'library'       && <LibraryPage />}
+          {visiblePage === 'rag'           && <RAGPage />}
+          {visiblePage === 'marketplace'   && <MarketplacePage />}
+          {visiblePage === 'observability' && <Observability />}
+          {visiblePage === 'connections'   && <ConnectionsPage />}
+          {visiblePage === 'settings'      && <SettingsPage />}
+          {visiblePage === 'templates'     && <TemplatesPage />}
+          {visiblePage === 'publish-approval'  && <WorkflowPublishController />}
+          {visiblePage === 'template-approval' && <WorkflowTemplateController />}
         </Suspense>
       </main>
 
       {/* Modals */}
       <Suspense fallback={null}>
-        {activePage === 'canvas' && (
+        {visiblePage === 'canvas' && (
           <>
             <WorkflowNotesModal />
             <FlowchartModal />

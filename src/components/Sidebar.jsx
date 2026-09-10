@@ -52,6 +52,7 @@ import ObservabilityIcon from '../assets/ai/observability.svg';
 import AccountTreeIcon from '../assets/ai/account_tree.svg';
 import { usePersonaStatuses } from '../hooks/dataGovernance/Users/auth';
 import { useUIStore as useAgentMeshUIStore } from '../agentmesh/store';
+import { AGENTMESH_ROLES, hasAgentMeshRole } from '../agentmesh/auth/roles';
 import { useShallow } from 'zustand/react/shallow';
 
 const ACTIVE_COLOR = '#8E77BB';
@@ -118,6 +119,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar, setIsSidebarCollap
   })));
 
   const isOnAgentMesh = location.pathname.startsWith('/ai/agent-mesh');
+  const isAgentMeshAdmin = hasAgentMeshRole(decodedToken, AGENTMESH_ROLES.ADMIN);
 
   // Remove the old localStorage-reading useEffect and currentActiveSection state.
   // MainLayout already derives the correct section from the route and passes it
@@ -129,11 +131,11 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar, setIsSidebarCollap
       setExpandedItem('Agent Mesh');
       if (['canvas', 'library', 'rag'].includes(agentMeshActivePage)) {
         setExpandedSubItem('Agent Studio');
-      } else if (['publish-approval', 'template-approval', 'connections'].includes(agentMeshActivePage)) {
+      } else if (isAgentMeshAdmin && ['publish-approval', 'template-approval', 'connections'].includes(agentMeshActivePage)) {
         setExpandedSubItem('Admin Panel');
       }
     }
-  }, [isOnAgentMesh, agentMeshActivePage]);
+  }, [isOnAgentMesh, agentMeshActivePage, isAgentMeshAdmin]);
 
   const { isGlobalAdmin, isPolicyManager, isUserManager, isDataAuditor, isConnectionCreation } = useMemo(() => {
     const hasRoleInToken = (roleKey) =>
@@ -681,6 +683,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar, setIsSidebarCollap
 
                   // ── AgentMesh: Admin Panel with nested items ─────────────
                   if (subItem.agentMeshAccordionAdmin) {
+                    if (!isAgentMeshAdmin) return null;
                     const adminOpen = expandedSubItem === 'Admin Panel';
                     const adminActive = ['publish-approval', 'template-approval', 'connections'].includes(agentMeshActivePage);
                     return (

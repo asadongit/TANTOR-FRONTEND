@@ -107,7 +107,6 @@ const SearchableSelect = ({ id, openDropdownId, setOpenDropdownId, options, valu
 };
 
 export function SourceViewNode({ id, data, onSave }) {
-  const encodedToken = window._env_?.VITE_FEDERATION_ACCESS_TOKEN;
   const { viewPayload, handleViewPayload, setColumnSettings, columnSettings, finalPayload, handleFinalPayload, incrementNodeCount, decrementNodeCount, setNodes, notifyComplexQuerySaved, setHideBusinessPreview } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState(null);

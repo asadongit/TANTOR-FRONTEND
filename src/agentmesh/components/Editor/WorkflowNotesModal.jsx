@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useWorkflowStore, useUIStore } from "../../store";
+import { getArchitectSecret } from "../../utils/architectSecretStore";
 import {
   FiX,
   FiPlus,
@@ -314,7 +315,7 @@ export default function WorkflowNotesModal() {
       const cachedProvider = localStorage.getItem("architect_provider") || "groq";
       const cachedModel = localStorage.getItem("architect_model") || "llama-3.3-70b-versatile";
       const cachedTemp = localStorage.getItem("architect_temperature") || "0.2";
-      const cachedKey = localStorage.getItem("architect_api_key") || "";
+      const cachedKey = getArchitectSecret();
 
       const activeLlm = {
         provider: cachedProvider,

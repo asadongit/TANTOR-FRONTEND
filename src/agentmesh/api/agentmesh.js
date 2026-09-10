@@ -1,3 +1,5 @@
+import { agentMeshFetch } from './authenticatedFetch';
+
 const BASE = globalThis._env_?.VITE_AGENT_MESH || import.meta.env.VITE_AGENT_MESH || 'http://localhost:8000/api/v1/agentmesh';
 
 export const getBackendUrl = () => {
@@ -5,7 +7,7 @@ export const getBackendUrl = () => {
 };
 
 async function request(path, options = {}) {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await agentMeshFetch(`${BASE}${path}`, {
     headers: { 'Content-Type': 'application/json', ...options.headers },
     ...options,
   });
@@ -78,7 +80,7 @@ export const streamWorkflow = (workflowId, payload, onEvent) => {
   payload.mode = 'stream';
   const ctrl = new AbortController();
   (async () => {
-    const res = await fetch(`${BASE}/workflow/${workflowId}/execute`, {
+    const res = await agentMeshFetch(`${BASE}/workflow/${workflowId}/execute`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -135,7 +137,7 @@ export const deleteCollection = (collectionName, vectorStore = 'chroma') =>
   request(`/rag/collections?collection_name=${encodeURIComponent(collectionName)}&vector_store=${vectorStore}`, { method: 'DELETE' });
 
 export const ingestData = (formData) => {
-  return fetch(`${BASE}/rag/ingest`, {
+  return agentMeshFetch(`${BASE}/rag/ingest`, {
     method: 'POST',
     body: formData,
   }).then(async (res) => {
@@ -148,7 +150,7 @@ export const ingestData = (formData) => {
 };
 
 export const uploadTempFile = (formData) => {
-  return fetch(`${BASE}/execution/upload-temp`, {
+  return agentMeshFetch(`${BASE}/execution/upload-temp`, {
     method: 'POST',
     body: formData,
   }).then(async (res) => {
@@ -161,15 +163,15 @@ export const uploadTempFile = (formData) => {
 };
 
 // ─── Notes ────────────────────────────────────────────────────────────────────
-export const listWorkflowNotes = (workflowId) => 
+export const listWorkflowNotes = (workflowId) =>
   request(`/workflow/${workflowId}/notes/action`, { method: 'POST', body: JSON.stringify({ action: 'list' }) });
-export const createWorkflowNote = (workflowId, content, category = 'General') => 
+export const createWorkflowNote = (workflowId, content, category = 'General') =>
   request(`/workflow/${workflowId}/notes/action`, { method: 'POST', body: JSON.stringify({ action: 'create', content, category }) });
-export const deleteWorkflowNote = (workflowId, noteId) => 
+export const deleteWorkflowNote = (workflowId, noteId) =>
   request(`/workflow/${workflowId}/notes/action`, { method: 'POST', body: JSON.stringify({ action: 'delete', note_id: noteId }) });
-export const updateWorkflowNote = (workflowId, noteId, content, category) => 
+export const updateWorkflowNote = (workflowId, noteId, content, category) =>
   request(`/workflow/${workflowId}/notes/action`, { method: 'POST', body: JSON.stringify({ action: 'update', note_id: noteId, content, category }) });
-export const fixGrammar = (text, llm) => 
+export const fixGrammar = (text, llm) =>
   request('/utils/action', { method: 'POST', body: JSON.stringify({ action: 'fix_grammar', payload: { text, llm } }) });
 export const explainWorkflow = (workflow, llm) =>
   request('/utils/action', { method: 'POST', body: JSON.stringify({ action: 'explain_workflow', payload: { workflow, llm } }) });
@@ -365,7 +367,7 @@ export const listCategories = (type) => {
   if (type) p.set('type', type);
   return request(`/categories?${p}`);
 };
-export const createCategory = (payload) => 
+export const createCategory = (payload) =>
   request('/categories', { method: 'POST', body: JSON.stringify(payload) });
 
 export const listComponentTemplateFilters = (params) => {

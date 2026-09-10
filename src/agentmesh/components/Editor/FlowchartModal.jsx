@@ -10,6 +10,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { AiMagicIcon } from '@hugeicons/core-free-icons';
 import { useUIStore, useWorkflowStore } from '../../store';
 import { chatArchitect } from '../../api/agentmesh';
+import { getArchitectSecret } from '../../utils/architectSecretStore';
 
 // Shape Types definition with Heading and Text Block
 const SHAPE_TYPES = [
@@ -367,7 +368,7 @@ export default function FlowchartModal() {
       const cachedProvider = localStorage.getItem("architect_provider") || "groq";
       const cachedModel = localStorage.getItem("architect_model") || "llama-3.3-70b-versatile";
       const cachedTemp = localStorage.getItem("architect_temperature") || "0.2";
-      const cachedKey = localStorage.getItem("architect_api_key") || "";
+      const cachedKey = getArchitectSecret();
 
       const activeLlm = {
         provider: cachedProvider,

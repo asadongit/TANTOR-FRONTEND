@@ -379,9 +379,14 @@ export default function WorkflowVariablesPanel() {
           />
         ) : !isEditingOrAdding ? (
           /* ─── MODE 1: Initial Full-Width List View (No Sidebar) ─── */
-          <div style={{ flex: 1, padding: "28px 36px", overflowY: "auto", display: "flex", flexDirection: "column" }}>
-            {/* Search Bar */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          /* Fixed frame: the search bar sits at the top and the list below it
+             scrolls. minHeight: 0 is load-bearing - a flex item defaults to
+             min-height: auto and will not shrink below its content, so without
+             it this box grows past the modal and the modal's overflow:hidden
+             silently clips the last row instead of a scrollbar appearing. */
+          <div style={{ flex: 1, minHeight: 0, padding: "28px 36px", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            {/* Search Bar - stays put; only the list below it scrolls */}
+            <div style={{ flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div style={{ position: "relative", width: 360 }}>
                 <FiSearch
                   style={{
@@ -413,6 +418,13 @@ export default function WorkflowVariablesPanel() {
                 Showing {filtered.length} of {variables.length} variables
               </span>
             </div>
+
+            {/* The scrolling region. It is a container in its own right rather
+                than the padded body above, so the scrollbar sits against the
+                list and the search box cannot be scrolled off. minHeight: 0 is
+                required: a flex item will not shrink below its content without
+                it, so the list would grow and be clipped instead of scrolling. */}
+            <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
 
             {/* Loading / Empty States */}
             {isLoading && (
@@ -640,6 +652,8 @@ export default function WorkflowVariablesPanel() {
                 })}
               </div>
             )}
+
+            </div>{/* end scrolling region */}
           </div>
         ) : (
           /* ─── MODE 2: Split View (Left Sidebar List + Right Form Panel) ─── */
@@ -677,7 +691,7 @@ export default function WorkflowVariablesPanel() {
               </div>
 
               {/* Sidebar Variable List */}
-              <div style={{ flex: 1, overflowY: "auto", padding: "12px" }}>
+              <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "12px" }}>
                 {filtered.map((v) => {
                   const active = selectedKey === v.key && !showAddForm;
                   const typeObj = VAR_TYPES.find((t) => t.value === v.var_type);
@@ -758,7 +772,7 @@ export default function WorkflowVariablesPanel() {
 
             {/* Right Main Form Panel */}
             <div style={STYLES.main}>
-              <div style={{ flex: 1, overflowY: "auto", padding: "32px 40px" }}>
+              <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "32px 40px" }}>
                 {showAddForm ? (
                   <AddVariableForm
                     workflowId={workflowId}
