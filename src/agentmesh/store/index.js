@@ -81,6 +81,49 @@ const NODE_DEFAULTS = {
   ingestion_router: { label: 'Ingestion Router', scan_mode: 'auto', file_filters: ['.pdf', '.jpg', '.png', '.jpeg'], concurrency_limit: 5, parent_folder_key: 'parent_folder_path', folder_identifier_key: 'customer_folder_name', curl_command_key: 'curl_command' },
   event_emitter: { label: 'Event Emitter', webhook_url: 'http://localhost:8000/documents/mesh-status-sync', emit_status: '', interrupt_before: false, interrupt_after: false },
   cardboard: { label: 'Sticky Note', color: 'slate' },
+  excel_to_json: {
+    label: 'Excel to JSON',
+    excel_input_key: '',
+    excel_output_key: 'excel_json_data',
+    excel_sample_output_key: 'excel_sample_data',
+    excel_sample_limit: 5,
+    excel_sample_method: 'first',
+    excel_sheet_name: '',
+    excel_row_limit: 0,
+    excel_orientation: 'records',
+    excel_headers_only: false,
+    excel_handle_nulls: 'none',
+  },
+  jev_node: {
+    label: 'Jev Node',
+    jev_model: 'jev-latest',
+    jev_api_key_env: 'TYPESAFE_API_KEY',
+    jev_api_key: '',
+    jev_api_url: 'https://api.typesafe.ai/v1/systemone',
+    jev_input_key: 'excel_json_data',
+    jev_output_key: 'excel_json_data',
+    jev_mode: 'items',
+    jev_item_fields: ['Vulnerability Name', 'Plugin Name', 'Synopsis', 'Description', 'Plugin Family', 'Affected Package', 'OS', 'OS Falvour', 'Plugin Output'],
+    jev_questions: {
+      category: {
+        type: 'choice',
+        instructions: 'The state is one row from a vulnerability scan spreadsheet; column names may vary and some columns may be irrelevant. Decide which layer the vulnerable component belongs to, judging by the component that is actually vulnerable (plugin name, description, path, port), not by the host it runs on. Ignore columns about tracking, dates, ownership, or status.',
+        criteria: {
+          OS: 'The vulnerable component is the operating system or OS-managed package: Linux/Windows/Unix kernel, OS packages and system utilities (glibc, openssh, sudo, system openssl, microcode_ctl, systemd), CPU microcode updates delivered via OS packages, OS vendor security advisories (RHEL/RHSA, Ubuntu/USN, Debian/DSA, Microsoft KB), OS services, missing OS patches, or OS misconfiguration.',
+          Network: 'The vulnerable component is network infrastructure or transport layer: network devices (routers, switches, firewalls, load balancers), network protocols (BGP, OSPF, SNMP, NTP, DNS), TLS/SSL ciphers, VPNs, or perimeter open ports and routing.',
+          Database: 'The vulnerable component is a database engine or DB-specific component: Oracle Database, MySQL, PostgreSQL, SQL Server, listener, DB patches or DB configuration.',
+          Application: 'The vulnerable component is application-layer software: web/app servers, middleware, agents, frameworks, or third-party libraries bundled in an application (Java jars, Tomcat, Apache httpd, WebLogic).',
+          'Other/General': 'A genuine vulnerability finding that fits none of the four layers (OS, Database, Application, Network), such as physical security, standalone out-of-band IPMI / iLO / BIOS hardware chip flash (not updated via OS package), or broad organizational compliance and governance policy findings.',
+          insufficient_info: 'The row is not a usable vulnerability record: blank, header, summary or notes row, or it lacks enough detail (no plugin name, description, or path) to decide.'
+        },
+        options: ['OS', 'Network', 'Database', 'Application', 'Other/General', 'insufficient_info']
+      }
+    },
+    jev_concurrency: 25,
+    jev_batch_progress_size: 100,
+    jev_stream_progress: false,
+    jev_timeout_seconds: 15.0
+  },
   json_transform: {
     label: 'JSON Transform',
     jt_input_key: '',
@@ -1141,6 +1184,18 @@ export const useWorkflowStore = create((set, get) => ({
     pii_gate_node: ['input_key', 'interrupt_after'],
     ingestion_router: ['scan_mode', 'file_filters', 'concurrency_limit', 'parent_folder_key', 'folder_identifier_key', 'curl_command_key', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
     event_emitter: ['webhook_url', 'emit_status', 'interrupt_before', 'interrupt_after'],
+    excel_to_json: [
+      'excel_input_key',
+      'excel_output_key',
+      'excel_sample_output_key',
+      'excel_sample_limit',
+      'excel_sample_method',
+      'excel_sheet_name',
+      'excel_row_limit',
+      'excel_orientation',
+      'excel_headers_only',
+      'excel_handle_nulls',
+    ],
     json_transform: ['jt_input_key', 'jt_output_key', 'jt_mode', 'jt_query', 'jt_operations', 'jt_expression', 'jt_pass_through'],
     code_execution: ['ce_language', 'ce_code', 'ce_input_key', 'ce_output_key', 'ce_mode', 'ce_block_mode', 'ce_code_blocks'],
     email_node: ['email_provider', 'email_to', 'email_cc', 'email_bcc', 'email_subject', 'email_body', 'email_html', 'email_smtp_server', 'email_smtp_port', 'email_user', 'email_password', 'email_attachments', 'email_headers', 'email_smtp_timeout', 'email_auth_method', 'email_tenant_id', 'email_client_id', 'email_client_secret', 'email_google_service_account_json', 'email_google_delegated_user'],
@@ -1166,6 +1221,28 @@ export const useWorkflowStore = create((set, get) => ({
     file_store: ['file_data_key', 'file_format', 'file_name', 'file_overwrite', 'interrupt_before', 'interrupt_after'],
     banking_enrichment: ['source_key', 'destination_key', 'custom_external_apis', 'custom_internal_apis', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
     beneficiary_risk: ['context_key', 'beneficiary_field', 'risk_checks', 'new_beneficiary_rule', 'fraud_additional_apis', 'fraud_alert_level', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
+    jev_node: [
+      'jev_model',
+      'jev_api_key_env',
+      'jev_api_key',
+      'jev_api_url',
+      'jev_input_key',
+      'jev_output_key',
+      'jev_mode',
+      'jev_item_fields',
+      'jev_state_template',
+      'jev_questions',
+      'jev_batch_progress_size',
+      'jev_stream_progress',
+      'jev_timeout_seconds',
+      'jev_concurrency',
+      'interrupt_before',
+      'interrupt_after',
+      'hitl_actions',
+      'on_error',
+      'continue_on_fail',
+      'mute_chat_bubble'
+    ],
 
     // Keyed by names that are not node types, so they never matched anything.
     // Kept only so an older saved workflow referencing them is not disturbed.

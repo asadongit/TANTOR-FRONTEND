@@ -91,6 +91,7 @@ const LAZY_CONFIGS = {
   form_node: lazy(() => import("./propertypanelModules/FormNodeConfig")),
   camera: lazy(() => import("./propertypanelModules/CameraNodeConfig")),
   file_store: lazy(() => import("./propertypanelModules/FileStoreConfig")),
+  file_extractor: lazy(() => import("./propertypanelModules/FileExtractorConfig")),
   debug_node: lazy(() => import("./propertypanelModules/DebugNodeConfig")),
   error_router: lazy(() => import("./propertypanelModules/ErrorRouterConfig")),
   data_cleaning: lazy(
@@ -155,6 +156,8 @@ const LAZY_CONFIGS = {
   signature_stamp_extractor: lazy(() => import("./propertypanelModules/SignatureStampExtractorConfig")),
   code_execution: lazy(() => import("./propertypanelModules/CodeExecutionConfig")),
   email_node: lazy(() => import("./propertypanelModules/EmailNodeConfig")),
+  excel_to_json: lazy(() => import("./propertypanelModules/ExcelToJsonConfig")),
+  jev_node: lazy(() => import("./propertypanelModules/JevNodeConfig")),
   group: lazy(() => import("./propertypanelModules/GroupConfig")),
 };
 
@@ -589,6 +592,8 @@ export default function PropertiesPanel() {
     signature_stamp_extractor: FiEdit,
     code_execution: FiCode,
     email_node: FiMail,
+    excel_to_json: FiFileText,
+    jev_node: FiCpu,
   };
   const Icon = nodeIcons[data.type] || FiLayers;
 

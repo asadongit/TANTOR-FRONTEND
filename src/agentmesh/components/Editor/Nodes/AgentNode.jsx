@@ -53,6 +53,7 @@ const NODE_CONFIGS = {
   form_node: { bg: '#F5F3FF', color: '#7C3AED', icon: FiEdit, round: 16 },
   camera: { bg: '#E0F2FE', color: '#0369A1', icon: FiVideo, round: 16 },
   template_node: { bg: '#FDF2F8', color: '#DB2777', icon: FiFileText, round: 14 },
+  file_extractor: { bg: '#E0F2FE', color: '#0369A1', icon: FiFileText, round: 14 },
   report_generator: { bg: '#E0E7FF', color: '#4338CA', icon: FiFileText, round: 14 },
   error_router: { bg: '#FEF2F2', color: '#DC2626', icon: FiAlertTriangle, round: 14 },
   output_parser: { bg: '#FEF3C7', color: '#D97706', icon: FiFilter, round: 14 },
@@ -72,7 +73,9 @@ const NODE_CONFIGS = {
   ingestion_router: { bg: '#C9F5E0', color: '#065F46', icon: FiLayers, round: 14 },
   event_emitter: { bg: '#E0F2FE', color: '#0369A1', icon: FiGlobe, round: 14 },
   stt_trigger: { bg: '#F0F9FF', color: '#0891B2', icon: FiMic, round: 14 },
-  email_node: { bg: '#EFF6FF', color: '#1D4ED8', icon: FiMail, round: 14 }
+  email_node: { bg: '#EFF6FF', color: '#1D4ED8', icon: FiMail, round: 14 },
+  excel_to_json: { bg: '#ECFDF5', color: '#047857', icon: FiFileText, round: 14 },
+  jev_node: { bg: '#EFF6FF', color: '#2563EB', icon: FiCpu, round: 14 }
 };
 
 const logicRowStyle = {

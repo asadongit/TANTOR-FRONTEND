@@ -1,4 +1,4 @@
-import LLMAgentConfig from './LLMAgentConfig';
+﻿import LLMAgentConfig from './LLMAgentConfig';
 import DeepAgentConfig from './DeepAgentConfig';
 import ToolNodeConfig from './ToolNodeConfig';
 import DirectToolConfig from './DirectToolConfig';
@@ -53,6 +53,8 @@ import CameraNodeConfig from './CameraNodeConfig';
 import SignatureStampExtractorConfig from './SignatureStampExtractorConfig';
 import CodeExecutionConfig from './CodeExecutionConfig';
 import EmailNodeConfig from './EmailNodeConfig';
+import ExcelToJsonConfig from './ExcelToJsonConfig';
+import JevNodeConfig from './JevNodeConfig';
 
 export {
   LLMAgentConfig,
@@ -110,6 +112,11 @@ export {
   SignatureStampExtractorConfig,
   CodeExecutionConfig,
   EmailNodeConfig,
+  ExcelToJsonConfig,
+  JevNodeConfig,
 };
+
+export { default as ExcelToJsonConfig } from './ExcelToJsonConfig';
+export { default as JevNodeConfig } from './JevNodeConfig';
 
 export { ToolConfigModal } from './shared/ToolConfigModal';
