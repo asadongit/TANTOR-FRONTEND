@@ -158,6 +158,8 @@ const LAZY_CONFIGS = {
   email_node: lazy(() => import("./propertypanelModules/EmailNodeConfig")),
   excel_to_json: lazy(() => import("./propertypanelModules/ExcelToJsonConfig")),
   jev_node: lazy(() => import("./propertypanelModules/JevNodeConfig")),
+  laya_node: lazy(() => import("./propertypanelModules/LayaNodeConfig")),
+  laya: lazy(() => import("./propertypanelModules/LayaNodeConfig")),
   group: lazy(() => import("./propertypanelModules/GroupConfig")),
 };
 
@@ -594,6 +596,8 @@ export default function PropertiesPanel() {
     email_node: FiMail,
     excel_to_json: FiFileText,
     jev_node: FiCpu,
+    laya_node: FiCpu,
+    laya: FiCpu,
   };
   const Icon = nodeIcons[data.type] || FiLayers;
 

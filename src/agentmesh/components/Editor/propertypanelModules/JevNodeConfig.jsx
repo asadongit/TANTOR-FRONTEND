@@ -781,7 +781,55 @@ export default function JevNodeConfig({ data, update }) {
         </div>
       </div>
 
-      {/* MODEL & API SETTINGS */}
+      
+      {/* DECISION GATING & REVIEW THRESHOLDS */}
+      <div style={{ marginBottom: 20 }}>
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: 'var(--text-muted, #64748B)',
+            marginBottom: 10,
+            textTransform: 'uppercase',
+            letterSpacing: '0.8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6
+          }}
+        >
+          <FiSliders size={13} /> Decision Gating & Review Thresholds
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <Field
+            label="Confidence Threshold"
+            hint="Model confidence threshold (e.g. 0.60 or 60). Below this flags for review."
+          >
+            <Input
+              type="number"
+              step="0.05"
+              value={data.jev_confidence_gate ?? 0.60}
+              onChange={(v) => update({ jev_confidence_gate: v === '' ? 0.60 : Number(v) > 1 ? Number(v) / 100 : Number(v) })}
+              placeholder="0.60"
+            />
+          </Field>
+
+          <Field
+            label="Top Probability Threshold"
+            hint="Top choice probability threshold (e.g. 0.60 or 60). Below this flags for review."
+          >
+            <Input
+              type="number"
+              step="0.05"
+              value={data.jev_top_prob_gate ?? 0.60}
+              onChange={(v) => update({ jev_top_prob_gate: v === '' ? 0.60 : Number(v) > 1 ? Number(v) / 100 : Number(v) })}
+              placeholder="0.60"
+            />
+          </Field>
+        </div>
+      </div>
+
+{/* MODEL & API SETTINGS */}
       <div style={{ marginBottom: 20 }}>
         <div
           style={{
@@ -886,14 +934,14 @@ export default function JevNodeConfig({ data, update }) {
         </Field>
 
         <Field
-          label="Direct API Key Override (Optional)"
-          hint="Optional: override the backend environment variable directly."
+          label="API Key (Direct Canvas Override)"
+          hint="Directly configure the TypeSafe API key on canvas. Overrides .env variable."
         >
           <Input
             type="password"
             value={data.jev_api_key ?? ''}
             onChange={(v) => update({ jev_api_key: v })}
-            placeholder="ts-..."
+            placeholder="ts-... or custom token"
           />
         </Field>
       </div>

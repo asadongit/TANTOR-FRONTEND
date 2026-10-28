@@ -75,7 +75,9 @@ const NODE_CONFIGS = {
   stt_trigger: { bg: '#F0F9FF', color: '#0891B2', icon: FiMic, round: 14 },
   email_node: { bg: '#EFF6FF', color: '#1D4ED8', icon: FiMail, round: 14 },
   excel_to_json: { bg: '#ECFDF5', color: '#047857', icon: FiFileText, round: 14 },
-  jev_node: { bg: '#EFF6FF', color: '#2563EB', icon: FiCpu, round: 14 }
+  jev_node: { bg: '#EFF6FF', color: '#2563EB', icon: FiCpu, round: 14 },
+  laya_node: { bg: '#FDF4FF', color: '#9333EA', icon: FiCpu, round: 14 },
+  laya: { bg: '#FDF4FF', color: '#9333EA', icon: FiCpu, round: 14 }
 };
 
 const logicRowStyle = {

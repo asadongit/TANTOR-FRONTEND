@@ -94,6 +94,25 @@ const NODE_DEFAULTS = {
     excel_headers_only: false,
     excel_handle_nulls: 'none',
   },
+  laya_node: {
+    label: 'Laya Node',
+    laya_endpoint: 'http://127.0.0.1:8770',
+    laya_api_token_env: 'LAYA_API_TOKEN',
+    laya_api_token: '',
+    laya_concurrency: 10,
+    laya_timeout_seconds: 60.0,
+    laya_max_state_chars: 1200,
+    laya_abort_on_fatal_error: true,
+    laya_lang: 'en',
+    jev_input_key: '',
+    jev_output_key: '',
+    jev_mode: 'items',
+    jev_item_fields: [],
+    jev_questions: {},
+    jev_concurrency: 10,
+    jev_batch_progress_size: 100,
+    jev_stream_progress: false
+  },
   jev_node: {
     label: 'Jev Node',
     jev_model: 'jev-latest',
@@ -105,18 +124,18 @@ const NODE_DEFAULTS = {
     jev_mode: 'items',
     jev_item_fields: ['Vulnerability Name', 'Plugin Name', 'Synopsis', 'Description', 'Plugin Family', 'Affected Package', 'OS', 'OS Falvour', 'Plugin Output'],
     jev_questions: {
-      category: {
+      vulnerability_category: {
         type: 'choice',
         instructions: 'The state is one row from a vulnerability scan spreadsheet; column names may vary and some columns may be irrelevant. Decide which layer the vulnerable component belongs to, judging by the component that is actually vulnerable (plugin name, description, path, port), not by the host it runs on. Ignore columns about tracking, dates, ownership, or status.',
         criteria: {
-          OS: 'The vulnerable component is the operating system or OS-managed package: Linux/Windows/Unix kernel, OS packages and system utilities (glibc, openssh, sudo, system openssl, microcode_ctl, systemd), CPU microcode updates delivered via OS packages, OS vendor security advisories (RHEL/RHSA, Ubuntu/USN, Debian/DSA, Microsoft KB), OS services, missing OS patches, or OS misconfiguration.',
-          Network: 'The vulnerable component is network infrastructure or transport layer: network devices (routers, switches, firewalls, load balancers), network protocols (BGP, OSPF, SNMP, NTP, DNS), TLS/SSL ciphers, VPNs, or perimeter open ports and routing.',
-          Database: 'The vulnerable component is a database engine or DB-specific component: Oracle Database, MySQL, PostgreSQL, SQL Server, listener, DB patches or DB configuration.',
-          Application: 'The vulnerable component is application-layer software: web/app servers, middleware, agents, frameworks, or third-party libraries bundled in an application (Java jars, Tomcat, Apache httpd, WebLogic).',
-          'Other/General': 'A genuine vulnerability finding that fits none of the four layers (OS, Database, Application, Network), such as physical security, standalone out-of-band IPMI / iLO / BIOS hardware chip flash (not updated via OS package), or broad organizational compliance and governance policy findings.',
+          os: 'The vulnerable component is the operating system or OS-managed package: Linux/Windows/Unix kernel, OS packages and system utilities (glibc, openssh, sudo, system openssl, microcode_ctl, systemd), CPU microcode updates delivered via OS packages, OS vendor security advisories (RHEL/RHSA, Ubuntu/USN, Debian/DSA, Microsoft KB), OS services, missing OS patches, or OS misconfiguration.',
+          network: 'The vulnerable component is network infrastructure or transport layer: network devices (routers, switches, firewalls, load balancers), network protocols (BGP, OSPF, SNMP, NTP, DNS), TLS/SSL ciphers, VPNs, or perimeter open ports and routing.',
+          db: 'The vulnerable component is a database engine or DB-specific component: Oracle Database, MySQL, PostgreSQL, SQL Server, listener, DB patches or DB configuration.',
+          app: 'The vulnerable component is application-layer software: web/app servers, middleware, agents, frameworks, or third-party libraries bundled in an application (Java jars, Tomcat, Apache httpd, WebLogic).',
+          other: 'A genuine vulnerability finding that fits none of the four layers (OS, Database, Application, Network), such as physical security, standalone out-of-band IPMI / iLO / BIOS hardware chip flash (not updated via OS package), or broad organizational compliance and governance policy findings.',
           insufficient_info: 'The row is not a usable vulnerability record: blank, header, summary or notes row, or it lacks enough detail (no plugin name, description, or path) to decide.'
         },
-        options: ['OS', 'Network', 'Database', 'Application', 'Other/General', 'insufficient_info']
+        options: ['os', 'network', 'db', 'app', 'other', 'insufficient_info']
       }
     },
     jev_concurrency: 25,
@@ -1221,6 +1240,31 @@ export const useWorkflowStore = create((set, get) => ({
     file_store: ['file_data_key', 'file_format', 'file_name', 'file_overwrite', 'interrupt_before', 'interrupt_after'],
     banking_enrichment: ['source_key', 'destination_key', 'custom_external_apis', 'custom_internal_apis', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
     beneficiary_risk: ['context_key', 'beneficiary_field', 'risk_checks', 'new_beneficiary_rule', 'fraud_additional_apis', 'fraud_alert_level', 'interrupt_before', 'interrupt_after', 'on_error', 'continue_on_fail'],
+    laya_node: [
+      'laya_endpoint',
+      'laya_api_token_env',
+      'laya_api_token',
+      'laya_lang',
+      'laya_concurrency',
+      'laya_timeout_seconds',
+      'laya_max_state_chars',
+      'laya_abort_on_fatal_error',
+      'jev_input_key',
+      'jev_output_key',
+      'jev_mode',
+      'jev_item_fields',
+      'jev_state_template',
+      'jev_questions',
+      'jev_batch_progress_size',
+      'jev_stream_progress',
+      'jev_concurrency',
+      'interrupt_before',
+      'interrupt_after',
+      'hitl_actions',
+      'on_error',
+      'continue_on_fail',
+      'mute_chat_bubble'
+    ],
     jev_node: [
       'jev_model',
       'jev_api_key_env',
